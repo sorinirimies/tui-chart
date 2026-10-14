@@ -10,7 +10,7 @@ Set Padding 20
 Set PlaybackSpeed 1
 
 Hide
-Type "cargo run --release --example candlestick"
+Type "clear && cargo run --release --example candlestick"
 Enter
 Sleep 5s
 Show
