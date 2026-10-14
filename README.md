@@ -27,7 +27,23 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 | `Treemap` | nested weighted rectangles |
 | `ChartStack` | vertical/horizontal stack with shared gutter |
 
-Markers: `Braille`, `HalfBlock`, `Block`, `Dot` via `Marker`.
+## High resolution (braille)
+
+Dot-based drawing is selected with `Marker`; braille (2×4 dots per cell) is the default.
+
+| Marker | Dots / cell | Glyphs | Notes |
+|---|---|---|---|
+| `Braille` | 2×4 | `U+2800..U+28FF` | default, widely supported |
+| `HalfBlock` | 1×2 | `▀ ▄ █` | |
+| `Block` | 1×1 | `█` | |
+| `Dot` | 1×1 | `•` | |
+| `Sextant` | 2×3 | `U+1FB00..U+1FB3B` (+ `▌ ▐ █`) | opt-in: needs a font with "Symbols for Legacy Computing"; otherwise renders as tofu/blank |
+
+- `CandleStyle::Braille`: 1-dot wicks, 2-dot-wide bodies, ~2× candles per width; works with bull/bear colors, themes, overlays, volume and panes.
+- `BarChart::marker(m)` / `Histogram::bar_marker(m)`: bars built from dots (4 vertical dots per cell on braille); default stays eighth blocks.
+- `.marker(m)` on `LineChart`, `Sparkline` (line style), `RadarChart`, `Gauge` (arc), `Histogram` (KDE), `DepthChart` (step-area), `Waterfall` (connectors; default `┄`).
+- `Canvas::set_overlap(OverlapPolicy::{LastWins, FirstWins})`: which colour a cell takes when dots of several colours share it (default `LastWins`).
+- Demos: press `k` to cycle markers (`s` cycles candle styles incl. braille).
 
 ## Features
 

@@ -15,15 +15,48 @@ pub enum Marker {
     Block,
     /// Bullet `•`: 1×1 per cell.
     Dot,
+    /// Sextants (Unicode "Symbols for Legacy Computing", U+1FB00..U+1FB3B):
+    /// 2×3 dots per cell.
+    ///
+    /// Font caveat: many terminal fonts lack these glyphs (they render as
+    /// tofu or blanks), so this marker is opt-in. Braille is the default.
+    Sextant,
+}
+
+/// Which colour wins when several dots with different colours share a cell.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum OverlapPolicy {
+    /// The most recently set dot decides the cell colour (default).
+    #[default]
+    LastWins,
+    /// The first dot set in a cell keeps its colour.
+    FirstWins,
 }
 
 impl Marker {
+    /// All markers in cycle order.
+    pub const ALL: [Marker; 5] = [
+        Marker::Braille,
+        Marker::HalfBlock,
+        Marker::Block,
+        Marker::Dot,
+        Marker::Sextant,
+    ];
+
+    /// Next marker in [`Marker::ALL`] (wraps); handy for demo key bindings.
+    pub fn next(self) -> Marker {
+        let i = Self::ALL.iter().position(|m| *m == self).unwrap_or(0);
+        Self::ALL[(i + 1) % Self::ALL.len()]
+    }
+
     /// Dots (x, y) per terminal cell.
     pub fn resolution(self) -> (u16, u16) {
         match self {
             Marker::Braille => (2, 4),
             Marker::HalfBlock => (1, 2),
             Marker::Block | Marker::Dot => (1, 1),
+            Marker::Sextant => (2, 3),
         }
     }
 
@@ -33,6 +66,17 @@ impl Marker {
             Marker::HalfBlock => [' ', '▀', '▄', '█'][(mask & 3) as usize],
             Marker::Block => '█',
             Marker::Dot => '•',
+            Marker::Sextant => match mask & 63 {
+                0 => ' ',
+                21 => '▌',
+                42 => '▐',
+                63 => '█',
+                m => {
+                    let m = m as u32;
+                    let skipped = (m > 21) as u32 + (m > 42) as u32;
+                    char::from_u32(0x1FB00 + m - 1 - skipped).unwrap_or(' ')
+                }
+            },
         }
     }
 
@@ -44,6 +88,7 @@ impl Marker {
             }
             Marker::HalfBlock => 1 << dy,
             Marker::Block | Marker::Dot => 1,
+            Marker::Sextant => 1 << (dy * 2 + dx),
         }
     }
 }
@@ -54,6 +99,7 @@ pub struct Canvas {
     w: u16,
     h: u16,
     marker: Marker,
+    overlap: OverlapPolicy,
     mask: Vec<u8>,
     color: Vec<Color>,
 }
@@ -66,9 +112,26 @@ impl Canvas {
             w,
             h,
             marker,
+            overlap: OverlapPolicy::default(),
             mask: vec![0; n],
             color: vec![Color::Reset; n],
         }
+    }
+
+    /// Set the per-cell colour policy for overlapping dots.
+    pub fn set_overlap(&mut self, policy: OverlapPolicy) {
+        self.overlap = policy;
+    }
+
+    /// Builder form of [`Canvas::set_overlap`].
+    pub fn with_overlap(mut self, policy: OverlapPolicy) -> Self {
+        self.overlap = policy;
+        self
+    }
+
+    /// Marker of this canvas.
+    pub fn marker(&self) -> Marker {
+        self.marker
     }
 
     /// Width in dots.
@@ -90,8 +153,11 @@ impl Canvas {
         let (cx, cy) = (px as u16 / rx, py as u16 / ry);
         let (dx, dy) = (px as u16 % rx, py as u16 % ry);
         let i = cy as usize * self.w as usize + cx as usize;
+        let was_empty = self.mask[i] == 0;
         self.mask[i] |= self.marker.bit(dx, dy);
-        self.color[i] = color;
+        if was_empty || self.overlap == OverlapPolicy::LastWins {
+            self.color[i] = color;
+        }
     }
 
     /// Whether a dot is set.
@@ -107,7 +173,7 @@ impl Canvas {
     /// A slightly bigger point (2×2 dots on braille) for scatter plots.
     pub fn blob(&mut self, px: i32, py: i32, color: Color) {
         self.set(px, py, color);
-        if self.marker == Marker::Braille {
+        if matches!(self.marker, Marker::Braille | Marker::Sextant) {
             self.set(px + 1, py, color);
             self.set(px, py + 1, color);
             self.set(px + 1, py + 1, color);
@@ -167,6 +233,54 @@ mod tests {
         assert_eq!(Marker::HalfBlock.resolution(), (1, 2));
         assert_eq!(Marker::Block.resolution(), (1, 1));
         assert_eq!(Marker::Dot.resolution(), (1, 1));
+        assert_eq!(Marker::Sextant.resolution(), (2, 3));
+    }
+
+    #[test]
+    fn marker_cycle_wraps() {
+        let mut m = Marker::Braille;
+        for _ in 0..Marker::ALL.len() {
+            m = m.next();
+        }
+        assert_eq!(m, Marker::Braille);
+    }
+
+    #[test]
+    fn sextant_glyphs() {
+        let g = |m: u8| Marker::Sextant.glyph(m);
+        assert_eq!(g(0), ' ');
+        assert_eq!(g(1), '\u{1FB00}');
+        assert_eq!(g(20), '\u{1FB13}');
+        assert_eq!(g(21), '▌');
+        assert_eq!(g(22), '\u{1FB14}');
+        assert_eq!(g(42), '▐');
+        assert_eq!(g(43), '\u{1FB28}');
+        assert_eq!(g(62), '\u{1FB3B}');
+        assert_eq!(g(63), '█');
+        let mut c = Canvas::new(1, 1, Marker::Sextant);
+        assert_eq!((c.px_w(), c.px_h()), (2, 3));
+        for y in 0..3 {
+            c.set(0, y, Color::Red);
+        }
+        let mut buf = Buffer::empty(Rect::new(0, 0, 1, 1));
+        c.render(&mut buf, Rect::new(0, 0, 1, 1));
+        assert_eq!(buf[(0, 0)].symbol(), "▌");
+    }
+
+    #[test]
+    fn overlap_policy() {
+        let mut c = Canvas::new(1, 1, Marker::Braille);
+        c.set(0, 0, Color::Red);
+        c.set(1, 0, Color::Blue);
+        let mut buf = Buffer::empty(Rect::new(0, 0, 1, 1));
+        c.render(&mut buf, Rect::new(0, 0, 1, 1));
+        assert_eq!(buf[(0, 0)].fg, Color::Blue);
+        let mut c = Canvas::new(1, 1, Marker::Braille);
+        c.set_overlap(OverlapPolicy::FirstWins);
+        c.set(0, 0, Color::Red);
+        c.set(1, 0, Color::Blue);
+        c.render(&mut buf, Rect::new(0, 0, 1, 1));
+        assert_eq!(buf[(0, 0)].fg, Color::Red);
     }
 
     #[test]

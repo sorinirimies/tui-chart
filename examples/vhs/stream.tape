@@ -1,33 +1,27 @@
-# VHS tape for stream demo
+# A VHS tape. See https://github.com/charmbracelet/vhs
 
-Output examples/vhs/output/stream.gif
-
-Set Shell "bash"
-Set FontSize 14
+# for running against the tui-chart git repo https://github.com/sorinirimies/tui-chart
+Output "examples/vhs/output/stream.gif"
+Set Theme "Aardvark Blue"
 Set Width 1200
 Set Height 700
-Set PlaybackSpeed 1.5
-Set Theme "Catppuccin Mocha"
+Set FontSize 22
+Set Padding 20
+Set PlaybackSpeed 1
 
 Hide
-Type "cargo run --example stream"
+Type "cargo run --release --example stream"
 Enter
-Sleep 3s
+Sleep 5s
 Show
 
-Sleep 5s
-
-Type " "
 Sleep 1s
-Type " "
-Sleep 2s
-
 Type "t"
-Sleep 1500ms
+Sleep 0.7s
 Type "t"
-Sleep 1500ms
-Type "T"
-Sleep 1500ms
+Sleep 0.7s
+Sleep 1s
 
+Hide
 Type "q"
-Sleep 1s
+Sleep 0.3s

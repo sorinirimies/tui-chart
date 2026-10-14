@@ -41,6 +41,8 @@ pub struct Histogram {
     show_values: bool,
     cumulative: bool,
     normalized: bool,
+    marker: Marker,
+    bar_marker: Option<Marker>,
     block: Option<Block<'static>>,
     value_axis: Axis,
 }
@@ -62,6 +64,8 @@ impl Histogram {
             show_values: false,
             cumulative: false,
             normalized: false,
+            marker: Marker::Braille,
+            bar_marker: None,
             block: None,
             value_axis: Axis::new().grid(true),
         }
@@ -143,6 +147,19 @@ impl Histogram {
     /// [`cumulative`](Self::cumulative) the last bar reaches 1.
     pub fn normalized(mut self, on: bool) -> Self {
         self.normalized = on;
+        self
+    }
+
+    /// Draw the bars with dot glyphs (see [`BarChart::marker`]). Default:
+    /// eighth blocks.
+    pub fn bar_marker(mut self, marker: Marker) -> Self {
+        self.bar_marker = Some(marker);
+        self
+    }
+
+    /// Glyph family of the KDE curve (default [`Marker::Braille`]).
+    pub fn marker(mut self, marker: Marker) -> Self {
+        self.marker = marker;
         self
     }
 
@@ -286,6 +303,9 @@ impl Histogram {
         if let Some(s) = self.style {
             chart = chart.base_style(s);
         }
+        if let Some(m) = self.bar_marker {
+            chart = chart.marker(m);
+        }
         if let Some(g) = &self.gradient {
             chart = chart.gradient(g.clone());
         }
@@ -312,7 +332,7 @@ impl Histogram {
         let scale = if self.normalized { 1.0 } else { n * bin_w };
         let curve = self.kde_curve((span as usize * 2).max(8), self.kde_bandwidth);
         let (x0, x1) = (first.start, bins[bins.len() - 1].end);
-        let mut canvas = Canvas::new(span, plot.height, Marker::Braille);
+        let mut canvas = Canvas::new(span, plot.height, self.marker);
         let (pw, ph) = (f64::from(canvas.px_w()), f64::from(canvas.px_h()));
         let color = self.theme.as_ref().map_or(Color::Yellow, |t| t.color(1));
         let mut prev: Option<(i32, i32)> = None;

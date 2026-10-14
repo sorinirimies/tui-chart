@@ -1,5 +1,5 @@
 //! Sparkline demo.
-//! Keys: s style · g gradient · space pause · t/T theme · q quit
+//! Keys: s style · k marker (line style) · g gradient · space pause · t/T theme · q quit
 
 #[path = "common/mod.rs"]
 mod common;
@@ -12,7 +12,7 @@ use ratatui::{
     widgets::Block,
 };
 use std::time::Duration;
-use tui_chart::{Sparkline, SparklineStyle, Theme};
+use tui_chart::{Marker, Sparkline, SparklineStyle, Theme};
 
 struct State {
     theme: Theme,
@@ -21,6 +21,7 @@ struct State {
     line: bool,
     gradient: bool,
     paused: bool,
+    marker: Marker,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -33,6 +34,7 @@ fn main() -> anyhow::Result<()> {
         line: false,
         gradient: true,
         paused: false,
+        marker: Marker::Braille,
     };
     run(
         state,
@@ -52,6 +54,7 @@ fn main() -> anyhow::Result<()> {
             let mk = || {
                 let sp = Sparkline::new(s.data.iter().copied())
                     .style(style)
+                    .marker(s.marker)
                     .highlight_last(Color::White)
                     .highlight_max(Color::Red)
                     .highlight_min(Color::Blue);
@@ -74,7 +77,7 @@ fn main() -> anyhow::Result<()> {
             help(
                 f,
                 bar,
-                " s style · g gradient · space pause · t/T theme · q quit",
+                " s style · k marker · g gradient · space pause · t/T theme · q quit",
             );
         },
         |s, key| {
@@ -83,6 +86,7 @@ fn main() -> anyhow::Result<()> {
                 KeyCode::Char('T') => s.theme = s.theme.prev(),
                 KeyCode::Char('q') | KeyCode::Esc => return true,
                 KeyCode::Char('s') => s.line = !s.line,
+                KeyCode::Char('k') => s.marker = s.marker.next(),
                 KeyCode::Char('g') => s.gradient = !s.gradient,
                 KeyCode::Char(' ') => s.paused = !s.paused,
                 _ => {}

@@ -1,38 +1,29 @@
-# VHS tape for showcase demo
+# A VHS tape. See https://github.com/charmbracelet/vhs
 
-Output examples/vhs/output/showcase.gif
-
-Set Shell "bash"
-Set FontSize 14
+# for running against the tui-chart git repo https://github.com/sorinirimies/tui-chart
+Output "examples/vhs/output/showcase.gif"
+Set Theme "Aardvark Blue"
 Set Width 1200
 Set Height 700
-Set PlaybackSpeed 1.5
-Set Theme "Catppuccin Mocha"
+Set FontSize 22
+Set Padding 20
+Set PlaybackSpeed 1
 
 Hide
-Type "cargo run --example showcase"
+Type "cargo run --release --example showcase"
 Enter
-Sleep 3s
+Sleep 5s
 Show
 
-Sleep 2s
-Type "m"
-Sleep 1500ms
-Type "m"
-Sleep 1500ms
-Type "m"
-Sleep 1500ms
-Type "g"
 Sleep 1s
-Type "g"
-Sleep 2s
-
 Type "t"
-Sleep 1500ms
+Sleep 0.7s
 Type "t"
-Sleep 1500ms
-Type "T"
-Sleep 1500ms
+Sleep 0.7s
+Type "t"
+Sleep 0.7s
+Sleep 1s
 
+Hide
 Type "q"
-Sleep 1s
+Sleep 0.3s

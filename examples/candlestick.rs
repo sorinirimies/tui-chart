@@ -1,5 +1,5 @@
 //! Live trading chart demo.
-//! Keys: s style · v volume · a SMA · e EMA · ←/→ scroll · space pause · t/T theme · q quit
+//! Keys: s style (incl. braille) · v volume · a SMA · e EMA · ←/→ scroll · space pause · t/T theme · q quit
 
 #[path = "common/mod.rs"]
 mod common;
@@ -96,7 +96,8 @@ fn main() -> anyhow::Result<()> {
                     s.style = match s.style {
                         CandleStyle::Candle => CandleStyle::Ohlc,
                         CandleStyle::Ohlc => CandleStyle::HeikinAshi,
-                        CandleStyle::HeikinAshi => CandleStyle::Candle,
+                        CandleStyle::HeikinAshi => CandleStyle::Braille,
+                        CandleStyle::Braille => CandleStyle::Candle,
                     }
                 }
                 KeyCode::Char('v') => s.volume = !s.volume,

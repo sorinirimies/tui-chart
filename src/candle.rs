@@ -1,6 +1,7 @@
 //! Candlestick / OHLC chart for price data (stocks, crypto, FX…).
 
 use crate::axis::Axis;
+use crate::canvas::{Canvas, Marker};
 use crate::indicator;
 use crate::layout::{self, text_width};
 use crate::theme::{self, Theme};
@@ -78,6 +79,11 @@ pub enum CandleStyle {
     Ohlc,
     /// Heikin-Ashi smoothed candles.
     HeikinAshi,
+    /// High-resolution braille candles: 1-dot wicks and 2-dot-wide bodies
+    /// (per cell of body width) with 4 dots of vertical resolution per row.
+    /// Bodies sit edge to edge, so about twice as many candles fit per width
+    /// (`gap(1)`, the default, means no gap; `gap(2)` leaves one cell).
+    Braille,
 }
 
 /// Technical overlay (e.g. moving average) aligned to the candle index.
@@ -533,6 +539,16 @@ impl CandlestickChart {
         self
     }
 
+    /// Cells per candle slot (body + gap). Braille packs bodies edge to edge.
+    fn slot_cells(&self) -> usize {
+        let gap = if self.style == CandleStyle::Braille {
+            self.gap.saturating_sub(1)
+        } else {
+            self.gap
+        };
+        (self.bar_width() + gap) as usize
+    }
+
     fn bar_width(&self) -> u16 {
         match self.style {
             CandleStyle::Ohlc => 1,
@@ -711,7 +727,7 @@ impl CandlestickChart {
             _ => self.candles.clone(),
         };
         let bw = self.bar_width();
-        let slot = (bw + self.gap) as usize;
+        let slot = self.slot_cells();
         // provisional width to pick the visible window (label width impacts it slightly)
         let (start, end) = self.visible_range((inner.width as usize).max(1) / slot);
         let vis: Vec<&Candle> = src[start.min(src.len())..end.min(src.len())]
@@ -753,7 +769,7 @@ impl CandlestickChart {
         let plot = a.plot;
         // recompute window with the real plot width
         let (start, end) =
-            self.visible_range((plot.width as usize + self.gap as usize) / slot.max(1));
+            self.visible_range((plot.width as usize + slot - bw as usize) / slot.max(1));
         let vis: Vec<&Candle> = src[start.min(src.len())..end.min(src.len())]
             .iter()
             .collect();
@@ -858,6 +874,14 @@ impl CandlestickChart {
             .filter(|v| v.is_finite())
             .fold(0.0f64, f64::max);
         let mut x_ticks: Vec<(u16, String)> = vec![];
+        let mut dots = (self.style == CandleStyle::Braille)
+            .then(|| Canvas::new(price.width, price.height, Marker::Braille));
+        let dot_n = price.height as f64 * 4.0;
+        let dsub = |p: f64| -> i32 {
+            ((hi - p) / (hi - lo) * (dot_n - 1.0))
+                .round()
+                .clamp(0.0, dot_n - 1.0) as i32
+        };
         for (i, c) in vis.iter().enumerate() {
             let x0 = price.x + (i * slot) as u16;
             if x0 + bw > price.right() {
@@ -872,7 +896,26 @@ impl CandlestickChart {
             }
             let color = self.color_of(c);
             let st = Style::default().fg(color);
-            if self.style == CandleStyle::Ohlc {
+            if let Some(cv) = dots.as_mut() {
+                let px0 = i32::from(x0 - price.x) * 2;
+                let pw = i32::from(bw) * 2;
+                let wick = px0 + (pw - 1) / 2;
+                let (w0, w1) = (dsub(c.high), dsub(c.low));
+                for py in w0..=w1 {
+                    cv.set(wick, py, color);
+                }
+                let (oa, ob) = (dsub(c.open), dsub(c.close));
+                let (b0, b1) = (oa.min(ob), oa.max(ob));
+                let hollow = self.hollow && c.is_bullish();
+                for py in b0..=b1 {
+                    for px in px0..px0 + pw {
+                        let edge = py == b0 || py == b1 || px == px0 || px == px0 + pw - 1;
+                        if !hollow || edge {
+                            cv.set(px, py, color);
+                        }
+                    }
+                }
+            } else if self.style == CandleStyle::Ohlc {
                 let (r_h, r_l) = ((sub(c.high) / 2) as u16, (sub(c.low) / 2) as u16);
                 let (r_o, r_c) = ((sub(c.open) / 2) as u16, (sub(c.close) / 2) as u16);
                 for r in r_h..=r_l {
@@ -958,6 +1001,10 @@ impl CandlestickChart {
                     }
                 }
             }
+        }
+
+        if let Some(cv) = &dots {
+            cv.render(buf, price);
         }
 
         // overlays on top of bars
@@ -1168,6 +1215,7 @@ mod tests {
             CandleStyle::Candle,
             CandleStyle::Ohlc,
             CandleStyle::HeikinAshi,
+            CandleStyle::Braille,
         ] {
             let area = Rect::new(0, 0, 60, 20);
             let mut buf = Buffer::empty(area);
@@ -1195,6 +1243,46 @@ mod tests {
         let t = dump(&buf, area);
         assert!(t.contains('█'));
         assert!(t.contains('│'));
+    }
+
+    #[test]
+    fn braille_candles_dense_and_colored() {
+        let area = Rect::new(0, 0, 40, 16);
+        let braille_cols = |style| {
+            let mut buf = Buffer::empty(area);
+            CandlestickChart::new(data(30))
+                .style(style)
+                .colors(Color::Green, Color::Red)
+                .last_price_line(false)
+                .render(area, &mut buf);
+            let mut cols = std::collections::HashSet::new();
+            let mut colors = std::collections::HashSet::new();
+            for y in 0..16 {
+                for x in 0..40 {
+                    let c = &buf[(x, y)];
+                    let ch = c.symbol().chars().next().unwrap();
+                    if ('\u{2801}'..='\u{28FF}').contains(&ch) {
+                        cols.insert(x);
+                        colors.insert(c.fg);
+                    }
+                }
+            }
+            (cols.len(), colors)
+        };
+        let (n, colors) = braille_cols(CandleStyle::Braille);
+        assert!(n >= 25, "{n}");
+        assert!(colors.contains(&Color::Green) || colors.contains(&Color::Red));
+        assert_eq!(braille_cols(CandleStyle::Candle).0, 0);
+        // themed + hollow + gap + volume do not panic
+        let mut buf = Buffer::empty(area);
+        CandlestickChart::new(data(30))
+            .style(CandleStyle::Braille)
+            .theme(Theme::nord())
+            .hollow(true)
+            .gap(2)
+            .candle_width(2)
+            .show_volume(true)
+            .render(area, &mut buf);
     }
 
     #[test]

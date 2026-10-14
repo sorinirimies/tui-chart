@@ -1,5 +1,5 @@
 //! Bar chart demo.
-//! Keys: o orientation · s stacked/grouped · v values · d dataset · t/T theme · q quit
+//! Keys: o orientation · k marker · s stacked/grouped · v values · d dataset · t/T theme · q quit
 
 #[path = "common/mod.rs"]
 mod common;
@@ -12,7 +12,15 @@ use ratatui::{
     widgets::Block,
 };
 use std::time::Duration;
-use tui_chart::{Axis, BarChart, BarGroup, BarMode, BarOrientation, Theme};
+use tui_chart::{Axis, BarChart, BarGroup, BarMode, BarOrientation, Marker, Theme};
+
+fn cycle(m: Option<Marker>) -> Option<Marker> {
+    match m {
+        None => Some(Marker::Braille),
+        Some(Marker::Sextant) => None,
+        Some(m) => Some(m.next()),
+    }
+}
 
 struct State {
     theme: Theme,
@@ -20,6 +28,7 @@ struct State {
     mode: BarMode,
     values: bool,
     set: usize,
+    marker: Option<Marker>,
 }
 
 fn data(set: usize) -> (Vec<BarGroup>, Vec<&'static str>) {
@@ -55,13 +64,14 @@ fn main() -> anyhow::Result<()> {
             mode: BarMode::Grouped,
             values: true,
             set: 0,
+            marker: None,
         },
         Duration::from_millis(500),
         |f, s| {
             let [main, bar] =
                 Layout::vertical([Constraint::Min(5), Constraint::Length(1)]).areas(f.area());
             let (groups, names) = data(s.set);
-            let chart = BarChart::new(groups)
+            let mut chart = BarChart::new(groups)
                 .series_names(names)
                 .colors(vec![Color::Cyan, Color::Yellow, Color::Magenta])
                 .orientation(s.orientation)
@@ -73,11 +83,14 @@ fn main() -> anyhow::Result<()> {
                     Block::bordered()
                         .title(format!(" Bar chart · {:?} · {:?} ", s.orientation, s.mode)),
                 );
+            if let Some(m) = s.marker {
+                chart = chart.marker(m);
+            }
             f.render_widget(&chart, main);
             help(
                 f,
                 bar,
-                " o orientation · s stacked · v values · d dataset · t/T theme · q quit",
+                " o orientation · k marker · s stacked · v values · d dataset · t/T theme · q quit",
             );
         },
         |s, key| {
@@ -97,6 +110,7 @@ fn main() -> anyhow::Result<()> {
                         BarMode::Stacked => BarMode::Grouped,
                     }
                 }
+                KeyCode::Char('k') => s.marker = cycle(s.marker),
                 KeyCode::Char('v') => s.values = !s.values,
                 KeyCode::Char('d') => s.set = (s.set + 1) % 2,
                 _ => {}

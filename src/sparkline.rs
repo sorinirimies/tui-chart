@@ -38,6 +38,7 @@ pub struct Sparkline<'a> {
     last_color: Option<Color>,
     min_color: Option<Color>,
     max_color: Option<Color>,
+    marker: Marker,
     block: Option<Block<'a>>,
 }
 
@@ -58,6 +59,7 @@ impl<'a> Sparkline<'a> {
             last_color: None,
             min_color: None,
             max_color: None,
+            marker: Marker::Braille,
             block: None,
         }
     }
@@ -123,6 +125,12 @@ impl<'a> Sparkline<'a> {
         self.max_color = Some(c);
         self
     }
+    /// Glyph family used for dot drawing (default [`Marker::Braille`]).
+    pub fn marker(mut self, marker: Marker) -> Self {
+        self.marker = marker;
+        self
+    }
+
     /// Wrap in a block.
     pub fn block(mut self, b: Block<'a>) -> Self {
         self.block = Some(b);
@@ -220,12 +228,12 @@ impl<'a> Sparkline<'a> {
                 }
             }
             SparklineStyle::Line => {
-                let mut cv = Canvas::new(area.width, area.height, Marker::Braille);
+                let mut cv = Canvas::new(area.width, area.height, self.marker);
                 let pw = cv.px_w();
                 let ph = cv.px_h();
                 let pos = |i: usize, v: f64| {
                     (
-                        (i as i32 * 2).min(pw - 1),
+                        (i as i32 * self.marker.resolution().0 as i32).min(pw - 1),
                         ph - 1 - (norm(v) * (ph - 1) as f64).round() as i32,
                     )
                 };

@@ -1,5 +1,6 @@
 //! Waterfall: delta steps with a running total.
 
+use crate::canvas::{Canvas, Marker};
 use crate::theme::{self, Theme};
 use crate::util::{format_compact, format_tick, nice_ticks};
 use ratatui::{
@@ -32,6 +33,7 @@ pub struct Waterfall {
     theme: Option<Theme>,
     base: Option<Style>,
     connectors: bool,
+    marker: Option<Marker>,
     show_values: bool,
     block: Option<Block<'static>>,
 }
@@ -54,6 +56,7 @@ impl Waterfall {
             theme: None,
             base: None,
             connectors: true,
+            marker: None,
             show_values: true,
             block: None,
         }
@@ -102,6 +105,13 @@ impl Waterfall {
     /// Base style painted over the whole area (beats the theme).
     pub fn base_style(mut self, style: Style) -> Self {
         self.base = Some(style);
+        self
+    }
+
+    /// Draw connectors as dot lines (e.g. [`Marker::Braille`], a thin
+    /// sub-cell line at the exact level) instead of `┄` (the default).
+    pub fn marker(mut self, marker: Marker) -> Self {
+        self.marker = Some(marker);
         self
     }
 
@@ -244,8 +254,17 @@ impl Widget for &Waterfall {
             if self.connectors {
                 if let Some((lvl, px)) = prev_end {
                     let y = row(lvl);
-                    for x in px..x0 {
-                        buf[(x, y)].set_char('┄').set_style(dim);
+                    if let (Some(m), true) = (self.marker, x0 > px) {
+                        let mut cv = Canvas::new(x0 - px, 1, m);
+                        let py = cv.px_h() / 2;
+                        for dx in 0..cv.px_w() {
+                            cv.set(dx, py, dim.fg.unwrap_or(Color::Reset));
+                        }
+                        cv.render(buf, Rect::new(px, y, x0 - px, 1));
+                    } else {
+                        for x in px..x0 {
+                            buf[(x, y)].set_char('┄').set_style(dim);
+                        }
                     }
                 }
             }

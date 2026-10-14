@@ -1,5 +1,5 @@
 //! Waterfall demo.
-//! Keys: c toggle connectors · v toggle values · r randomize · t/T theme · q quit
+//! Keys: c toggle connectors · k connector marker · v toggle values · r randomize · t/T theme · q quit
 
 #[path = "common/mod.rs"]
 mod common;
@@ -11,7 +11,15 @@ use ratatui::{
     widgets::Block,
 };
 use std::time::Duration;
-use tui_chart::{Theme, Waterfall};
+use tui_chart::{Marker, Theme, Waterfall};
+
+fn cycle(m: Option<Marker>) -> Option<Marker> {
+    match m {
+        None => Some(Marker::Braille),
+        Some(Marker::Sextant) => None,
+        Some(m) => Some(m.next()),
+    }
+}
 
 struct State {
     theme: Theme,
@@ -19,6 +27,7 @@ struct State {
     deltas: Vec<f64>,
     connectors: bool,
     values: bool,
+    marker: Option<Marker>,
 }
 
 fn sample(rng: &mut Rng) -> Vec<f64> {
@@ -35,6 +44,7 @@ fn main() -> anyhow::Result<()> {
             deltas,
             connectors: true,
             values: true,
+            marker: None,
         },
         Duration::from_millis(500),
         |f, s| {
@@ -43,6 +53,9 @@ fn main() -> anyhow::Result<()> {
             let mut w = Waterfall::new().initial(100.0);
             for (i, d) in s.deltas.iter().enumerate() {
                 w = w.delta(format!("Q{}", i + 1), *d);
+            }
+            if let Some(m) = s.marker {
+                w = w.marker(m);
             }
             let w = w
                 .total("Total")
@@ -54,7 +67,7 @@ fn main() -> anyhow::Result<()> {
             help(
                 f,
                 bar,
-                " c connectors · v values · r randomize · t/T theme · q quit",
+                " c connectors · k connector dots · v values · r randomize · t/T theme · q quit",
             );
         },
         |s, key| {
@@ -63,6 +76,7 @@ fn main() -> anyhow::Result<()> {
                 KeyCode::Char('T') => s.theme = s.theme.prev(),
                 KeyCode::Char('q') | KeyCode::Esc => return true,
                 KeyCode::Char('c') => s.connectors = !s.connectors,
+                KeyCode::Char('k') => s.marker = cycle(s.marker),
                 KeyCode::Char('v') => s.values = !s.values,
                 KeyCode::Char('r') => s.deltas = sample(&mut s.rng),
                 _ => {}

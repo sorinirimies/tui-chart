@@ -1,5 +1,5 @@
 //! Radar chart demo.
-//! Keys: f fill · r rings · space animate · t/T theme · q quit
+//! Keys: f fill · k marker · r rings · space animate · t/T theme · q quit
 
 #[path = "common/mod.rs"]
 mod common;
@@ -12,7 +12,7 @@ use ratatui::{
     widgets::Block,
 };
 use std::time::Duration;
-use tui_chart::{RadarChart, RadarSeries, Theme};
+use tui_chart::{Marker, RadarChart, RadarSeries, Theme};
 
 struct State {
     theme: Theme,
@@ -20,6 +20,7 @@ struct State {
     fill: bool,
     rings: usize,
     paused: bool,
+    marker: Marker,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -30,6 +31,7 @@ fn main() -> anyhow::Result<()> {
             fill: false,
             rings: 4,
             paused: false,
+            marker: Marker::Braille,
         },
         Duration::from_millis(80),
         |f, s| {
@@ -43,13 +45,14 @@ fn main() -> anyhow::Result<()> {
                 .max(10.0)
                 .rings(s.rings)
                 .fill(s.fill)
+                .marker(s.marker)
                 .theme(s.theme.clone())
                 .block(Block::bordered().title(" Radar "));
             f.render_widget(&c, main);
             help(
                 f,
                 bar,
-                " f fill · r rings · space animate · t/T theme · q quit",
+                " f fill · k marker · r rings · space animate · t/T theme · q quit",
             );
         },
         |s, key| {
@@ -58,6 +61,7 @@ fn main() -> anyhow::Result<()> {
                 KeyCode::Char('T') => s.theme = s.theme.prev(),
                 KeyCode::Char('q') | KeyCode::Esc => return true,
                 KeyCode::Char('f') => s.fill = !s.fill,
+                KeyCode::Char('k') => s.marker = s.marker.next(),
                 KeyCode::Char('r') => s.rings = s.rings % 6 + 1,
                 KeyCode::Char(' ') => s.paused = !s.paused,
                 _ => {}

@@ -851,6 +851,9 @@ fn fill_segment(
     let (lo, hi) = if a.0 <= b.0 { (a, b) } else { (b, a) };
     let start = lo.0.max(0);
     let end = hi.0.min(canvas.px_w() - 1);
+    // stipple (every other dot) only where a cell has >1 dot per axis
+    let (rx, ry) = canvas.marker().resolution();
+    let (sx, sy) = (if rx > 1 { 2 } else { 1 }, if ry > 1 { 2 } else { 1 });
     for px in start..=end {
         let t = if hi.0 == lo.0 {
             0.0
@@ -859,7 +862,7 @@ fn fill_segment(
         };
         let py = (lo.1 as f64 + t * (hi.1 - lo.1) as f64).round() as i32;
         for yy in py.max(0)..=bottom {
-            if px % 2 == 0 && yy % 2 == 0 {
+            if px % sx == 0 && yy % sy == 0 {
                 let c = match grad {
                     Some(g) if bottom > 0 => g.color_at((bottom - yy) as f64 / bottom as f64),
                     _ => color,

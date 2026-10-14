@@ -1,5 +1,5 @@
 //! Order-book depth chart demo.
-//! Keys: m mid marker · s spread · space pause · t/T theme · q quit
+//! Keys: m mid marker · k dot marker · s spread · space pause · t/T theme · q quit
 
 #[path = "common/mod.rs"]
 mod common;
@@ -11,7 +11,15 @@ use ratatui::{
     widgets::Block,
 };
 use std::time::Duration;
-use tui_chart::{DepthChart, Theme};
+use tui_chart::{DepthChart, Marker, Theme};
+
+fn cycle(m: Option<Marker>) -> Option<Marker> {
+    match m {
+        None => Some(Marker::Braille),
+        Some(Marker::Sextant) => None,
+        Some(m) => Some(m.next()),
+    }
+}
 
 struct State {
     theme: Theme,
@@ -20,6 +28,7 @@ struct State {
     show_mid: bool,
     show_spread: bool,
     paused: bool,
+    marker: Option<Marker>,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -30,6 +39,7 @@ fn main() -> anyhow::Result<()> {
         show_mid: true,
         show_spread: true,
         paused: false,
+        marker: None,
     };
     run(
         state,
@@ -49,16 +59,19 @@ fn main() -> anyhow::Result<()> {
                     1.0 + (i as f64 * 1.3).cos().abs() * 5.0 + i as f64 * 0.2,
                 )
             });
-            let chart = DepthChart::new(bids, asks)
+            let mut chart = DepthChart::new(bids, asks)
                 .show_mid(s.show_mid)
                 .show_spread(s.show_spread)
                 .theme(s.theme.clone())
                 .block(Block::bordered().title(" Depth chart "));
+            if let Some(m) = s.marker {
+                chart = chart.marker(m);
+            }
             f.render_widget(&chart, main);
             help(
                 f,
                 bar,
-                " m mid marker · s spread · space pause · t/T theme · q quit",
+                " m mid marker · k dots · s spread · space pause · t/T theme · q quit",
             );
         },
         |s, key| {
@@ -67,6 +80,7 @@ fn main() -> anyhow::Result<()> {
                 KeyCode::Char('T') => s.theme = s.theme.prev(),
                 KeyCode::Char('q') | KeyCode::Esc => return true,
                 KeyCode::Char('m') => s.show_mid = !s.show_mid,
+                KeyCode::Char('k') => s.marker = cycle(s.marker),
                 KeyCode::Char('s') => s.show_spread = !s.show_spread,
                 KeyCode::Char(' ') => s.paused = !s.paused,
                 _ => {}

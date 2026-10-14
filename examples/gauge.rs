@@ -1,5 +1,5 @@
 //! Gauge demo.
-//! Keys: s style · o orientation · up/down value · t/T theme · q quit
+//! Keys: s style · k marker (arc) · o orientation · up/down value · t/T theme · q quit
 
 #[path = "common/mod.rs"]
 mod common;
@@ -12,13 +12,14 @@ use ratatui::{
     widgets::Block,
 };
 use std::time::Duration;
-use tui_chart::{Gauge, GaugeOrientation, GaugeStyle, Theme};
+use tui_chart::{Gauge, GaugeOrientation, GaugeStyle, Marker, Theme};
 
 struct State {
     theme: Theme,
     value: f64,
     style: GaugeStyle,
     vertical: bool,
+    marker: Marker,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -28,6 +29,7 @@ fn main() -> anyhow::Result<()> {
             value: 55.0,
             style: GaugeStyle::Linear,
             vertical: false,
+            marker: Marker::Braille,
         },
         Duration::from_millis(200),
         |f, s| {
@@ -41,6 +43,7 @@ fn main() -> anyhow::Result<()> {
             let g = Gauge::new(s.value)
                 .style(s.style)
                 .orientation(o)
+                .marker(s.marker)
                 .bands([
                     (50.0, Color::Green),
                     (80.0, Color::Yellow),
@@ -54,7 +57,7 @@ fn main() -> anyhow::Result<()> {
             help(
                 f,
                 bar,
-                " s style · o orientation · up/down value · t/T theme · q quit",
+                " s style · k marker (arc) · o orientation · up/down value · t/T theme · q quit",
             );
         },
         |s, key| {
@@ -69,6 +72,7 @@ fn main() -> anyhow::Result<()> {
                         GaugeStyle::Arc => GaugeStyle::Linear,
                     }
                 }
+                KeyCode::Char('k') => s.marker = s.marker.next(),
                 KeyCode::Char('o') => s.vertical = !s.vertical,
                 KeyCode::Up => s.value = (s.value + 5.0).min(100.0),
                 KeyCode::Down => s.value = (s.value - 5.0).max(0.0),

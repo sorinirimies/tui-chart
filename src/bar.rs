@@ -1,6 +1,7 @@
 //! Vertical / horizontal, grouped / stacked bar charts.
 
 use crate::axis::Axis;
+use crate::canvas::{Canvas, Marker};
 use crate::heatmap::Gradient;
 use crate::layout::{self, text_width};
 use crate::theme::{self, Theme};
@@ -101,6 +102,7 @@ pub struct BarChart {
     gradient: Option<Gradient>,
     theme: Option<Theme>,
     style: Option<Style>,
+    marker: Option<Marker>,
 }
 
 impl BarChart {
@@ -111,6 +113,54 @@ impl BarChart {
             value_axis: Axis::new().grid(true),
             ..Default::default()
         }
+    }
+
+    /// Draw positive bars with dot glyphs instead of eighth blocks, e.g.
+    /// [`Marker::Braille`] for 4 vertical dots per cell (2 dots per cell on
+    /// horizontal bars). Default: eighth blocks. Negative bar parts keep
+    /// block glyphs.
+    pub fn marker(mut self, marker: Marker) -> Self {
+        self.marker = Some(marker);
+        self
+    }
+
+    /// The configured dot marker, if any.
+    pub fn marker_kind(&self) -> Option<Marker> {
+        self.marker
+    }
+
+    /// Draw one bar cell with dots; `fill` is 1..=8 eighths, grown from the
+    /// bottom (vertical) or left (horizontal).
+    fn dot_cell(
+        buf: &mut Buffer,
+        m: Marker,
+        (x, y, w): (u16, u16, u16),
+        fill: usize,
+        vertical: bool,
+        color: Color,
+    ) {
+        let mut cv = Canvas::new(w, 1, m);
+        let (pw, ph) = (cv.px_w(), cv.px_h());
+        if vertical {
+            let n = ((fill as i32 * ph + 4) / 8).clamp(1, ph);
+            for py in ph - n..ph {
+                for px in 0..pw {
+                    cv.set(px, py, color);
+                }
+            }
+        } else {
+            let (rx, _) = m.resolution();
+            // each cell of `w` columns: fill measured along the first cell only
+            let n = ((fill as i32 * rx as i32 + 4) / 8).clamp(1, rx as i32);
+            for cx in 0..w as i32 {
+                for dx in 0..n {
+                    for py in 0..ph {
+                        cv.set(cx * rx as i32 + dx, py, color);
+                    }
+                }
+            }
+        }
+        cv.render(buf, Rect::new(x, y, w, 1));
     }
 
     /// Names of the series (legend).
@@ -559,6 +609,10 @@ impl BarChart {
                         )
                     };
                     let y = plot.bottom() - 1 - zc - r as u16;
+                    if let Some(m) = self.marker {
+                        Self::dot_cell(buf, m, (x, y, bw), fill, true, color);
+                        continue;
+                    }
                     for dx in 0..bw {
                         buf.set_string(
                             x + dx,
@@ -718,6 +772,13 @@ impl BarChart {
                     } else {
                         self.color_for_cell(g, bi, frac)
                     };
+                    if let Some(m) = self.marker {
+                        for dy in 0..bh {
+                            let cx = plot.x + zc + c as u16;
+                            Self::dot_cell(buf, m, (cx, y + dy, 1), fill, false, color);
+                        }
+                        continue;
+                    }
                     for dy in 0..bh {
                         buf.set_string(
                             plot.x + zc + c as u16,

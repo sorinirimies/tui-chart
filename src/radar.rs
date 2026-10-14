@@ -48,6 +48,7 @@ pub struct RadarChart<'a> {
     show_labels: bool,
     theme: Option<Theme>,
     base: Option<Style>,
+    marker: Marker,
     block: Option<Block<'a>>,
 }
 
@@ -63,6 +64,7 @@ impl<'a> RadarChart<'a> {
             show_labels: true,
             theme: None,
             base: None,
+            marker: Marker::Braille,
             block: None,
         }
     }
@@ -106,6 +108,12 @@ impl<'a> RadarChart<'a> {
         s.color
             .unwrap_or_else(|| self.theme.as_ref().map_or(Color::Cyan, |t| t.color(i)))
     }
+    /// Glyph family used for dot drawing (default [`Marker::Braille`]).
+    pub fn marker(mut self, marker: Marker) -> Self {
+        self.marker = marker;
+        self
+    }
+
     /// Wrap in a block.
     pub fn block(mut self, b: Block<'a>) -> Self {
         self.block = Some(b);
@@ -147,7 +155,7 @@ impl<'a> RadarChart<'a> {
                     1.0
                 }
             });
-        let mut cv = Canvas::new(plot.width, plot.height, Marker::Braille);
+        let mut cv = Canvas::new(plot.width, plot.height, self.marker);
         let (pw, ph) = (cv.px_w() as f64, cv.px_h() as f64);
         let r = ((pw - 1.0) / 2.0).min((ph - 1.0) / 2.0).max(1.0);
         let (cx, cy) = ((pw - 1.0) / 2.0, (ph - 1.0) / 2.0);

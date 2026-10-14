@@ -129,14 +129,7 @@ fn main() -> anyhow::Result<()> {
                         LineMode::Scatter => LineMode::Line,
                     }
                 }
-                KeyCode::Char('k') => {
-                    s.marker = match s.marker {
-                        Marker::Braille => Marker::HalfBlock,
-                        Marker::HalfBlock => Marker::Block,
-                        Marker::Block => Marker::Dot,
-                        Marker::Dot => Marker::Braille,
-                    }
-                }
+                KeyCode::Char('k') => s.marker = s.marker.next(),
                 KeyCode::Char('g') => s.grid = !s.grid,
                 KeyCode::Char('l') => s.log = !s.log,
                 KeyCode::Char('s') => s.smooth = !s.smooth,

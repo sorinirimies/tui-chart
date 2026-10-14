@@ -1,5 +1,6 @@
 //! DepthChart: order-book depth chart (cumulative bids left, asks right).
 
+use crate::canvas::{Canvas, Marker};
 use crate::theme::{self, Theme};
 use crate::util::{format_compact, format_tick};
 use ratatui::{
@@ -21,6 +22,7 @@ pub struct DepthChart {
     ask_color: Option<Color>,
     theme: Option<Theme>,
     base: Option<Style>,
+    marker: Option<Marker>,
     show_mid: bool,
     show_spread: bool,
     block: Option<Block<'static>>,
@@ -47,6 +49,7 @@ impl DepthChart {
             ask_color: None,
             theme: None,
             base: None,
+            marker: None,
             show_mid: true,
             show_spread: true,
             block: None,
@@ -86,6 +89,13 @@ impl DepthChart {
     fn ask(&self) -> Color {
         self.ask_color
             .unwrap_or_else(|| self.theme.as_ref().map_or(Color::Red, |t| t.bear))
+    }
+
+    /// Draw the step-area with dot glyphs (e.g. [`Marker::Braille`] for
+    /// 2×4 sub-cell resolution) instead of eighth blocks (the default).
+    pub fn marker(mut self, marker: Marker) -> Self {
+        self.marker = Some(marker);
+        self
     }
 
     /// Show the mid-price marker line.
@@ -210,6 +220,14 @@ impl Widget for &DepthChart {
             } else {
                 (a, self.ask())
             };
+            if self.marker.is_some() {
+                if mid_col == Some(i) {
+                    for r in 0..plot_h {
+                        put(buf, inner, x, top + r, "│", Style::default().fg(dim_c));
+                    }
+                }
+                continue;
+            }
             let units = if max > 0.0 {
                 v / max * plot_h as f64 * 8.0
             } else {
@@ -228,6 +246,24 @@ impl Widget for &DepthChart {
                     put(buf, inner, x, y, "│", Style::default().fg(dim_c));
                 }
             }
+        }
+        if let Some(m) = self.marker.filter(|_| max > 0.0) {
+            let mut cv = Canvas::new(inner.width, plot_h, m);
+            let (pw, ph) = (cv.px_w(), cv.px_h());
+            for px in 0..pw {
+                let p = lo + (f64::from(px) + 0.5) / f64::from(pw) * (hi - lo);
+                let (b, a) = (self.bid_depth_at(p), self.ask_depth_at(p));
+                let (v, color) = if b > 0.0 {
+                    (b, self.bid())
+                } else {
+                    (a, self.ask())
+                };
+                let n = (v / max * f64::from(ph)).round() as i32;
+                for py in (ph - n.clamp(0, ph))..ph {
+                    cv.set(px, py, color);
+                }
+            }
+            cv.render(buf, Rect::new(inner.x, top, inner.width, plot_h));
         }
         if self.show_spread {
             if let (Some(s), Some(m)) = (self.spread(), self.mid()) {

@@ -21,6 +21,11 @@
 //! - time axis helpers ([`time_ticks`], [`time_hm`], [`date_ymd`], ...)
 //! - [`Theme`]: built-in themes via [`Theme::all`], [`Theme::next`], [`Theme::prev`];
 //!   every widget has `.theme(impl Into<Theme>)`
+//! - high resolution: [`Marker`] (`Braille` 2×4 default, `HalfBlock`, `Block`,
+//!   `Dot`, opt-in `Sextant` 2×3 which needs a font with the Unicode
+//!   "Symbols for Legacy Computing" block), [`CandleStyle::Braille`],
+//!   `.marker(..)` on line/bar/sparkline/radar/gauge/histogram/depth/waterfall
+//!   charts and [`OverlapPolicy`] for [`Canvas`] colour conflicts
 //! - optional `serde` cargo feature: `Serialize`/`Deserialize` on data types and
 //!   [`Theme`]
 //!
@@ -110,7 +115,7 @@ pub use candle::{
     ema, heikin_ashi, sma, BandOverlay, Candle, CandleStyle, CandlestickChart, HLine,
     IndicatorPane, Overlay, TradeMarker, TradeSide,
 };
-pub use canvas::{Canvas, Marker};
+pub use canvas::{Canvas, Marker, OverlapPolicy};
 pub use crosshair::{nearest_point, Crosshair, NearestPoint};
 pub use depth::DepthChart;
 pub use gantt::{Gantt, Task};

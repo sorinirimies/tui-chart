@@ -47,6 +47,7 @@ pub struct Gauge<'a> {
     color: Option<Color>,
     theme: Option<Theme>,
     base: Option<Style>,
+    marker: Marker,
     block: Option<Block<'a>>,
 }
 
@@ -65,6 +66,7 @@ impl<'a> Gauge<'a> {
             color: None,
             theme: None,
             base: None,
+            marker: Marker::Braille,
             block: None,
         }
     }
@@ -126,6 +128,12 @@ impl<'a> Gauge<'a> {
         self.color
             .unwrap_or_else(|| self.theme.as_ref().map_or(Color::Green, |t| t.bull))
     }
+    /// Glyph family used for dot drawing (default [`Marker::Braille`]).
+    pub fn marker(mut self, marker: Marker) -> Self {
+        self.marker = marker;
+        self
+    }
+
     /// Wrap in a block.
     pub fn block(mut self, b: Block<'a>) -> Self {
         self.block = Some(b);
@@ -218,7 +226,7 @@ impl<'a> Gauge<'a> {
     }
 
     fn draw_arc(&self, area: Rect, buf: &mut Buffer) {
-        let mut cv = Canvas::new(area.width, area.height, Marker::Braille);
+        let mut cv = Canvas::new(area.width, area.height, self.marker);
         let (pw, ph) = (cv.px_w(), cv.px_h());
         let r = ((pw / 2).min(ph - 1)).max(1) as f64;
         let (cx, cy) = (pw as f64 / 2.0 - 0.5, ph as f64 - 1.0);

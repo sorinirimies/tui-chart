@@ -1,5 +1,5 @@
 //! Histogram demo.
-//! Keys: +/- bins · o orientation · r resample · t/T theme · q quit
+//! Keys: +/- bins · k marker · o orientation · r resample · t/T theme · q quit
 
 #[path = "common/mod.rs"]
 mod common;
@@ -12,7 +12,15 @@ use ratatui::{
     widgets::Block,
 };
 use std::time::Duration;
-use tui_chart::{BarOrientation, Histogram, Theme};
+use tui_chart::{BarOrientation, Histogram, Marker, Theme};
+
+fn cycle(m: Option<Marker>) -> Option<Marker> {
+    match m {
+        None => Some(Marker::Braille),
+        Some(Marker::Sextant) => None,
+        Some(m) => Some(m.next()),
+    }
+}
 
 struct State {
     theme: Theme,
@@ -20,6 +28,7 @@ struct State {
     data: Vec<f64>,
     bins: usize,
     orientation: BarOrientation,
+    marker: Option<Marker>,
 }
 
 fn sample(rng: &mut Rng) -> Vec<f64> {
@@ -36,12 +45,13 @@ fn main() -> anyhow::Result<()> {
             data,
             bins: 12,
             orientation: BarOrientation::Vertical,
+            marker: None,
         },
         Duration::from_millis(500),
         |f, s| {
             let [main, bar] =
                 Layout::vertical([Constraint::Min(5), Constraint::Length(1)]).areas(f.area());
-            let h = Histogram::new(s.data.clone())
+            let mut h = Histogram::new(s.data.clone())
                 .bins(s.bins)
                 .color(Color::LightBlue)
                 .orientation(s.orientation)
@@ -52,11 +62,14 @@ fn main() -> anyhow::Result<()> {
                     s.bins,
                     s.data.len()
                 )));
+            if let Some(m) = s.marker {
+                h = h.bar_marker(m).marker(m);
+            }
             f.render_widget(&h, main);
             help(
                 f,
                 bar,
-                " +/- bins · o orientation · r resample · t/T theme · q quit",
+                " +/- bins · k marker · o orientation · r resample · t/T theme · q quit",
             );
         },
         |s, key| {
@@ -72,6 +85,7 @@ fn main() -> anyhow::Result<()> {
                         BarOrientation::Horizontal => BarOrientation::Vertical,
                     }
                 }
+                KeyCode::Char('k') => s.marker = cycle(s.marker),
                 KeyCode::Char('r') => s.data = sample(&mut s.rng),
                 _ => {}
             }
