@@ -204,31 +204,6 @@ nu scripts/setup_gitea.nu git@gitea.example.com:user/tui-chart.git
 
 ---
 
-### `migrate_to_gitea.nu`
-
-Full migration script for dual GitHub + Gitea hosting.
-
-```bash
-# Interactive (prompts for URL)
-nu scripts/migrate_to_gitea.nu
-
-# Non-interactive
-nu scripts/migrate_to_gitea.nu --gitea-url git@gitea.example.com:user/tui-chart.git
-
-# Different project directory
-nu scripts/migrate_to_gitea.nu --project-dir /path/to/project --gitea-url <url>
-```
-
-#### What It Does
-
-- Adds/updates the Gitea remote
-- Tests SSH connectivity
-- Optionally pushes all history
-- Optionally sets up `.gitea/workflows` from `.github/workflows`
-- Prints a full summary of available `just` commands
-
----
-
 ## Integration with CI/CD
 
 The `release_prepare.nu` script is called by both GitHub Actions and Gitea Actions release workflows. The workflows install Nushell via [`hustcer/setup-nu@v3`](https://github.com/hustcer/setup-nu) and then call:
