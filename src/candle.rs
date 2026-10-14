@@ -10,7 +10,7 @@ use ratatui::{
     buffer::Buffer,
     layout::Rect,
     style::{Color, Modifier, Style},
-    widgets::{Block, Widget},
+    widgets::Block,
 };
 
 /// One OHLC(V) bar.
@@ -44,11 +44,10 @@ impl Candle {
         }
     }
 
-    /// Attach volume.
-    pub fn volume(mut self, volume: f64) -> Self {
-        self.volume = volume;
-        self
-    }
+    setter!(
+        /// Attach volume.
+        volume: f64
+    );
 
     /// Attach an x-axis label.
     pub fn label(mut self, label: impl Into<String>) -> Self {
@@ -381,11 +380,10 @@ impl CandlestickChart {
         }
     }
 
-    /// Bar style.
-    pub fn style(mut self, style: CandleStyle) -> Self {
-        self.style = style;
-        self
-    }
+    setter!(
+        /// Bar style.
+        style: CandleStyle
+    );
 
     /// Colors for bullish / bearish bars.
     pub fn colors(mut self, up: Color, down: Color) -> Self {
@@ -393,11 +391,10 @@ impl CandlestickChart {
         self
     }
 
-    /// Draw bullish candle bodies hollow (outlined) and bearish ones filled.
-    pub fn hollow(mut self, on: bool) -> Self {
-        self.hollow = on;
-        self
-    }
+    setter!(
+        /// Draw bullish candle bodies hollow (outlined) and bearish ones filled.
+        hollow: bool
+    );
 
     /// Apply a [`Theme`]: bull/bear colors, axes, labels, background fill.
     /// Colors set via [`CandlestickChart::colors`] still win.
@@ -409,11 +406,7 @@ impl CandlestickChart {
         self
     }
 
-    /// Base style painted over the whole area (beats the theme).
-    pub fn base_style(mut self, style: Style) -> Self {
-        self.base = Some(style);
-        self
-    }
+    base_style_setter!(base);
 
     fn up_color(&self) -> Color {
         match (&self.colors, &self.theme) {
@@ -445,29 +438,25 @@ impl CandlestickChart {
         self
     }
 
-    /// Empty cells between bars.
-    pub fn gap(mut self, gap: u16) -> Self {
-        self.gap = gap;
-        self
-    }
+    setter!(
+        /// Empty cells between bars.
+        gap: u16
+    );
 
-    /// Show a volume histogram under the price panel.
-    pub fn show_volume(mut self, on: bool) -> Self {
-        self.show_volume = on;
-        self
-    }
+    setter!(
+        /// Show a volume histogram under the price panel.
+        show_volume: bool
+    );
 
-    /// Dashed horizontal line at the last visible close.
-    pub fn last_price_line(mut self, on: bool) -> Self {
-        self.last_price_line = on;
-        self
-    }
+    setter!(
+        /// Dashed horizontal line at the last visible close.
+        last_price_line: bool
+    );
 
-    /// Hide the newest `n` candles (scroll back in time).
-    pub fn scroll(mut self, n: usize) -> Self {
-        self.scroll = n;
-        self
-    }
+    setter!(
+        /// Hide the newest `n` candles (scroll back in time).
+        scroll: usize
+    );
 
     /// Add an indicator overlay.
     pub fn overlay(mut self, overlay: Overlay) -> Self {
@@ -509,17 +498,12 @@ impl CandlestickChart {
         self.hline(HLine::new(price, Color::Red).label(format!("R {price:.2}")))
     }
 
-    /// Horizontal volume-by-price histogram along the right of the price panel.
-    pub fn volume_profile(mut self, on: bool) -> Self {
-        self.volume_profile = on;
-        self
-    }
+    setter!(
+        /// Horizontal volume-by-price histogram along the right of the price panel.
+        volume_profile: bool
+    );
 
-    /// Wrap in a block.
-    pub fn block(mut self, block: Block<'static>) -> Self {
-        self.block = Some(block);
-        self
-    }
+    block_setter!(block, 'static);
 
     /// X axis (title / label style; labels come from [`Candle::label`]).
     pub fn x_axis(mut self, axis: Axis) -> Self {
@@ -1118,21 +1102,18 @@ impl CandlestickChart {
     }
 }
 
-impl Widget for &CandlestickChart {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+impl CandlestickChart {
+    fn render_into(&self, area: Rect, buf: &mut Buffer) {
         self.render_inner(area, buf);
     }
 }
 
-impl Widget for CandlestickChart {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        self.render_inner(area, buf);
-    }
-}
+widget_impls!(CandlestickChart);
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ratatui::widgets::Widget;
 
     fn data(n: usize) -> Vec<Candle> {
         (0..n)

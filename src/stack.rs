@@ -62,11 +62,10 @@ impl ChartStack {
         self
     }
 
-    /// Empty cells between panes (default 0).
-    pub fn gap(mut self, gap: u16) -> Self {
-        self.gap = gap;
-        self
-    }
+    setter!(
+        /// Empty cells between panes (default 0).
+        gap: u16
+    );
 
     /// Number of panes.
     pub fn len(&self) -> usize {

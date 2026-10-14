@@ -6,7 +6,7 @@ use ratatui::{
     buffer::Buffer,
     layout::Rect,
     style::{Color, Style},
-    widgets::{Block, Widget},
+    widgets::Block,
 };
 
 const PALETTE: [(u8, u8, u8); 8] = [
@@ -46,11 +46,10 @@ impl TreemapItem {
         }
     }
 
-    /// Set an explicit color.
-    pub fn color(mut self, c: Color) -> Self {
-        self.color = Some(c);
-        self
-    }
+    opt_setter!(
+        /// Set an explicit color.
+        color: Color
+    );
 
     /// Set nested children (turns this item into a group).
     pub fn children(mut self, c: impl IntoIterator<Item = TreemapItem>) -> Self {
@@ -108,43 +107,31 @@ impl Treemap {
         self
     }
 
-    /// Draw a border around each cell.
-    pub fn border(mut self, on: bool) -> Self {
-        self.border = on;
-        self
-    }
+    setter!(
+        /// Draw a border around each cell.
+        border: bool
+    );
 
-    /// Border color.
-    pub fn border_color(mut self, c: Color) -> Self {
-        self.border_color = Some(c);
-        self
-    }
+    opt_setter!(
+        /// Border color.
+        border_color: Color
+    );
 
-    /// Apply a [`Theme`]: items without a color are colored by value along the
-    /// theme gradient; cell borders use the theme background. Explicit item
-    /// colors, [`Treemap::gradient`] and [`Treemap::border_color`] win.
-    pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
-        self.theme = Some(theme.into());
-        self
-    }
+    theme_setter!(
+        /// Apply a [`Theme`]: items without a color are colored by value along the
+        /// theme gradient; cell borders use the theme background. Explicit item
+        /// colors, [`Treemap::gradient`] and [`Treemap::border_color`] win.
+        theme
+    );
 
-    /// Base style painted over the whole area (beats the theme).
-    pub fn base_style(mut self, style: Style) -> Self {
-        self.base = Some(style);
-        self
-    }
+    base_style_setter!(base);
 
-    /// Print the value under the label when there is room.
-    pub fn show_values(mut self, on: bool) -> Self {
-        self.show_values = on;
-        self
-    }
+    setter!(
+        /// Print the value under the label when there is room.
+        show_values: bool
+    );
 
-    /// Wrap in a block.
-    pub fn block(mut self, b: Block<'static>) -> Self {
-        self.block = Some(b);
-        self
-    }
+    block_setter!(block, 'static);
 
     /// Compute squarified cell rects for `weights` inside `area`, in the
     /// input order. Zero-weight items get empty rects.
@@ -345,8 +332,8 @@ fn rgb(c: Color) -> (u8, u8, u8) {
 
 fn lerp_color(a: Color, b: Color, t: f64) -> Color {
     let (a, b) = (rgb(a), rgb(b));
-    let f = |x: u8, y: u8| (x as f64 + (y as f64 - x as f64) * t).round() as u8;
-    Color::Rgb(f(a.0, b.0), f(a.1, b.1), f(a.2, b.2))
+    let (r, g, bl) = crate::scale::mix_rgb(a, b, t);
+    Color::Rgb(r, g, bl)
 }
 
 fn text_color(bg: Color) -> Color {
@@ -369,8 +356,8 @@ fn put_text(buf: &mut Buffer, area: Rect, row: u16, s: &str, style: Style) {
     }
 }
 
-impl Widget for &Treemap {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+impl Treemap {
+    fn render_into(&self, area: Rect, buf: &mut Buffer) {
         let area = area.intersection(buf.area);
         let inner = theme::begin(&self.block, &self.theme, self.base, area, buf);
         if inner.width == 0 || inner.height == 0 {
@@ -382,15 +369,12 @@ impl Widget for &Treemap {
     }
 }
 
-impl Widget for Treemap {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        (&self).render(area, buf);
-    }
-}
+widget_impls!(Treemap);
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ratatui::widgets::Widget;
 
     #[test]
     fn layout_tiles_area() {

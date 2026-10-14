@@ -6,7 +6,7 @@ use ratatui::{
     buffer::Buffer,
     layout::Rect,
     style::{Color, Style},
-    widgets::{Block, Widget},
+    widgets::Block,
 };
 
 /// A single renko brick.
@@ -133,31 +133,24 @@ impl RenkoChart {
         }
     }
 
-    /// Up brick / `X` color.
-    pub fn up_color(mut self, c: Color) -> Self {
-        self.up_color = Some(c);
-        self
-    }
+    opt_setter!(
+        /// Up brick / `X` color.
+        up_color: Color
+    );
 
-    /// Down brick / `O` color.
-    pub fn down_color(mut self, c: Color) -> Self {
-        self.down_color = Some(c);
-        self
-    }
+    opt_setter!(
+        /// Down brick / `O` color.
+        down_color: Color
+    );
 
-    /// Apply a [`Theme`]: bull/bear brick colors, axis label color and
-    /// background fill. Explicit [`RenkoChart::up_color`] /
-    /// [`RenkoChart::down_color`] win.
-    pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
-        self.theme = Some(theme.into());
-        self
-    }
+    theme_setter!(
+        /// Apply a [`Theme`]: bull/bear brick colors, axis label color and
+        /// background fill. Explicit [`RenkoChart::up_color`] /
+        /// [`RenkoChart::down_color`] win.
+        theme
+    );
 
-    /// Base style painted over the whole area (beats the theme).
-    pub fn base_style(mut self, style: Style) -> Self {
-        self.base = Some(style);
-        self
-    }
+    base_style_setter!(base);
 
     fn up(&self) -> Color {
         self.up_color
@@ -169,11 +162,10 @@ impl RenkoChart {
             .unwrap_or_else(|| self.theme.as_ref().map_or(Color::Red, |t| t.bear))
     }
 
-    /// Rendering style.
-    pub fn style(mut self, s: RenkoStyle) -> Self {
-        self.style = s;
-        self
-    }
+    setter!(
+        /// Rendering style.
+        style: RenkoStyle
+    );
 
     /// RenkoBrick width in cells (min 1, bricks style only).
     pub fn brick_width(mut self, w: u16) -> Self {
@@ -181,11 +173,7 @@ impl RenkoChart {
         self
     }
 
-    /// Wrap in a block.
-    pub fn block(mut self, b: Block<'static>) -> Self {
-        self.block = Some(b);
-        self
-    }
+    block_setter!(block, 'static);
 
     /// The bricks.
     pub fn bricks(&self) -> &[RenkoBrick] {
@@ -208,8 +196,8 @@ impl RenkoChart {
     }
 }
 
-impl Widget for &RenkoChart {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+impl RenkoChart {
+    fn render_into(&self, area: Rect, buf: &mut Buffer) {
         let area = area.intersection(buf.area);
         let inner = theme::begin(&self.block, &self.theme, self.base, area, buf);
         if self.bricks.is_empty() || inner.height == 0 || inner.width < 2 {
@@ -298,15 +286,12 @@ impl Widget for &RenkoChart {
     }
 }
 
-impl Widget for RenkoChart {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        (&self).render(area, buf);
-    }
-}
+widget_impls!(RenkoChart);
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ratatui::widgets::Widget;
 
     #[test]
     fn up_bricks() {

@@ -88,11 +88,10 @@ impl Annotation {
         self
     }
 
-    /// Set the full style.
-    pub fn style(mut self, style: Style) -> Self {
-        self.style = style;
-        self
-    }
+    setter!(
+        /// Set the full style.
+        style: Style
+    );
 
     /// Attach a text label.
     pub fn text(mut self, text: impl Into<String>) -> Self {

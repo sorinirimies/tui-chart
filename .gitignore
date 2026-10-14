@@ -61,3 +61,9 @@ Desktop.ini
 
 # Generated release notes (created fresh by release_prepare.nu / bump script)
 RELEASE_NOTES.md
+
+# Fuzzing
+fuzz/target/
+fuzz/artifacts/
+fuzz/corpus/*
+fuzz/Cargo.lock

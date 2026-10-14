@@ -102,6 +102,34 @@ example-themes:
 test:
     cargo test --all-features
 
+# Run the Nushell script tests (scripts/tests)
+test-nu:
+    nu scripts/tests/run_all.nu
+
+# Run Rust and Nushell tests
+test-all: test test-nu
+    @echo "✅ All Rust and Nu tests passed!"
+
+# Audit dependencies for known vulnerabilities (cargo install cargo-audit)
+audit:
+    cargo audit
+
+# Check advisories, licenses, bans and sources (cargo install cargo-deny)
+deny:
+    cargo deny check
+
+# Build all fuzz targets (needs nightly + cargo install cargo-fuzz)
+fuzz-build:
+    cargo +nightly fuzz build
+
+# Fuzz one target (render_line, render_candles, render_misc, timeaxis, indicators, theme_json); SECONDS bounds the run
+fuzz target seconds="30":
+    cargo +nightly fuzz run {{target}} -- -max_total_time={{seconds}}
+
+# Smoke-fuzz every target (SECONDS each)
+fuzz-all seconds="30":
+    for t in $(cargo +nightly fuzz list); do cargo +nightly fuzz run "$t" -- -max_total_time={{seconds}} || exit 1; done
+
 # Run tests with coverage
 test-coverage:
     cargo tarpaulin --out Html --output-dir coverage
@@ -123,7 +151,7 @@ clippy:
     cargo clippy --all-targets --all-features -- -D warnings
 
 # Run all checks (fmt, clippy, test)
-check-all: fmt-check clippy test
+check-all: fmt-check clippy test test-nu
     @echo "✅ All checks passed!"
 
 # Clean build artifacts

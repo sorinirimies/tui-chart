@@ -48,23 +48,20 @@ impl Crosshair {
         c
     }
 
-    /// Guide line style.
-    pub fn style(mut self, style: Style) -> Self {
-        self.style = style;
-        self
-    }
+    setter!(
+        /// Guide line style.
+        style: Style
+    );
 
-    /// Tooltip style.
-    pub fn tooltip_style(mut self, style: Style) -> Self {
-        self.tooltip_style = style;
-        self
-    }
+    setter!(
+        /// Tooltip style.
+        tooltip_style: Style
+    );
 
-    /// Show or hide the tooltip.
-    pub fn tooltip(mut self, on: bool) -> Self {
-        self.tooltip = on;
-        self
-    }
+    setter!(
+        /// Show or hide the tooltip.
+        tooltip: bool
+    );
 }
 
 /// Result of a nearest-point lookup.

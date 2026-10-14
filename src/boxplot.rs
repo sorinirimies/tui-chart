@@ -1,12 +1,13 @@
 //! BoxPlot: box-and-whisker chart from raw samples or precomputed statistics.
 
+use crate::text::{put_str, trunc};
 use crate::theme::{self, Theme};
 use crate::util::nice_ticks;
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
     style::{Color, Style},
-    widgets::{Block, Widget},
+    widgets::Block,
 };
 
 /// Direction of the value axis.
@@ -165,11 +166,10 @@ impl BoxPlot {
         self
     }
 
-    /// Whisker length as a multiple of the IQR (default 1.5).
-    pub fn whisker_iqr(mut self, k: f64) -> Self {
-        self.whisker_iqr = k;
-        self
-    }
+    setter!(
+        /// Whisker length as a multiple of the IQR (default 1.5).
+        whisker_iqr: f64
+    );
 
     /// Per-group colors (cycled).
     pub fn colors(mut self, c: Vec<Color>) -> Self {
@@ -179,18 +179,13 @@ impl BoxPlot {
         self
     }
 
-    /// Apply a [`Theme`]: palette group colors, outlier (bear) color, axis
-    /// colors and background fill. Explicit [`BoxPlot::colors`] win.
-    pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
-        self.theme = Some(theme.into());
-        self
-    }
+    theme_setter!(
+        /// Apply a [`Theme`]: palette group colors, outlier (bear) color, axis
+        /// colors and background fill. Explicit [`BoxPlot::colors`] win.
+        theme
+    );
 
-    /// Base style painted over the whole area (beats the theme).
-    pub fn base_style(mut self, style: Style) -> Self {
-        self.base = Some(style);
-        self
-    }
+    base_style_setter!(base);
 
     fn group_color(&self, i: usize) -> Color {
         if let Some(c) = &self.colors {
@@ -209,17 +204,15 @@ impl BoxPlot {
         }
     }
 
-    /// Orientation.
-    pub fn orientation(mut self, o: BoxOrientation) -> Self {
-        self.orientation = o;
-        self
-    }
+    setter!(
+        /// Orientation.
+        orientation: BoxOrientation
+    );
 
-    /// Draw outliers (default on).
-    pub fn show_outliers(mut self, on: bool) -> Self {
-        self.show_outliers = on;
-        self
-    }
+    setter!(
+        /// Draw outliers (default on).
+        show_outliers: bool
+    );
 
     /// Fixed value range.
     pub fn range(mut self, min: f64, max: f64) -> Self {
@@ -227,11 +220,7 @@ impl BoxPlot {
         self
     }
 
-    /// Wrap in a block.
-    pub fn block(mut self, b: Block<'static>) -> Self {
-        self.block = Some(b);
-        self
-    }
+    block_setter!(block, 'static);
 
     fn value_range(&self) -> (f64, f64) {
         if let Some((a, b)) = self.range {
@@ -267,22 +256,8 @@ impl BoxPlot {
     }
 }
 
-fn put_str(buf: &mut Buffer, x: u16, y: u16, max_x: u16, s: &str, style: Style) {
-    for (i, ch) in s.chars().enumerate() {
-        let cx = x as u32 + i as u32;
-        if cx >= max_x as u32 {
-            break;
-        }
-        buf[(cx as u16, y)].set_char(ch).set_style(style);
-    }
-}
-
-fn trunc(s: &str, n: usize) -> String {
-    s.chars().take(n).collect()
-}
-
-impl Widget for &BoxPlot {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+impl BoxPlot {
+    fn render_into(&self, area: Rect, buf: &mut Buffer) {
         let area = area.intersection(buf.area);
         let inner = theme::begin(&self.block, &self.theme, self.base, area, buf);
         if inner.width < 4 || inner.height < 3 || self.groups.is_empty() {
@@ -475,15 +450,12 @@ impl Widget for &BoxPlot {
     }
 }
 
-impl Widget for BoxPlot {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        (&self).render(area, buf);
-    }
-}
+widget_impls!(BoxPlot);
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ratatui::widgets::Widget;
 
     fn render(p: &BoxPlot, w: u16, h: u16) -> Buffer {
         let area = Rect::new(0, 0, w, h);

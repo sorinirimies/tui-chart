@@ -6,7 +6,7 @@ use ratatui::{
     buffer::Buffer,
     layout::Rect,
     style::{Color, Style},
-    widgets::{Block, Widget},
+    widgets::Block,
 };
 
 const GLYPHS: [char; 8] = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
@@ -63,79 +63,60 @@ impl<'a> Sparkline<'a> {
             block: None,
         }
     }
-    /// Fix the lower bound of the scale (default: data minimum).
-    pub fn min(mut self, v: f64) -> Self {
-        self.min = Some(v);
-        self
-    }
-    /// Fix the upper bound of the scale (default: data maximum).
-    pub fn max(mut self, v: f64) -> Self {
-        self.max = Some(v);
-        self
-    }
-    /// Value bars grow from this baseline (bar style only).
-    pub fn baseline(mut self, v: f64) -> Self {
-        self.baseline = Some(v);
-        self
-    }
-    /// Bar or line style.
-    pub fn style(mut self, s: SparklineStyle) -> Self {
-        self.style = s;
-        self
-    }
-    /// Base color.
-    pub fn color(mut self, c: Color) -> Self {
-        self.color = Some(c);
-        self
-    }
-    /// Apply a [`Theme`]: base color = accent, background fill. An explicit
-    /// [`Sparkline::color`] wins.
-    pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
-        self.theme = Some(theme.into());
-        self
-    }
-    /// Color by value along the theme gradient (needs a theme; an explicit
-    /// [`Sparkline::gradient`] wins).
-    pub fn theme_gradient(mut self, on: bool) -> Self {
-        self.theme_gradient = on;
-        self
-    }
-    /// Base style painted over the whole area (beats the theme).
-    pub fn base_style(mut self, style: Style) -> Self {
-        self.base = Some(style);
-        self
-    }
+    opt_setter!(
+        /// Fix the lower bound of the scale (default: data minimum).
+        min: f64
+    );
+    opt_setter!(
+        /// Fix the upper bound of the scale (default: data maximum).
+        max: f64
+    );
+    opt_setter!(
+        /// Value bars grow from this baseline (bar style only).
+        baseline: f64
+    );
+    setter!(
+        /// Bar or line style.
+        style: SparklineStyle
+    );
+    opt_setter!(
+        /// Base color.
+        color: Color
+    );
+    theme_setter!(
+        /// Apply a [`Theme`]: base color = accent, background fill. An explicit
+        /// [`Sparkline::color`] wins.
+        theme
+    );
+    setter!(
+        /// Color by value along the theme gradient (needs a theme; an explicit
+        /// [`Sparkline::gradient`] wins).
+        theme_gradient: bool
+    );
+    base_style_setter!(base);
     /// Color gradient by value, from low to high (overrides base color).
     pub fn gradient(mut self, colors: impl IntoIterator<Item = Color>) -> Self {
         self.gradient = colors.into_iter().collect();
         self
     }
-    /// Highlight the last point.
-    pub fn highlight_last(mut self, c: Color) -> Self {
-        self.last_color = Some(c);
-        self
-    }
-    /// Highlight the minimum point.
-    pub fn highlight_min(mut self, c: Color) -> Self {
-        self.min_color = Some(c);
-        self
-    }
-    /// Highlight the maximum point.
-    pub fn highlight_max(mut self, c: Color) -> Self {
-        self.max_color = Some(c);
-        self
-    }
-    /// Glyph family used for dot drawing (default [`Marker::Braille`]).
-    pub fn marker(mut self, marker: Marker) -> Self {
-        self.marker = marker;
-        self
-    }
+    opt_setter!(
+        /// Highlight the last point.
+        highlight_last => last_color: Color
+    );
+    opt_setter!(
+        /// Highlight the minimum point.
+        highlight_min => min_color: Color
+    );
+    opt_setter!(
+        /// Highlight the maximum point.
+        highlight_max => max_color: Color
+    );
+    setter!(
+        /// Glyph family used for dot drawing (default [`Marker::Braille`]).
+        marker: Marker
+    );
 
-    /// Wrap in a block.
-    pub fn block(mut self, b: Block<'a>) -> Self {
-        self.block = Some(b);
-        self
-    }
+    block_setter!(block, 'a);
 
     fn draw(&self, area: Rect, buf: &mut Buffer) {
         if area.width == 0 || area.height == 0 {
@@ -253,22 +234,19 @@ impl<'a> Sparkline<'a> {
     }
 }
 
-impl Widget for Sparkline<'_> {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        (&self).render(area, buf);
-    }
-}
-
-impl Widget for &Sparkline<'_> {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+impl Sparkline<'_> {
+    fn render_into(&self, area: Rect, buf: &mut Buffer) {
         let inner = theme::begin(&self.block, &self.theme, self.base, area, buf);
         self.draw(inner, buf);
     }
 }
 
+widget_impls!(Sparkline<'_>);
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ratatui::widgets::Widget;
 
     fn sym(buf: &Buffer, x: u16, y: u16) -> String {
         buf[(x, y)].symbol().to_string()

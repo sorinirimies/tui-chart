@@ -6,6 +6,12 @@
 #   nu scripts/setup_gitea.nu git@gitea.example.com:user/tui-chart.git
 #   nu scripts/setup_gitea.nu https://gitea.example.com/user/tui-chart.git
 
+# Prompt for a line of input. Without a terminal (CI, pipes) there is nobody to
+# answer, so this returns "" and callers fall back to their default (usually "no").
+export def ask [prompt: string]: nothing -> string {
+    try { input $prompt } catch { "" }
+}
+
 def main [
     gitea_url: string,   # Gitea repository URL (SSH or HTTPS)
 ] {
@@ -130,8 +136,8 @@ def main [
     # ── Optional push ──────────────────────────────────────────
     print $"($cyan)── Initial Push ──($reset)"
 
-    let answer = (input $"  Push all branches and tags to Gitea now? \(y/N\) ")
-    if ($answer | str trim | str downcase) == "y" {
+    let answer = (ask $"  Push all branches and tags to Gitea now? \(y/N\) ")
+    if ($answer | str trim | str lowercase) == "y" {
         print ""
         info "Pushing branches to Gitea..."
 

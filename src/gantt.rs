@@ -6,7 +6,7 @@ use ratatui::{
     buffer::Buffer,
     layout::Rect,
     style::{Color, Style},
-    widgets::{Block, Widget},
+    widgets::Block,
 };
 
 /// One Gantt task.
@@ -47,11 +47,10 @@ impl Task {
         self
     }
 
-    /// Bar color.
-    pub fn color(mut self, c: Color) -> Self {
-        self.color = Some(c);
-        self
-    }
+    opt_setter!(
+        /// Bar color.
+        color: Color
+    );
 }
 
 /// Gantt chart widget.
@@ -80,11 +79,10 @@ impl Gantt {
         }
     }
 
-    /// Mark the current time with a vertical line.
-    pub fn today(mut self, t: f64) -> Self {
-        self.today = Some(t);
-        self
-    }
+    opt_setter!(
+        /// Mark the current time with a vertical line.
+        today: f64
+    );
 
     /// Fixed time range (default: span of all tasks).
     pub fn range(mut self, start: f64, end: f64) -> Self {
@@ -100,19 +98,14 @@ impl Gantt {
         self
     }
 
-    /// Apply a [`Theme`]: palette task colors, bear-colored today marker,
-    /// axis colors and background fill. Explicit task colors and
-    /// [`Gantt::palette`] win.
-    pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
-        self.theme = Some(theme.into());
-        self
-    }
+    theme_setter!(
+        /// Apply a [`Theme`]: palette task colors, bear-colored today marker,
+        /// axis colors and background fill. Explicit task colors and
+        /// [`Gantt::palette`] win.
+        theme
+    );
 
-    /// Base style painted over the whole area (beats the theme).
-    pub fn base_style(mut self, style: Style) -> Self {
-        self.base = Some(style);
-        self
-    }
+    base_style_setter!(base);
 
     fn task_color(&self, i: usize) -> Color {
         if let Some(p) = &self.palette {
@@ -130,11 +123,7 @@ impl Gantt {
         }
     }
 
-    /// Wrap in a block.
-    pub fn block(mut self, b: Block<'static>) -> Self {
-        self.block = Some(b);
-        self
-    }
+    block_setter!(block, 'static);
 
     fn time_range(&self) -> (f64, f64) {
         if let Some((a, b)) = self.range {
@@ -172,8 +161,8 @@ fn put_str(buf: &mut Buffer, x: u16, y: u16, max_x: u16, s: &str, style: Style) 
     }
 }
 
-impl Widget for &Gantt {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+impl Gantt {
+    fn render_into(&self, area: Rect, buf: &mut Buffer) {
         let area = area.intersection(buf.area);
         let inner = theme::begin(&self.block, &self.theme, self.base, area, buf);
         if inner.width < 4 || inner.height < 2 || self.tasks.is_empty() {
@@ -258,15 +247,12 @@ impl Widget for &Gantt {
     }
 }
 
-impl Widget for Gantt {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        (&self).render(area, buf);
-    }
-}
+widget_impls!(Gantt);
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ratatui::widgets::Widget;
 
     fn render(g: &Gantt, w: u16, h: u16) -> Buffer {
         let area = Rect::new(0, 0, w, h);

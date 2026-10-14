@@ -6,7 +6,7 @@ use ratatui::{
     buffer::Buffer,
     layout::Rect,
     style::{Color, Style},
-    widgets::{Block, Widget},
+    widgets::Block,
 };
 
 /// Direction of a linear gauge.
@@ -82,42 +82,33 @@ impl<'a> Gauge<'a> {
         self.bands.sort_by(|a, b| a.0.total_cmp(&b.0));
         self
     }
-    /// Target marker value.
-    pub fn target(mut self, t: f64) -> Self {
-        self.target = Some(t);
-        self
-    }
+    opt_setter!(
+        /// Target marker value.
+        target: f64
+    );
     /// Centered label text.
     pub fn label(mut self, l: impl Into<String>) -> Self {
         self.label = Some(l.into());
         self
     }
-    /// Horizontal or vertical.
-    pub fn orientation(mut self, o: GaugeOrientation) -> Self {
-        self.orientation = o;
-        self
-    }
-    /// Gauge form.
-    pub fn style(mut self, s: GaugeStyle) -> Self {
-        self.style = s;
-        self
-    }
-    /// Bar color when no bands are set.
-    pub fn color(mut self, c: Color) -> Self {
-        self.color = Some(c);
-        self
-    }
-    /// Apply a [`Theme`]: bar color (bull color), track/needle colors and
-    /// background fill. Explicit [`Gauge::color`] and band colors win.
-    pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
-        self.theme = Some(theme.into());
-        self
-    }
-    /// Base style painted over the whole area (beats the theme).
-    pub fn base_style(mut self, style: Style) -> Self {
-        self.base = Some(style);
-        self
-    }
+    setter!(
+        /// Horizontal or vertical.
+        orientation: GaugeOrientation
+    );
+    setter!(
+        /// Gauge form.
+        style: GaugeStyle
+    );
+    opt_setter!(
+        /// Bar color when no bands are set.
+        color: Color
+    );
+    theme_setter!(
+        /// Apply a [`Theme`]: bar color (bull color), track/needle colors and
+        /// background fill. Explicit [`Gauge::color`] and band colors win.
+        theme
+    );
+    base_style_setter!(base);
     fn fg(&self) -> Color {
         self.theme.as_ref().map_or(Color::White, |t| t.foreground)
     }
@@ -128,17 +119,12 @@ impl<'a> Gauge<'a> {
         self.color
             .unwrap_or_else(|| self.theme.as_ref().map_or(Color::Green, |t| t.bull))
     }
-    /// Glyph family used for dot drawing (default [`Marker::Braille`]).
-    pub fn marker(mut self, marker: Marker) -> Self {
-        self.marker = marker;
-        self
-    }
+    setter!(
+        /// Glyph family used for dot drawing (default [`Marker::Braille`]).
+        marker: Marker
+    );
 
-    /// Wrap in a block.
-    pub fn block(mut self, b: Block<'a>) -> Self {
-        self.block = Some(b);
-        self
-    }
+    block_setter!(block, 'a);
 
     fn frac(&self, v: f64) -> f64 {
         let span = self.max - self.min;
@@ -264,14 +250,8 @@ impl<'a> Gauge<'a> {
     }
 }
 
-impl Widget for Gauge<'_> {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        (&self).render(area, buf);
-    }
-}
-
-impl Widget for &Gauge<'_> {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+impl Gauge<'_> {
+    fn render_into(&self, area: Rect, buf: &mut Buffer) {
         let inner = theme::begin(&self.block, &self.theme, self.base, area, buf);
         if inner.width == 0 || inner.height == 0 {
             return;
@@ -283,9 +263,12 @@ impl Widget for &Gauge<'_> {
     }
 }
 
+widget_impls!(Gauge<'_>);
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ratatui::widgets::Widget;
 
     fn run(g: Gauge, w: u16, h: u16) -> Buffer {
         let a = Rect::new(0, 0, w, h);

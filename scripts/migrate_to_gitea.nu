@@ -34,6 +34,21 @@ def fail [msg: string] {
     exit 1
 }
 
+# Prompt for a line of input. Without a terminal (CI, pipes) there is nobody to
+# answer, so this returns "" and callers fall back to their default (usually "no").
+export def ask [prompt: string]: nothing -> string {
+    try { input $prompt } catch { "" }
+}
+
+# Host part of a Gitea URL: `git@host:user/repo.git` or `https://host/user/repo.git`.
+export def gitea_host [url: string]: nothing -> string {
+    if ($url | str starts-with "git@") {
+        $url | str replace --regex 'git@([^:]+):.*' '$1'
+    } else {
+        try { $url | url parse | get host? | default "" } catch { "" }
+    }
+}
+
 # ─── Main entry point ────────────────────────────────────────────────────────
 
 def main [
@@ -75,7 +90,7 @@ def main [
         info $"Example \(SSH\):   git@gitea.example.com:username/($project_name).git"
         info $"Example \(HTTPS\): https://gitea.example.com/username/($project_name).git"
         print ""
-        let url = (input "Gitea URL: " | str trim)
+        let url = (ask "Gitea URL: " | str trim)
         if ($url | is-empty) {
             fail "Gitea URL is required."
         }
@@ -87,13 +102,7 @@ def main [
     # Determine SSH vs HTTPS
     let use_ssh = ($gitea_url | str starts-with "git@")
 
-    let gitea_host = if $use_ssh {
-        # git@host:user/repo.git → extract host
-        $gitea_url | str replace --regex 'git@([^:]+):.*' '$1'
-    } else {
-        # https://host/user/repo.git → extract host
-        $gitea_url | url parse | get host? | default ""
-    }
+    let gitea_host = (gitea_host $gitea_url)
 
     if (not $use_ssh) {
         warning "HTTPS URL detected. SSH is strongly recommended for passwordless pushes!"
@@ -136,7 +145,7 @@ def main [
             info "Generate one with:"
             print "  ssh-keygen -t ed25519 -C \"your_email@example.com\""
             print ""
-            let cont = (input "Continue anyway? (y/N) " | str trim | str downcase)
+            let cont = (ask "Continue anyway? (y/N) " | str trim | str lowercase)
             if $cont != "y" {
                 fail "SSH keys required. Please set up SSH first."
             }
@@ -200,7 +209,7 @@ def main [
     # ── Optional: push all branches + tags ───────────────────────────────────
     heading "Push to Gitea"
 
-    let push_answer = (input "Push all branches and tags to Gitea now? (y/N) " | str trim | str downcase)
+    let push_answer = (ask "Push all branches and tags to Gitea now? (y/N) " | str trim | str lowercase)
 
     if $push_answer == "y" {
         info "Pushing all branches to Gitea..."
@@ -242,7 +251,7 @@ def main [
             }
         }
     } else {
-        let setup_answer = (input "Set up .gitea/workflows from .github/workflows? (y/N) " | str trim | str downcase)
+        let setup_answer = (ask "Set up .gitea/workflows from .github/workflows? (y/N) " | str trim | str lowercase)
 
         if $setup_answer == "y" {
             mkdir $gitea_wf

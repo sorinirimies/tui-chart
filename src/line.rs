@@ -13,7 +13,7 @@ use ratatui::{
     buffer::Buffer,
     layout::Rect,
     style::{Color, Style},
-    widgets::{Block, Widget},
+    widgets::Block,
 };
 
 /// How a series is drawn.
@@ -87,23 +87,20 @@ impl Series {
         self
     }
 
-    /// Series color (default: palette by index).
-    pub fn color(mut self, color: Color) -> Self {
-        self.color = Some(color);
-        self
-    }
+    opt_setter!(
+        /// Series color (default: palette by index).
+        color: Color
+    );
 
-    /// Color an `Area` fill by value (bottom = low, top = high) instead of one flat color.
-    pub fn fill_gradient(mut self, gradient: Gradient) -> Self {
-        self.fill_gradient = Some(gradient);
-        self
-    }
+    opt_setter!(
+        /// Color an `Area` fill by value (bottom = low, top = high) instead of one flat color.
+        fill_gradient: Gradient
+    );
 
-    /// Override the chart's draw mode for this series.
-    pub fn mode(mut self, mode: LineMode) -> Self {
-        self.mode = Some(mode);
-        self
-    }
+    opt_setter!(
+        /// Override the chart's draw mode for this series.
+        mode: LineMode
+    );
 
     /// Symmetric error bars: `y ± err[i]` for point `i`.
     pub fn y_err(mut self, err: impl IntoIterator<Item = f64>) -> Self {
@@ -117,17 +114,15 @@ impl Series {
         self
     }
 
-    /// Smooth the line with Catmull-Rom spline interpolation (Line/Area modes).
-    pub fn smooth(mut self, smooth: bool) -> Self {
-        self.smooth = smooth;
-        self
-    }
+    setter!(
+        /// Smooth the line with Catmull-Rom spline interpolation (Line/Area modes).
+        smooth: bool
+    );
 
-    /// Plot against the secondary (right) y axis.
-    pub fn secondary_axis(mut self, secondary: bool) -> Self {
-        self.secondary = secondary;
-        self
-    }
+    setter!(
+        /// Plot against the secondary (right) y axis.
+        secondary_axis => secondary: bool
+    );
 
     /// Series name.
     pub fn name(&self) -> &str {
@@ -246,11 +241,10 @@ impl LineChart {
         }
     }
 
-    /// Replace the series.
-    pub fn series(mut self, series: Vec<Series>) -> Self {
-        self.series = series;
-        self
-    }
+    setter!(
+        /// Replace the series.
+        series: Vec<Series>
+    );
 
     /// X axis configuration.
     pub fn x_axis(mut self, axis: Axis) -> Self {
@@ -279,18 +273,16 @@ impl LineChart {
         self
     }
 
-    /// Logarithmic (base 10) primary y axis with decade ticks. Non-positive
-    /// values are not drawn.
-    pub fn y_log(mut self, log: bool) -> Self {
-        self.y_log = log;
-        self
-    }
+    setter!(
+        /// Logarithmic (base 10) primary y axis with decade ticks. Non-positive
+        /// values are not drawn.
+        y_log: bool
+    );
 
-    /// Smooth all Line/Area series with Catmull-Rom splines.
-    pub fn smooth(mut self, smooth: bool) -> Self {
-        self.smooth = smooth;
-        self
-    }
+    setter!(
+        /// Smooth all Line/Area series with Catmull-Rom splines.
+        smooth: bool
+    );
 
     /// Add an annotation (reference line, region or label).
     pub fn annotation(mut self, annotation: Annotation) -> Self {
@@ -298,29 +290,22 @@ impl LineChart {
         self
     }
 
-    /// Set (or clear) the crosshair cursor.
-    pub fn crosshair(mut self, crosshair: Option<Crosshair>) -> Self {
-        self.crosshair = crosshair;
-        self
-    }
+    setter!(
+        /// Set (or clear) the crosshair cursor.
+        crosshair: Option<Crosshair>
+    );
 
-    /// Wrap the chart in a block.
-    pub fn block(mut self, block: Block<'static>) -> Self {
-        self.block = Some(block);
-        self
-    }
+    block_setter!(block, 'static);
 
-    /// Glyph family (default braille).
-    pub fn marker(mut self, marker: Marker) -> Self {
-        self.marker = marker;
-        self
-    }
+    setter!(
+        /// Glyph family (default braille).
+        marker: Marker
+    );
 
-    /// Default draw mode for all series.
-    pub fn mode(mut self, mode: LineMode) -> Self {
-        self.mode = mode;
-        self
-    }
+    setter!(
+        /// Default draw mode for all series.
+        mode: LineMode
+    );
 
     /// Apply a [`Theme`]: axis/grid/border colors, background fill and the series
     /// palette. Explicit series colors and explicitly styled axes still win.
@@ -333,17 +318,12 @@ impl LineChart {
         self
     }
 
-    /// Base style painted over the whole area (beats the theme).
-    pub fn base_style(mut self, style: Style) -> Self {
-        self.style = Some(style);
-        self
-    }
+    base_style_setter!(style);
 
-    /// Style of legend entry text (default: theme muted color / gray).
-    pub fn legend_style(mut self, style: Style) -> Self {
-        self.legend_style = Some(style);
-        self
-    }
+    opt_setter!(
+        /// Style of legend entry text (default: theme muted color / gray).
+        legend_style: Style
+    );
 
     fn series_color(&self, i: usize, s: &Series) -> Color {
         s.color.unwrap_or_else(|| match &self.theme {
@@ -352,11 +332,10 @@ impl LineChart {
         })
     }
 
-    /// Legend placement.
-    pub fn legend(mut self, pos: LegendPosition) -> Self {
-        self.legend = pos;
-        self
-    }
+    setter!(
+        /// Legend placement.
+        legend: LegendPosition
+    );
 
     fn has_secondary(&self) -> bool {
         self.series.iter().any(|s| s.secondary && !s.is_empty())
@@ -488,7 +467,7 @@ impl LineChart {
             return vec![];
         }
         let (k0, k1) = ((l0 - 1e-9).ceil() as i32, (l1 + 1e-9).floor() as i32);
-        let n = (k1 - k0 + 1).max(0) as usize;
+        let n = (i64::from(k1) - i64::from(k0) + 1).max(0) as usize;
         let stride = n.div_ceil(self.y_axis.ticks.max(2)).max(1);
         (k0..=k1)
             .step_by(stride)
@@ -873,21 +852,18 @@ fn fill_segment(
     }
 }
 
-impl Widget for &LineChart {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+impl LineChart {
+    fn render_into(&self, area: Rect, buf: &mut Buffer) {
         self.render_inner(area, buf);
     }
 }
 
-impl Widget for LineChart {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        self.render_inner(area, buf);
-    }
-}
+widget_impls!(LineChart);
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ratatui::widgets::Widget;
 
     fn chart() -> LineChart {
         LineChart::new(vec![

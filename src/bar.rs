@@ -11,7 +11,7 @@ use ratatui::{
     buffer::Buffer,
     layout::Rect,
     style::{Color, Style},
-    widgets::{Block, Widget},
+    widgets::Block,
 };
 
 /// Bar direction.
@@ -115,14 +115,13 @@ impl BarChart {
         }
     }
 
-    /// Draw positive bars with dot glyphs instead of eighth blocks, e.g.
-    /// [`Marker::Braille`] for 4 vertical dots per cell (2 dots per cell on
-    /// horizontal bars). Default: eighth blocks. Negative bar parts keep
-    /// block glyphs.
-    pub fn marker(mut self, marker: Marker) -> Self {
-        self.marker = Some(marker);
-        self
-    }
+    opt_setter!(
+        /// Draw positive bars with dot glyphs instead of eighth blocks, e.g.
+        /// [`Marker::Braille`] for 4 vertical dots per cell (2 dots per cell on
+        /// horizontal bars). Default: eighth blocks. Negative bar parts keep
+        /// block glyphs.
+        marker: Marker
+    );
 
     /// The configured dot marker, if any.
     pub fn marker_kind(&self) -> Option<Marker> {
@@ -173,23 +172,20 @@ impl BarChart {
         self
     }
 
-    /// Series colors.
-    pub fn colors(mut self, colors: Vec<Color>) -> Self {
-        self.colors = colors;
-        self
-    }
+    setter!(
+        /// Series colors.
+        colors: Vec<Color>
+    );
 
-    /// Direction.
-    pub fn orientation(mut self, o: BarOrientation) -> Self {
-        self.orientation = o;
-        self
-    }
+    setter!(
+        /// Direction.
+        orientation: BarOrientation
+    );
 
-    /// Grouped or stacked.
-    pub fn mode(mut self, m: BarMode) -> Self {
-        self.mode = m;
-        self
-    }
+    setter!(
+        /// Grouped or stacked.
+        mode: BarMode
+    );
 
     /// Bar thickness in cells (default: auto-fit 1–8).
     pub fn bar_width(mut self, w: u16) -> Self {
@@ -197,42 +193,36 @@ impl BarChart {
         self
     }
 
-    /// Cells between bars in a group.
-    pub fn bar_gap(mut self, g: u16) -> Self {
-        self.bar_gap = g;
-        self
-    }
+    setter!(
+        /// Cells between bars in a group.
+        bar_gap: u16
+    );
 
-    /// Cells between groups (default 1).
-    pub fn group_gap(mut self, g: u16) -> Self {
-        self.group_gap = Some(g);
-        self
-    }
+    opt_setter!(
+        /// Cells between groups (default 1).
+        group_gap: u16
+    );
 
-    /// Print values next to bars.
-    pub fn show_values(mut self, on: bool) -> Self {
-        self.show_values = on;
-        self
-    }
+    setter!(
+        /// Print values next to bars.
+        show_values: bool
+    );
 
-    /// Where value labels go relative to bars (see [`LabelPosition`]).
-    pub fn label_position(mut self, p: LabelPosition) -> Self {
-        self.label_position = p;
-        self
-    }
+    setter!(
+        /// Where value labels go relative to bars (see [`LabelPosition`]).
+        label_position: LabelPosition
+    );
 
-    /// Fixed maximum of the value axis.
-    pub fn max(mut self, max: f64) -> Self {
-        self.max = Some(max);
-        self
-    }
+    opt_setter!(
+        /// Fixed maximum of the value axis.
+        max: f64
+    );
 
-    /// Color bars by value (bottom/left = low, tip = high) using a gradient.
-    /// Explicit per-bar colors still win.
-    pub fn gradient(mut self, gradient: Gradient) -> Self {
-        self.gradient = Some(gradient);
-        self
-    }
+    opt_setter!(
+        /// Color bars by value (bottom/left = low, tip = high) using a gradient.
+        /// Explicit per-bar colors still win.
+        gradient: Gradient
+    );
 
     /// Apply a [`Theme`] (palette, axes, labels, background). Explicit colors win.
     pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
@@ -243,33 +233,23 @@ impl BarChart {
         self
     }
 
-    /// Base style painted over the whole area (beats the theme).
-    pub fn base_style(mut self, style: Style) -> Self {
-        self.style = Some(style);
-        self
-    }
+    base_style_setter!(style);
 
     fn label_color(&self) -> Color {
         self.theme.as_ref().map_or(Color::Gray, |t| t.muted)
     }
 
-    /// Wrap in a block.
-    pub fn block(mut self, b: Block<'static>) -> Self {
-        self.block = Some(b);
-        self
-    }
+    block_setter!(block, 'static);
 
-    /// Value axis (y for vertical, x for horizontal).
-    pub fn value_axis(mut self, a: Axis) -> Self {
-        self.value_axis = a;
-        self
-    }
+    setter!(
+        /// Value axis (y for vertical, x for horizontal).
+        value_axis: Axis
+    );
 
-    /// Category axis (title/style only; labels come from groups).
-    pub fn category_axis(mut self, a: Axis) -> Self {
-        self.category_axis = a;
-        self
-    }
+    setter!(
+        /// Category axis (title/style only; labels come from groups).
+        category_axis: Axis
+    );
 
     fn n_series(&self) -> usize {
         self.groups
@@ -504,7 +484,7 @@ impl BarChart {
         Some((a.plot, lo, hi, bw))
     }
 
-    fn render_inner(&self, area: Rect, buf: &mut Buffer) {
+    fn render_into(&self, area: Rect, buf: &mut Buffer) {
         let inner = theme::begin(&self.block, &self.theme, self.style, area, buf);
         match self.orientation {
             BarOrientation::Vertical => self.render_vertical(inner, buf),
@@ -1011,21 +991,12 @@ impl BarChart {
     }
 }
 
-impl Widget for &BarChart {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        self.render_inner(area, buf);
-    }
-}
-
-impl Widget for BarChart {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        self.render_inner(area, buf);
-    }
-}
+widget_impls!(BarChart);
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ratatui::widgets::Widget;
 
     fn groups() -> Vec<BarGroup> {
         vec![

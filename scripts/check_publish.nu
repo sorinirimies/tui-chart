@@ -2,6 +2,11 @@
 # Pre-publish readiness check for tui-chart.
 # Usage: nu scripts/check_publish.nu
 
+# Files that must exist for a publishable crate.
+export def required_files []: nothing -> list<string> {
+    ["README.md" "LICENSE" "Cargo.toml" "CHANGELOG.md" "cliff.toml"]
+}
+
 def main [] {
     let green = (ansi green)
     let red = (ansi red)
@@ -33,7 +38,7 @@ def main [] {
 
     # ── Linting ─────────────────────────────────────────────────
     print $"($cyan)── Linting ──($reset)"
-    print -n $"  checking clippy (all-targets, all-features) ... "
+    print -n $"  checking clippy \(all-targets, all-features\) ... "
     let clip = (do { cargo clippy --all-targets --all-features -- -D warnings } | complete)
     if $clip.exit_code == 0 {
         print $"($green)✓($reset)"
@@ -46,7 +51,7 @@ def main [] {
 
     # ── Tests ───────────────────────────────────────────────────
     print $"($cyan)── Tests ──($reset)"
-    print -n $"  running test suite (all-features, all-targets) ... "
+    print -n $"  running test suite \(all-features, all-targets\) ... "
     let test = (do { cargo test --all-features --all-targets } | complete)
     if $test.exit_code == 0 {
         print $"($green)✓($reset)"
@@ -59,7 +64,7 @@ def main [] {
 
     # ── Documentation ───────────────────────────────────────────
     print $"($cyan)── Documentation ──($reset)"
-    print -n $"  building docs (no-deps, all-features) ... "
+    print -n $"  building docs \(no-deps, all-features\) ... "
     let doc = (do { cargo doc --no-deps --all-features } | complete)
     if $doc.exit_code == 0 {
         print $"($green)✓($reset)"
@@ -85,14 +90,7 @@ def main [] {
 
     # ── Required Files ──────────────────────────────────────────
     print $"($cyan)── Required Files ──($reset)"
-    let required_files = [
-        "README.md"
-        "LICENSE"
-        "Cargo.toml"
-        "CHANGELOG.md"
-        "cliff.toml"
-    ]
-    for file in $required_files {
+    for file in (required_files) {
         print -n $"  checking ($file) ... "
         if ($file | path exists) {
             print $"($green)✓($reset)"

@@ -9,7 +9,7 @@
 # Example: nu scripts/release_prepare.nu v0.4.0
 
 # Build the full RELEASE_NOTES.md content as a list of lines joined by newline.
-def build_release_notes [
+export def build_release_notes [
     version: string,
     last_tag: string,
     cliff_changes: string,
@@ -56,14 +56,13 @@ def build_release_notes [
     $lines = ($lines | append "## 🚀 Quick Start")
     $lines = ($lines | append "")
     $lines = ($lines | append "```rust")
-    $lines = ($lines | append "use ratatui::prelude::*;")
-    $lines = ($lines | append "use tui_chart::{Slider, SliderState, SliderOrientation};")
+    $lines = ($lines | append "use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};")
+    $lines = ($lines | append "use tui_chart::{LineChart, Series};")
     $lines = ($lines | append "")
-    $lines = ($lines | append "let mut state = SliderState::new(50.0, 0.0, 100.0);")
-    $lines = ($lines | append "let slider = Slider::from_state(&state)")
-    $lines = ($lines | append "    .orientation(SliderOrientation::Horizontal)")
-    $lines = ($lines | append "    .label(\"Volume\")")
-    $lines = ($lines | append "    .show_value(true);")
+    $lines = ($lines | append "let chart = LineChart::new(vec![Series::new(\"sin\").values((0..50).map(|i| (i as f64 / 5.0).sin()))]);")
+    $lines = ($lines | append "let area = Rect::new(0, 0, 60, 15);")
+    $lines = ($lines | append "let mut buf = Buffer::empty(area);")
+    $lines = ($lines | append "chart.render(area, &mut buf);")
     $lines = ($lines | append "```")
 
     $lines | str join "\n"

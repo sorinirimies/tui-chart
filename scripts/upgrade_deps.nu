@@ -15,24 +15,24 @@
 # ── Helpers (top-level so they don't depend on main's scope) ──────────
 
 # Check whether a tracked file has uncommitted changes relative to HEAD.
-def is_dirty [path: string] {
+export def is_dirty [path: string] {
     let result = (do { run-external "git" "diff" "--quiet" "HEAD" "--" $path } | complete)
     $result.exit_code != 0
 }
 
 # Build a short human-readable label from a list of file paths.
-def commit_label [files: list] {
+export def commit_label [files: list] {
     $files | each {|f| $f | path basename } | str join " + "
 }
 
 # Return true only when every element in the list is true.
-def all_passed [results: list] {
+export def all_passed [results: list] {
     $results | all {|r| $r }
 }
 
 # Run a single quality-gate check.  Prints a one-line pass / fail and
 # returns a bool.  On failure the first 20 lines of output are shown.
-def run_check [label: string, action: closure] {
+export def run_check [label: string, action: closure] {
     let green = (ansi green)
     let red   = (ansi red)
     let yellow = (ansi yellow)
@@ -63,7 +63,7 @@ def run_check [label: string, action: closure] {
 
 # Stage files, commit with the given message, and push.
 # In dry-run mode only prints what *would* happen.
-def do_commit_and_push [
+export def do_commit_and_push [
     files: list,
     msg: string,
     branch: string,

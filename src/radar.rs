@@ -6,7 +6,7 @@ use ratatui::{
     buffer::Buffer,
     layout::Rect,
     style::{Color, Style},
-    widgets::{Block, Widget},
+    widgets::Block,
 };
 
 /// One data series of a [`RadarChart`].
@@ -30,11 +30,10 @@ impl RadarSeries {
             color: None,
         }
     }
-    /// Set color.
-    pub fn color(mut self, c: Color) -> Self {
-        self.color = Some(c);
-        self
-    }
+    opt_setter!(
+        /// Set color.
+        color: Color
+    );
 }
 
 /// Spider chart with N axes and any number of series.
@@ -73,52 +72,38 @@ impl<'a> RadarChart<'a> {
         self.series.push(s);
         self
     }
-    /// Fix the outer-ring value (default: largest data value).
-    pub fn max(mut self, m: f64) -> Self {
-        self.max = Some(m);
-        self
-    }
-    /// Number of concentric rings.
-    pub fn rings(mut self, n: usize) -> Self {
-        self.rings = n;
-        self
-    }
-    /// Fill the polygons instead of outlining.
-    pub fn fill(mut self, f: bool) -> Self {
-        self.fill = f;
-        self
-    }
-    /// Show axis labels.
-    pub fn show_labels(mut self, s: bool) -> Self {
-        self.show_labels = s;
-        self
-    }
-    /// Apply a [`Theme`]: palette series colors, grid/label colors and
-    /// background fill. Explicit [`RadarSeries::color`] wins.
-    pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
-        self.theme = Some(theme.into());
-        self
-    }
-    /// Base style painted over the whole area (beats the theme).
-    pub fn base_style(mut self, style: Style) -> Self {
-        self.base = Some(style);
-        self
-    }
+    opt_setter!(
+        /// Fix the outer-ring value (default: largest data value).
+        max: f64
+    );
+    setter!(
+        /// Number of concentric rings.
+        rings: usize
+    );
+    setter!(
+        /// Fill the polygons instead of outlining.
+        fill: bool
+    );
+    setter!(
+        /// Show axis labels.
+        show_labels: bool
+    );
+    theme_setter!(
+        /// Apply a [`Theme`]: palette series colors, grid/label colors and
+        /// background fill. Explicit [`RadarSeries::color`] wins.
+        theme
+    );
+    base_style_setter!(base);
     fn series_color(&self, i: usize, s: &RadarSeries) -> Color {
         s.color
             .unwrap_or_else(|| self.theme.as_ref().map_or(Color::Cyan, |t| t.color(i)))
     }
-    /// Glyph family used for dot drawing (default [`Marker::Braille`]).
-    pub fn marker(mut self, marker: Marker) -> Self {
-        self.marker = marker;
-        self
-    }
+    setter!(
+        /// Glyph family used for dot drawing (default [`Marker::Braille`]).
+        marker: Marker
+    );
 
-    /// Wrap in a block.
-    pub fn block(mut self, b: Block<'a>) -> Self {
-        self.block = Some(b);
-        self
-    }
+    block_setter!(block, 'a);
 
     fn draw(&self, area: Rect, buf: &mut Buffer) {
         let n = self.axes.len();
@@ -239,22 +224,19 @@ impl<'a> RadarChart<'a> {
     }
 }
 
-impl Widget for RadarChart<'_> {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        (&self).render(area, buf);
-    }
-}
-
-impl Widget for &RadarChart<'_> {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+impl RadarChart<'_> {
+    fn render_into(&self, area: Rect, buf: &mut Buffer) {
         let inner = theme::begin(&self.block, &self.theme, self.base, area, buf);
         self.draw(inner, buf);
     }
 }
 
+widget_impls!(RadarChart<'_>);
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ratatui::widgets::Widget;
 
     fn chart() -> RadarChart<'static> {
         RadarChart::new(["Atk", "Def", "Spd", "Int", "Hp"])

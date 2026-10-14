@@ -328,47 +328,40 @@ impl Theme {
         self
     }
 
-    /// Set (or clear) the background fill.
-    pub fn background(mut self, color: Option<Color>) -> Self {
-        self.background = color;
-        self
-    }
+    setter!(
+        /// Set (or clear) the background fill.
+        background: Option<Color>
+    );
 
-    /// Set the default text color.
-    pub fn foreground(mut self, color: Color) -> Self {
-        self.foreground = color;
-        self
-    }
+    setter!(
+        /// Set the default text color.
+        foreground: Color
+    );
 
-    /// Set the muted text color.
-    pub fn muted(mut self, color: Color) -> Self {
-        self.muted = color;
-        self
-    }
+    setter!(
+        /// Set the muted text color.
+        muted: Color
+    );
 
-    /// Set the axis line color.
-    pub fn axis(mut self, color: Color) -> Self {
-        self.axis = color;
-        self
-    }
+    setter!(
+        /// Set the axis line color.
+        axis: Color
+    );
 
-    /// Set the grid line color.
-    pub fn grid(mut self, color: Color) -> Self {
-        self.grid = color;
-        self
-    }
+    setter!(
+        /// Set the grid line color.
+        grid: Color
+    );
 
-    /// Set the border color.
-    pub fn border(mut self, color: Color) -> Self {
-        self.border = color;
-        self
-    }
+    setter!(
+        /// Set the border color.
+        border: Color
+    );
 
-    /// Set the title color.
-    pub fn title(mut self, color: Color) -> Self {
-        self.title = color;
-        self
-    }
+    setter!(
+        /// Set the title color.
+        title: Color
+    );
 
     /// Set the series palette (an empty palette is ignored).
     pub fn palette(mut self, palette: Vec<Color>) -> Self {
@@ -378,35 +371,30 @@ impl Theme {
         self
     }
 
-    /// Set the bull (up) color.
-    pub fn bull(mut self, color: Color) -> Self {
-        self.bull = color;
-        self
-    }
+    setter!(
+        /// Set the bull (up) color.
+        bull: Color
+    );
 
-    /// Set the bear (down) color.
-    pub fn bear(mut self, color: Color) -> Self {
-        self.bear = color;
-        self
-    }
+    setter!(
+        /// Set the bear (down) color.
+        bear: Color
+    );
 
-    /// Set the neutral color.
-    pub fn neutral(mut self, color: Color) -> Self {
-        self.neutral = color;
-        self
-    }
+    setter!(
+        /// Set the neutral color.
+        neutral: Color
+    );
 
-    /// Set the accent color.
-    pub fn accent(mut self, color: Color) -> Self {
-        self.accent = color;
-        self
-    }
+    setter!(
+        /// Set the accent color.
+        accent: Color
+    );
 
-    /// Set the crosshair guide color.
-    pub fn crosshair(mut self, color: Color) -> Self {
-        self.crosshair = color;
-        self
-    }
+    setter!(
+        /// Set the crosshair guide color.
+        crosshair: Color
+    );
 
     /// Set the tooltip foreground/background colors.
     pub fn tooltip(mut self, fg: Color, bg: Color) -> Self {
@@ -502,10 +490,7 @@ pub(crate) fn to_rgb(c: Color) -> (u8, u8, u8) {
     }
 }
 
-fn mix(a: (u8, u8, u8), b: (u8, u8, u8), t: f64) -> (u8, u8, u8) {
-    let l = |x: u8, y: u8| (x as f64 + (y as f64 - x as f64) * t).round() as u8;
-    (l(a.0, b.0), l(a.1, b.1), l(a.2, b.2))
-}
+use crate::scale::mix_rgb as mix;
 
 /// Render helper: fill background / base style, then the (themed) block.
 /// Returns the inner area.

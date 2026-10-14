@@ -4,6 +4,45 @@
 # Example: nu scripts/bump_version.nu 0.4.0
 # Example: nu scripts/bump_version.nu --yes 0.4.0
 
+# Prompt for a line of input. Without a terminal (CI, pipes) there is nobody to
+# answer, so this returns "" and callers fall back to their default (usually "no").
+export def ask [prompt: string]: nothing -> string {
+    try { input $prompt } catch { "" }
+}
+
+# True when `v` is X.Y.Z or X.Y.Z-suffix.
+export def is_valid_version [v: string]: nothing -> bool {
+    $v =~ '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$'
+}
+
+# First top-level `version = "..."` in a Cargo.toml string.
+export def read_version [cargo_toml: string]: nothing -> string {
+    $cargo_toml
+    | lines
+    | where {|l| $l =~ '^version\s*=' }
+    | first
+    | parse --regex 'version\s*=\s*"(?P<v>[^"]+)"'
+    | get v
+    | first
+}
+
+# Rewrite every top-level `version = "..."` line in a Cargo.toml string.
+export def set_version [cargo_toml: string, new_version: string]: nothing -> string {
+    $cargo_toml
+    | str replace --regex '(?m)^version\s*=\s*"[^"]+"' $'version = "($new_version)"'
+}
+
+# Does the README contain a `version-X.Y.Z-blue` shields badge?
+export def has_version_badge [readme: string]: nothing -> bool {
+    $readme =~ 'version-[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?-blue'
+}
+
+# Rewrite all `version-X.Y.Z-blue` badges in a README string.
+export def set_badge_version [readme: string, new_version: string]: nothing -> string {
+    $readme
+    | str replace --all --regex 'version-[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?-blue' $"version-($new_version)-blue"
+}
+
 def main [
     new_version: string,  # Target version in semver format (e.g., 0.4.0)
     --yes (-y),           # Skip confirmation prompt
@@ -17,7 +56,7 @@ def main [
     let reset = (ansi reset)
 
     # ── Validate version format ───────────────────────────────────────
-    if not ($new_version =~ '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$') {
+    if not (is_valid_version $new_version) {
         error make {
             msg: $"($red)Error: Invalid version format '($new_version)'($reset)\nVersion must be X.Y.Z or X.Y.Z-suffix \(e.g., 0.4.0 or 0.4.0-beta.1\)"
         }
@@ -32,15 +71,7 @@ def main [
 
     # ── Read current version from Cargo.toml ──────────────────────────
     let cargo_content = (open Cargo.toml --raw)
-    let current_version = (
-        $cargo_content
-        | lines
-        | where {|l| $l =~ '^version\s*=' }
-        | first
-        | parse --regex 'version\s*=\s*"(?P<v>[^"]+)"'
-        | get v
-        | first
-    )
+    let current_version = (read_version $cargo_content)
 
     print $"  Current version: ($yellow)($current_version)($reset)"
     print $"  New version:     ($green)($new_version)($reset)"
@@ -68,8 +99,8 @@ def main [
 
     # ── Confirmation ──────────────────────────────────────────────────
     if not $yes {
-        let answer = (input $"($bold)Continue with version bump ($current_version) → ($new_version)? \(y/n\) ($reset)")
-        if ($answer | str trim | str downcase) != "y" {
+        let answer = (ask $"($bold)Continue with version bump ($current_version) → ($new_version)? \(y/n\) ($reset)")
+        if ($answer | str trim | str lowercase) != "y" {
             print $"($yellow)Aborted.($reset)"
             return
         }
@@ -78,10 +109,7 @@ def main [
 
     # ── Step 1/8: Update Cargo.toml ───────────────────────────────────
     print $"($cyan)Step 1/8: Updating Cargo.toml...($reset)"
-    let updated_cargo = (
-        $cargo_content
-        | str replace --regex '(?m)^version\s*=\s*"[^"]+"' $'version = "($new_version)"'
-    )
+    let updated_cargo = (set_version $cargo_content $new_version)
     $updated_cargo | save --force Cargo.toml
     print $"($green)  ✓ Cargo.toml updated($reset)"
 
@@ -90,11 +118,8 @@ def main [
     print $"($cyan)Step 2/8: Updating README.md badges...($reset)"
     if ("README.md" | path exists) {
         let readme_content = (open README.md --raw)
-        if ($readme_content =~ 'version-[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?-blue') {
-            let updated_readme = (
-                $readme_content
-                | str replace --all --regex 'version-[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?-blue' $"version-($new_version)-blue"
-            )
+        if (has_version_badge $readme_content) {
+            let updated_readme = (set_badge_version $readme_content $new_version)
             $updated_readme | save --force README.md
             print $"($green)  ✓ README.md badges updated($reset)"
         } else {

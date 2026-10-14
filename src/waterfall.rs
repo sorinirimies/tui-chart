@@ -1,13 +1,14 @@
 //! Waterfall: delta steps with a running total.
 
 use crate::canvas::{Canvas, Marker};
+use crate::text::put_str;
 use crate::theme::{self, Theme};
 use crate::util::{format_compact, format_tick, nice_ticks};
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
     style::{Color, Style},
-    widgets::{Block, Widget},
+    widgets::Block,
 };
 
 #[derive(Debug, Clone)]
@@ -95,43 +96,31 @@ impl Waterfall {
         self
     }
 
-    /// Apply a [`Theme`]: bull/bear/neutral bar colors, axis/label colors and
-    /// background fill. Explicit [`Waterfall::colors`] win.
-    pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
-        self.theme = Some(theme.into());
-        self
-    }
+    theme_setter!(
+        /// Apply a [`Theme`]: bull/bear/neutral bar colors, axis/label colors and
+        /// background fill. Explicit [`Waterfall::colors`] win.
+        theme
+    );
 
-    /// Base style painted over the whole area (beats the theme).
-    pub fn base_style(mut self, style: Style) -> Self {
-        self.base = Some(style);
-        self
-    }
+    base_style_setter!(base);
 
-    /// Draw connectors as dot lines (e.g. [`Marker::Braille`], a thin
-    /// sub-cell line at the exact level) instead of `┄` (the default).
-    pub fn marker(mut self, marker: Marker) -> Self {
-        self.marker = Some(marker);
-        self
-    }
+    opt_setter!(
+        /// Draw connectors as dot lines (e.g. [`Marker::Braille`], a thin
+        /// sub-cell line at the exact level) instead of `┄` (the default).
+        marker: Marker
+    );
 
-    /// Draw connector lines between bars (default on).
-    pub fn connectors(mut self, on: bool) -> Self {
-        self.connectors = on;
-        self
-    }
+    setter!(
+        /// Draw connector lines between bars (default on).
+        connectors: bool
+    );
 
-    /// Print values above/below bars (default on).
-    pub fn show_values(mut self, on: bool) -> Self {
-        self.show_values = on;
-        self
-    }
+    setter!(
+        /// Print values above/below bars (default on).
+        show_values: bool
+    );
 
-    /// Wrap in a block.
-    pub fn block(mut self, b: Block<'static>) -> Self {
-        self.block = Some(b);
-        self
-    }
+    block_setter!(block, 'static);
 
     /// Bars as `(start, end, is_total)` with the running total applied.
     pub fn levels(&self) -> Vec<(f64, f64, bool)> {
@@ -150,18 +139,8 @@ impl Waterfall {
     }
 }
 
-fn put_str(buf: &mut Buffer, x: u16, y: u16, max_x: u16, s: &str, style: Style) {
-    for (i, ch) in s.chars().enumerate() {
-        let cx = x as u32 + i as u32;
-        if cx >= max_x as u32 {
-            break;
-        }
-        buf[(cx as u16, y)].set_char(ch).set_style(style);
-    }
-}
-
-impl Widget for &Waterfall {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+impl Waterfall {
+    fn render_into(&self, area: Rect, buf: &mut Buffer) {
         let area = area.intersection(buf.area);
         let inner = theme::begin(&self.block, &self.theme, self.base, area, buf);
         if inner.width < 4 || inner.height < 4 || self.steps.is_empty() {
@@ -301,15 +280,12 @@ impl Widget for &Waterfall {
     }
 }
 
-impl Widget for Waterfall {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        (&self).render(area, buf);
-    }
-}
+widget_impls!(Waterfall);
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ratatui::widgets::Widget;
 
     fn render(w: &Waterfall, width: u16, height: u16) -> Buffer {
         let area = Rect::new(0, 0, width, height);

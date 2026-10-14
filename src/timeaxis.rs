@@ -145,12 +145,16 @@ pub fn time_ticks(min: f64, max: f64, count: usize) -> Vec<f64> {
             .map(|i| (first + i as f64) * step)
             .collect();
     }
-    let months = (step / 2_629_746.0).round().max(1.0) as i64;
+    let months = (step / 2_629_746.0).round().clamp(1.0, 1e9) as i64;
     let (y, m, ..) = split(min);
     let mut idx = y * 12 + (m as i64 - 1);
     idx = (idx + months - 1).div_euclid(months) * months;
     let mut out = vec![];
-    while out.len() < 10_000 {
+    // Bounded iterations: with a huge `min` (clamped in `split`) no tick ever
+    // lands in range and `idx` would otherwise grow until it overflows.
+    let mut guard = 0u32;
+    while out.len() < 10_000 && guard < 100_000 {
+        guard += 1;
         let (yy, mm) = (idx.div_euclid(12), idx.rem_euclid(12) as u32 + 1);
         let t = days_from_civil(yy, mm, 1) as f64 * 86_400.0;
         if t > max {

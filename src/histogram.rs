@@ -83,32 +83,28 @@ impl Histogram {
         self
     }
 
-    /// Bar color.
-    pub fn color(mut self, c: Color) -> Self {
-        self.color = Some(c);
-        self
-    }
+    opt_setter!(
+        /// Bar color.
+        color: Color
+    );
 
-    /// Overlay a Gaussian kernel density estimate curve on the bars
-    /// (vertical, non-cumulative histograms only; ignored otherwise).
-    /// The curve is scaled to the bar units (counts, or density when normalized).
-    pub fn kde(mut self, on: bool) -> Self {
-        self.kde = on;
-        self
-    }
+    setter!(
+        /// Overlay a Gaussian kernel density estimate curve on the bars
+        /// (vertical, non-cumulative histograms only; ignored otherwise).
+        /// The curve is scaled to the bar units (counts, or density when normalized).
+        kde: bool
+    );
 
-    /// KDE bandwidth (default: Silverman's rule). Implies nothing unless
-    /// [`Histogram::kde`] is on.
-    pub fn kde_bandwidth(mut self, h: f64) -> Self {
-        self.kde_bandwidth = Some(h);
-        self
-    }
+    opt_setter!(
+        /// KDE bandwidth (default: Silverman's rule). Implies nothing unless
+        /// [`Histogram::kde`] is on.
+        kde_bandwidth: f64
+    );
 
-    /// Color bars by height using a gradient (instead of one flat color).
-    pub fn gradient(mut self, g: Gradient) -> Self {
-        self.gradient = Some(g);
-        self
-    }
+    opt_setter!(
+        /// Color bars by height using a gradient (instead of one flat color).
+        gradient: Gradient
+    );
 
     /// Apply a [`Theme`] (accent bar color, axes, background). An explicit
     /// [`Histogram::color`] wins.
@@ -119,55 +115,41 @@ impl Histogram {
         self
     }
 
-    /// Base style painted over the whole area (beats the theme).
-    pub fn base_style(mut self, style: Style) -> Self {
-        self.style = Some(style);
-        self
-    }
+    base_style_setter!(style);
 
-    /// Bar direction.
-    pub fn orientation(mut self, o: BarOrientation) -> Self {
-        self.orientation = o;
-        self
-    }
+    setter!(
+        /// Bar direction.
+        orientation: BarOrientation
+    );
 
-    /// Print counts.
-    pub fn show_values(mut self, on: bool) -> Self {
-        self.show_values = on;
-        self
-    }
+    setter!(
+        /// Print counts.
+        show_values: bool
+    );
 
-    /// Cumulative mode: each bar shows the running total up to and including its bin.
-    pub fn cumulative(mut self, on: bool) -> Self {
-        self.cumulative = on;
-        self
-    }
+    setter!(
+        /// Cumulative mode: each bar shows the running total up to and including its bin.
+        cumulative: bool
+    );
 
-    /// Normalized mode: bars show probability density (area = 1); combined with
-    /// [`cumulative`](Self::cumulative) the last bar reaches 1.
-    pub fn normalized(mut self, on: bool) -> Self {
-        self.normalized = on;
-        self
-    }
+    setter!(
+        /// Normalized mode: bars show probability density (area = 1); combined with
+        /// [`cumulative`](Self::cumulative) the last bar reaches 1.
+        normalized: bool
+    );
 
-    /// Draw the bars with dot glyphs (see [`BarChart::marker`]). Default:
-    /// eighth blocks.
-    pub fn bar_marker(mut self, marker: Marker) -> Self {
-        self.bar_marker = Some(marker);
-        self
-    }
+    opt_setter!(
+        /// Draw the bars with dot glyphs (see [`BarChart::marker`]). Default:
+        /// eighth blocks.
+        bar_marker: Marker
+    );
 
-    /// Glyph family of the KDE curve (default [`Marker::Braille`]).
-    pub fn marker(mut self, marker: Marker) -> Self {
-        self.marker = marker;
-        self
-    }
+    setter!(
+        /// Glyph family of the KDE curve (default [`Marker::Braille`]).
+        marker: Marker
+    );
 
-    /// Wrap in a block.
-    pub fn block(mut self, b: Block<'static>) -> Self {
-        self.block = Some(b);
-        self
-    }
+    block_setter!(block, 'static);
 
     /// Count axis.
     pub fn value_axis(mut self, a: Axis) -> Self {
@@ -352,8 +334,8 @@ impl Histogram {
     }
 }
 
-impl Widget for &Histogram {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+impl Histogram {
+    fn render_into(&self, area: Rect, buf: &mut Buffer) {
         let chart = self.to_bar_chart();
         (&chart).render(area, buf);
         if self.kde && !self.cumulative && self.orientation == BarOrientation::Vertical {
@@ -362,15 +344,12 @@ impl Widget for &Histogram {
     }
 }
 
-impl Widget for Histogram {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        (&self).render(area, buf);
-    }
-}
+widget_impls!(Histogram);
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ratatui::widgets::Widget;
 
     #[test]
     fn bins_cover_all_samples() {

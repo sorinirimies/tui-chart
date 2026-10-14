@@ -125,11 +125,10 @@ impl Axis {
         self
     }
 
-    /// Draw dotted grid lines at each tick.
-    pub fn grid(mut self, grid: bool) -> Self {
-        self.grid = grid;
-        self
-    }
+    setter!(
+        /// Draw dotted grid lines at each tick.
+        grid: bool
+    );
 
     /// Style of the grid lines.
     pub fn grid_style(mut self, style: Style) -> Self {
@@ -138,11 +137,10 @@ impl Axis {
         self
     }
 
-    /// Grid line look: dotted (default), dashed or solid.
-    pub fn grid_lines(mut self, kind: GridStyle) -> Self {
-        self.grid_kind = kind;
-        self
-    }
+    setter!(
+        /// Grid line look: dotted (default), dashed or solid.
+        grid_lines => grid_kind: GridStyle
+    );
 
     /// Apply a theme to every style not set explicitly on this axis.
     pub(crate) fn apply_theme(&mut self, t: &Theme) {

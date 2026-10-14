@@ -7,7 +7,7 @@ use ratatui::{
     buffer::Buffer,
     layout::Rect,
     style::{Color, Style},
-    widgets::{Block, Widget},
+    widgets::Block,
 };
 
 const EIGHTHS: [char; 8] = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
@@ -56,30 +56,23 @@ impl DepthChart {
         }
     }
 
-    /// Bid (buy side) color.
-    pub fn bid_color(mut self, c: Color) -> Self {
-        self.bid_color = Some(c);
-        self
-    }
+    opt_setter!(
+        /// Bid (buy side) color.
+        bid_color: Color
+    );
 
-    /// Ask (sell side) color.
-    pub fn ask_color(mut self, c: Color) -> Self {
-        self.ask_color = Some(c);
-        self
-    }
+    opt_setter!(
+        /// Ask (sell side) color.
+        ask_color: Color
+    );
 
-    /// Apply a [`Theme`]: bull/bear side colors, text colors and background
-    /// fill. Explicit [`DepthChart::bid_color`] / [`DepthChart::ask_color`] win.
-    pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
-        self.theme = Some(theme.into());
-        self
-    }
+    theme_setter!(
+        /// Apply a [`Theme`]: bull/bear side colors, text colors and background
+        /// fill. Explicit [`DepthChart::bid_color`] / [`DepthChart::ask_color`] win.
+        theme
+    );
 
-    /// Base style painted over the whole area (beats the theme).
-    pub fn base_style(mut self, style: Style) -> Self {
-        self.base = Some(style);
-        self
-    }
+    base_style_setter!(base);
 
     fn bid(&self) -> Color {
         self.bid_color
@@ -91,30 +84,23 @@ impl DepthChart {
             .unwrap_or_else(|| self.theme.as_ref().map_or(Color::Red, |t| t.bear))
     }
 
-    /// Draw the step-area with dot glyphs (e.g. [`Marker::Braille`] for
-    /// 2×4 sub-cell resolution) instead of eighth blocks (the default).
-    pub fn marker(mut self, marker: Marker) -> Self {
-        self.marker = Some(marker);
-        self
-    }
+    opt_setter!(
+        /// Draw the step-area with dot glyphs (e.g. [`Marker::Braille`] for
+        /// 2×4 sub-cell resolution) instead of eighth blocks (the default).
+        marker: Marker
+    );
 
-    /// Show the mid-price marker line.
-    pub fn show_mid(mut self, on: bool) -> Self {
-        self.show_mid = on;
-        self
-    }
+    setter!(
+        /// Show the mid-price marker line.
+        show_mid: bool
+    );
 
-    /// Show the spread readout on the top row.
-    pub fn show_spread(mut self, on: bool) -> Self {
-        self.show_spread = on;
-        self
-    }
+    setter!(
+        /// Show the spread readout on the top row.
+        show_spread: bool
+    );
 
-    /// Wrap in a block.
-    pub fn block(mut self, b: Block<'static>) -> Self {
-        self.block = Some(b);
-        self
-    }
+    block_setter!(block, 'static);
 
     fn best_bid(&self) -> Option<f64> {
         self.bids.iter().map(|l| l.0).reduce(f64::max)
@@ -181,8 +167,8 @@ fn put_str(buf: &mut Buffer, area: Rect, x: u16, y: u16, s: &str, style: Style) 
     }
 }
 
-impl Widget for &DepthChart {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+impl DepthChart {
+    fn render_into(&self, area: Rect, buf: &mut Buffer) {
         let area = area.intersection(buf.area);
         let inner = theme::begin(&self.block, &self.theme, self.base, area, buf);
         if inner.width < 2 || inner.height < 3 {
@@ -299,15 +285,12 @@ impl Widget for &DepthChart {
     }
 }
 
-impl Widget for DepthChart {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        (&self).render(area, buf);
-    }
-}
+widget_impls!(DepthChart);
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ratatui::widgets::Widget;
 
     fn book() -> DepthChart {
         DepthChart::new(

@@ -7,7 +7,7 @@ use ratatui::{
     buffer::Buffer,
     layout::Rect,
     style::{Color, Style},
-    widgets::{Block, Widget},
+    widgets::Block,
 };
 
 /// Color gradient presets.
@@ -67,8 +67,8 @@ impl Gradient {
         let i = (pos.floor() as usize).min(stops.len() - 2);
         let f = pos - i as f64;
         let (a, b) = (stops[i], stops[i + 1]);
-        let lerp = |x: u8, y: u8| (x as f64 + (y as f64 - x as f64) * f).round() as u8;
-        Color::Rgb(lerp(a.0, b.0), lerp(a.1, b.1), lerp(a.2, b.2))
+        let (r, g, bl) = crate::scale::mix_rgb(a, b, f);
+        Color::Rgb(r, g, bl)
     }
 
     /// Next preset (for cycling in demos).
@@ -151,24 +151,18 @@ impl Heatmap {
         self
     }
 
-    /// Color gradient.
-    pub fn gradient(mut self, g: Gradient) -> Self {
-        self.gradient = Some(g);
-        self
-    }
+    opt_setter!(
+        /// Color gradient.
+        gradient: Gradient
+    );
 
-    /// Apply a [`Theme`]: gradient derived from its accent/palette (unless
-    /// [`Heatmap::gradient`] was set), label colors and background fill.
-    pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
-        self.theme = Some(theme.into());
-        self
-    }
+    theme_setter!(
+        /// Apply a [`Theme`]: gradient derived from its accent/palette (unless
+        /// [`Heatmap::gradient`] was set), label colors and background fill.
+        theme
+    );
 
-    /// Base style painted over the whole area (beats the theme).
-    pub fn base_style(mut self, style: Style) -> Self {
-        self.style = Some(style);
-        self
-    }
+    base_style_setter!(style);
 
     fn grad(&self) -> Gradient {
         match (&self.gradient, &self.theme) {
@@ -204,23 +198,17 @@ impl Heatmap {
         self
     }
 
-    /// Print values in cells when they fit.
-    pub fn show_values(mut self, on: bool) -> Self {
-        self.show_values = on;
-        self
-    }
+    setter!(
+        /// Print values in cells when they fit.
+        show_values: bool
+    );
 
-    /// Show the min–max gradient legend row.
-    pub fn legend(mut self, on: bool) -> Self {
-        self.legend = on;
-        self
-    }
+    setter!(
+        /// Show the min–max gradient legend row.
+        legend: bool
+    );
 
-    /// Wrap in a block.
-    pub fn block(mut self, b: Block<'static>) -> Self {
-        self.block = Some(b);
-        self
-    }
+    block_setter!(block, 'static);
 
     /// Resolved `(min, max)` of the color scale.
     pub fn scale(&self) -> (f64, f64) {
@@ -246,13 +234,10 @@ impl Heatmap {
             let y = inner.bottom() - 1;
             let (a, b) = (format_compact(lo), format_compact(hi));
             let (aw, bw) = (text_width(&a), text_width(&b));
-            buf.set_string(inner.x, y, &a, Style::default().fg(self.label_color()));
-            buf.set_string(
-                inner.right().saturating_sub(bw),
-                y,
-                &b,
-                Style::default().fg(self.label_color()),
-            );
+            let lab = Style::default().fg(self.label_color());
+            let bx = inner.right().saturating_sub(bw).max(inner.x);
+            buf.set_stringn(inner.x, y, &a, inner.width as usize, lab);
+            buf.set_stringn(bx, y, &b, (inner.right() - bx) as usize, lab);
             let bar_x = inner.x + aw + 1;
             let bar_end = inner.right().saturating_sub(bw + 1);
             if bar_end > bar_x {
@@ -344,21 +329,18 @@ impl Heatmap {
     }
 }
 
-impl Widget for &Heatmap {
-    fn render(self, area: Rect, buf: &mut Buffer) {
+impl Heatmap {
+    fn render_into(&self, area: Rect, buf: &mut Buffer) {
         self.render_inner(area, buf);
     }
 }
 
-impl Widget for Heatmap {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        self.render_inner(area, buf);
-    }
-}
+widget_impls!(Heatmap);
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ratatui::widgets::Widget;
 
     fn grid() -> Vec<Vec<f64>> {
         (0..4)

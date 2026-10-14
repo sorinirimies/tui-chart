@@ -3,6 +3,8 @@
 ![tui-chart demo](examples/vhs/output/tui_chart.gif)
 
 [![CI](https://github.com/sorinirimies/tui-chart/actions/workflows/ci.yml/badge.svg)](https://github.com/sorinirimies/tui-chart/actions)
+[![Security](https://github.com/sorinirimies/tui-chart/actions/workflows/security.yml/badge.svg)](https://github.com/sorinirimies/tui-chart/actions/workflows/security.yml)
+[![Fuzz](https://github.com/sorinirimies/tui-chart/actions/workflows/fuzz.yml/badge.svg)](https://github.com/sorinirimies/tui-chart/actions/workflows/fuzz.yml)
 [![Crates.io](https://img.shields.io/crates/v/tui-chart.svg)](https://crates.io/crates/tui-chart)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -126,7 +128,16 @@ Or `just example-<name>` / `just examples`. Demo GIFs: `just vhs-all` (or `just 
 just check   # fmt, clippy, tests
 ```
 
-Scripts in `scripts/` are nushell. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Scripts in `scripts/` are nushell and have their own tests (`just test-nu`).
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+### Security & fuzzing
+
+Dependencies are checked daily with `cargo audit` and `cargo deny` (the
+Security workflow), and every widget renderer, the indicators, the time-axis
+helpers and the serde path are fuzzed with `cargo-fuzz` (`fuzz/`, the Fuzz
+workflow). Locally: `just audit`, `just deny`, `just fuzz render_line`,
+`just fuzz-all`.
 
 ## License
 

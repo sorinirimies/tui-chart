@@ -123,11 +123,10 @@ impl Canvas {
         self.overlap = policy;
     }
 
-    /// Builder form of [`Canvas::set_overlap`].
-    pub fn with_overlap(mut self, policy: OverlapPolicy) -> Self {
-        self.overlap = policy;
-        self
-    }
+    setter!(
+        /// Builder form of [`Canvas::set_overlap`].
+        with_overlap => overlap: OverlapPolicy
+    );
 
     /// Marker of this canvas.
     pub fn marker(&self) -> Marker {

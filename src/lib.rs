@@ -67,6 +67,8 @@
 //! ```
 #![warn(missing_docs)]
 
+#[macro_use]
+mod macros;
 mod annotation;
 mod axis;
 mod bar;
@@ -84,9 +86,11 @@ mod layout;
 mod line;
 mod radar;
 mod renko;
+mod scale;
 mod sparkline;
 mod stack;
 mod stream;
+mod text;
 mod theme;
 mod timeaxis;
 mod treemap;

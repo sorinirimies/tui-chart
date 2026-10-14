@@ -3,6 +3,16 @@
 # Automatically discovers all .tape files in examples/vhs/ and generates GIFs.
 # Usage: nu scripts/generate_all_tapes.nu
 
+# Sorted list of .tape files directly inside `dir`.
+export def discover_tapes [dir: string]: nothing -> list<string> {
+    glob $"($dir)/*.tape" | sort
+}
+
+# `examples/vhs/foo.tape` → `foo`
+export def tape_name [path: string]: nothing -> string {
+    $path | path basename | str replace --regex '\.tape$' ''
+}
+
 def main [] {
     let green = (ansi green)
     let red = (ansi red)
@@ -30,7 +40,7 @@ def main [] {
     mkdir $output_dir
 
     # Discover all .tape files, sorted alphabetically
-    let tapes = (glob $"($tape_dir)/*.tape" | sort)
+    let tapes = (discover_tapes $tape_dir)
     let total = ($tapes | length)
 
     if $total == 0 {
@@ -47,7 +57,7 @@ def main [] {
     for tape in ($tapes | enumerate) {
         let idx = ($tape.index + 1)
         let tape_path = $tape.item
-        let tape_name = ($tape_path | path basename | str replace '.tape' '')
+        let tape_name = (tape_name $tape_path)
 
         print $"($blue)[($idx)/($total)]($reset) Generating ($cyan)($tape_name)($reset)..."
 
