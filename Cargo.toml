@@ -1,0 +1,63 @@
+[package]
+name = "tui-chart"
+version = "0.1.0"
+edition = "2021"
+authors = ["Sorin Irimies <sorinirimies@gmail.com>"]
+license = "MIT"
+description = "A collection of terminal chart widgets for ratatui: line, area, scatter, bar, candlestick (stock/trading), histogram and heatmap"
+repository = "https://github.com/sorinirimies/tui-chart"
+readme = "README.md"
+keywords = ["tui", "chart", "ratatui", "terminal", "candlestick"]
+categories = ["command-line-interface", "gui", "visualization", "rendering"]
+rust-version = "1.88.0"
+exclude = [
+    ".gitea/**",
+    ".github/**",
+    ".zed/**",
+    "docs/**",
+    "examples/vhs/**",
+    "scripts/**",
+    "cliff.toml",
+    "justfile",
+]
+
+[dependencies]
+ratatui = { version = "0.30", default-features = false }
+unicode-width = "0.2"
+
+[dev-dependencies]
+anyhow = "1.0"
+crossterm = "0.29"
+ratatui = { version = "0.30", features = ["crossterm"] }
+
+[[example]]
+name = "line"
+path = "examples/line.rs"
+
+[[example]]
+name = "candlestick"
+path = "examples/candlestick.rs"
+
+[[example]]
+name = "bars"
+path = "examples/bars.rs"
+
+[[example]]
+name = "histogram"
+path = "examples/histogram.rs"
+
+[[example]]
+name = "heatmap"
+path = "examples/heatmap.rs"
+
+[[example]]
+name = "showcase"
+path = "examples/showcase.rs"
+
+[profile.dev]
+opt-level = 1
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true

@@ -1,0 +1,379 @@
+# tui-chart - A collection of TUI chart widgets library for ratatui
+#
+# Prerequisites: cargo install just && cargo install nu
+# Usage: just <task> or just --list
+# Patterns: See docs/JUSTFILE_PATTERNS.md for best practices
+
+# Default task - show available commands
+default:
+    @just --list
+
+# Install required tools (just, git-cliff)
+install-tools:
+    @echo "Installing required tools..."
+    @command -v just >/dev/null 2>&1 || cargo install just
+    @command -v git-cliff >/dev/null 2>&1 || cargo install git-cliff
+    @echo "✅ All tools installed!"
+
+# Build the project
+build:
+    cargo build
+
+# Build release version
+build-release:
+    cargo build --release
+
+# Run line chart example
+run:
+    cargo run --example line
+
+# Run line example
+example-line:
+    cargo run --example line
+
+# Run candlestick example
+example-candlestick:
+    cargo run --example candlestick
+
+# Run bars example
+example-bars:
+    cargo run --example bars
+
+# Run histogram example
+example-histogram:
+    cargo run --example histogram
+
+# Run heatmap example
+example-heatmap:
+    cargo run --example heatmap
+
+# Run showcase example
+example-showcase:
+    cargo run --example showcase
+
+# Run all examples (sequentially)
+examples: example-line example-candlestick example-bars example-histogram example-heatmap example-showcase
+
+# Run tests
+test:
+    cargo test
+
+# Run tests with coverage
+test-coverage:
+    cargo tarpaulin --out Html --output-dir coverage
+
+# Check code without building
+check:
+    cargo check
+
+# Format code
+fmt:
+    cargo fmt
+
+# Check if code is formatted
+fmt-check:
+    cargo fmt --check
+
+# Run clippy linter
+clippy:
+    cargo clippy -- -D warnings
+
+# Run all checks (fmt, clippy, test)
+check-all: fmt-check clippy test
+    @echo "✅ All checks passed!"
+
+# Clean build artifacts
+clean:
+    cargo clean
+
+# Check if git-cliff is installed
+check-git-cliff:
+    @command -v git-cliff >/dev/null 2>&1 || { echo "❌ git-cliff not found. Install with: cargo install git-cliff"; exit 1; }
+
+# Generate full changelog from all tags
+changelog: check-git-cliff
+    @echo "Generating full changelog..."
+    git-cliff -o CHANGELOG.md
+    @echo "✅ Changelog generated!"
+
+# Generate changelog for unreleased commits only
+changelog-unreleased: check-git-cliff
+    @echo "Generating unreleased changelog..."
+    git-cliff --unreleased --prepend CHANGELOG.md
+    @echo "✅ Unreleased changelog generated!"
+
+# Generate changelog for specific version tag
+changelog-version version: check-git-cliff
+    @echo "Generating changelog for version {{version}}..."
+    git-cliff --tag v{{version}} -o CHANGELOG.md
+    @echo "✅ Changelog generated for version {{version}}!"
+
+# Preview changelog without writing to file
+changelog-preview: check-git-cliff
+    @git-cliff
+
+# Preview unreleased changes
+changelog-preview-unreleased: check-git-cliff
+    @git-cliff --unreleased
+
+# Generate changelog for latest tag only
+changelog-latest: check-git-cliff
+    @echo "Generating changelog for latest tag..."
+    git-cliff --latest -o CHANGELOG.md
+    @echo "✅ Latest changelog generated!"
+
+# Update changelog with all commits (force regenerate)
+changelog-update: check-git-cliff
+    @echo "Regenerating complete changelog from all tags..."
+    git-cliff --output CHANGELOG.md
+    @echo "✅ Changelog updated from all git history!"
+
+# Bump version (usage: just bump 0.2.0)
+# Note: Runs check-all first to ensure code quality before version bump (fail early)
+bump version: check-all check-git-cliff
+    @echo "Bumping version to {{version}}..."
+    nu scripts/bump_version.nu {{version}}
+
+# Quick release: format, check, test, and build
+release-check: fmt clippy test build-release
+    @echo "✅ Ready for release!"
+
+# Publish to crates.io (dry run)
+publish-dry:
+    cargo publish --dry-run
+
+# Publish to crates.io
+publish:
+    cargo publish
+
+# Run pre-publish readiness checks
+check-publish:
+    nu scripts/check_publish.nu
+
+# Upgrade dependencies (nightly-style: upgrade pins, sync lock, quality gate)
+upgrade-deps:
+    nu scripts/upgrade_deps.nu --dry-run
+
+# Update dependencies
+update:
+    cargo update
+
+# Show outdated dependencies
+outdated:
+    cargo outdated
+
+# Generate documentation
+doc:
+    cargo doc --no-deps --open
+
+# Watch and auto-run on file changes (requires cargo-watch)
+watch:
+    cargo watch -x "run --example horizontal"
+
+# Git: commit current changes
+commit message:
+    git add .
+    git commit -m "{{message}}"
+
+# Git: pull from GitHub (origin)
+pull:
+    git pull origin main
+
+# Git: pull from Gitea Microlab
+pull-gitea-microlab:
+    git pull gitea-microlab main
+
+# Git: pull from Gitea (nexus-lab instance)
+pull-gitea-nexus-lab:
+    git pull gitea-nexus-lab main
+
+# Git: pull from Gitea Starscream
+pull-gitea-starscream:
+    git pull gitea-starscream main
+
+# Git: pull from all remotes (Gitea first, then GitHub)
+pull-all:
+    git pull gitea-microlab main
+    git pull gitea-starscream main
+    git pull gitea-nexus-lab main
+    git pull origin main
+    @echo "✅ Pulled from Gitea Microlab, Gitea Starscream, Gitea (nexus-lab), and GitHub!"
+
+# Git: push to GitHub (origin)
+push:
+    git push origin main
+
+# Git: push to Gitea Microlab
+push-gitea-microlab:
+    git push gitea-microlab main
+
+# Git: push to Gitea (nexus-lab instance)
+push-gitea-nexus-lab:
+    git push gitea-nexus-lab main
+
+# Git: push to Gitea Starscream
+push-gitea-starscream:
+    git push gitea-starscream main
+
+# Git: push to GitHub, Gitea, and Gitea (nexus-lab)
+push-all:
+    git push origin main
+    git push gitea-microlab main
+    git push gitea-starscream main
+    git push gitea-nexus-lab main
+    @echo "✅ Pushed to GitHub, Gitea Microlab, Gitea Starscream, and Gitea (nexus-lab)!"
+
+# Git: push tags to GitHub
+push-tags:
+    git push origin --tags
+
+# Git: push tags to all remotes
+push-tags-all:
+    git push origin --tags
+    git push gitea-microlab --tags
+    git push gitea-starscream --tags
+    git push gitea-nexus-lab --tags
+    @echo "✅ Tags pushed to GitHub, Gitea Microlab, Gitea Starscream, and Gitea (nexus-lab)!"
+
+# Full release workflow: bump version and push to GitHub
+release version: (bump version)
+    @echo "Pushing to GitHub..."
+    git push origin main
+    git push origin v{{version}}
+    @echo "✅ Release v{{version}} complete on GitHub!"
+
+# Full release workflow: bump version and push to Gitea Microlab
+release-gitea-microlab version: (bump version)
+    @echo "Pushing to Gitea Microlab..."
+    git push gitea-microlab main
+    git push gitea-microlab v{{version}}
+    @echo "✅ Release v{{version}} complete on Gitea Microlab!"
+
+# Full release workflow: bump version and push to Gitea (nexus-lab instance)
+release-gitea-nexus-lab version: (bump version)
+    @echo "Pushing to Gitea (nexus-lab)..."
+    git push gitea-nexus-lab main
+    git push gitea-nexus-lab v{{version}}
+    @echo "✅ Release v{{version}} complete on Gitea (nexus-lab)!"
+
+# Full release workflow: bump version and push to Gitea Starscream
+release-gitea-starscream version: (bump version)
+    @echo "Pushing to Gitea Starscream..."
+    git push gitea-starscream main
+    git push gitea-starscream v{{version}}
+    @echo "✅ Release v{{version}} complete on Gitea Starscream!"
+
+# Full release workflow: bump version and push to GitHub, Gitea, and Gitea (nexus-lab)
+release-all version: (bump version)
+    @echo "Pushing to all remotes..."
+    git push origin main
+    git push gitea-microlab main
+    git push gitea-starscream main
+    git push gitea-nexus-lab main
+    git push origin v{{version}}
+    git push gitea-microlab v{{version}}
+    git push gitea-starscream v{{version}}
+    git push gitea-nexus-lab v{{version}}
+    @echo "✅ Release v{{version}} complete on all remotes!"
+
+# Push release to all remotes (without bumping)
+push-release-all:
+    @echo "Pushing release to all remotes..."
+    git push origin main
+    git push gitea-microlab main
+    git push gitea-starscream main
+    git push gitea-nexus-lab main
+    git push origin --tags
+    git push gitea-microlab --tags
+    git push gitea-starscream --tags
+    git push gitea-nexus-lab --tags
+    @echo "✅ Release pushed to all remotes!"
+
+# Sync Gitea Microlab with GitHub (force)
+sync-gitea-microlab:
+    @echo "Syncing Gitea Microlab with GitHub..."
+    git push gitea-microlab main --force
+    git push gitea-microlab --tags --force
+    @echo "✅ Gitea Microlab synced!"
+
+# Sync Gitea Starscream with GitHub (force)
+sync-gitea-starscream:
+    @echo "Syncing Gitea Starscream with GitHub..."
+    git push gitea-starscream main --force
+    git push gitea-starscream --tags --force
+    @echo "✅ Gitea Starscream synced!"
+
+# Sync Gitea (nexus-lab instance) with GitHub (force)
+sync-gitea-nexus-lab:
+    @echo "Syncing Gitea (nexus-lab) with GitHub..."
+    git push gitea-nexus-lab main --force
+    git push gitea-nexus-lab --tags --force
+    @echo "✅ Gitea (nexus-lab) synced!"
+
+# Show configured remotes
+remotes:
+    @echo "Configured git remotes:"
+    @git remote -v
+
+# Setup Gitea remote (provide your Gitea URL)
+setup-gitea url:
+    @echo "Adding Gitea remote..."
+    git remote add gitea-microlab {{url}}
+    @echo "✅ Gitea remote added!"
+    @echo "Test with: git push gitea-microlab main"
+
+# Show current version
+version:
+    @nu scripts/version.nu
+
+# Show git-cliff info
+cliff-info:
+    @echo "Git-cliff configuration:"
+    @echo "  Config file: cliff.toml"
+    @echo "  Installed: $(command -v git-cliff >/dev/null 2>&1 && echo '✅ Yes' || echo '❌ No (run: just install-tools)')"
+    @command -v git-cliff >/dev/null 2>&1 && git-cliff --version || true
+
+# Show project info
+info:
+    @echo "Project: tui-chart"
+    @echo "Version: $(just version)"
+    @echo "Author: Sorin Albu-Irimies"
+    @echo "License: MIT"
+
+# View changelog
+view-changelog:
+    @cat CHANGELOG.md
+
+# Generate demo GIF for line
+vhs-line:
+    vhs examples/vhs/line.tape
+    @echo "✅ examples/vhs/output/line.gif"
+
+# Generate demo GIF for candlestick
+vhs-candlestick:
+    vhs examples/vhs/candlestick.tape
+    @echo "✅ examples/vhs/output/candlestick.gif"
+
+# Generate demo GIF for bars
+vhs-bars:
+    vhs examples/vhs/bars.tape
+    @echo "✅ examples/vhs/output/bars.gif"
+
+# Generate demo GIF for histogram
+vhs-histogram:
+    vhs examples/vhs/histogram.tape
+    @echo "✅ examples/vhs/output/histogram.gif"
+
+# Generate demo GIF for heatmap
+vhs-heatmap:
+    vhs examples/vhs/heatmap.tape
+    @echo "✅ examples/vhs/output/heatmap.gif"
+
+# Generate demo GIF for showcase
+vhs-showcase:
+    vhs examples/vhs/showcase.tape
+    @echo "✅ examples/vhs/output/showcase.gif"
+
+# Generate all demo GIFs
+vhs-all:
+    nu scripts/generate_all_tapes.nu
