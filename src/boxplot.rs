@@ -1,4 +1,517 @@
-//! BoxPlot (stub).
+//! BoxPlot: box-and-whisker chart from raw samples or precomputed statistics.
 
-/// BoxPlot.
-pub struct BoxPlot;
+use crate::util::nice_ticks;
+use ratatui::{
+    buffer::Buffer,
+    layout::Rect,
+    style::{Color, Style},
+    widgets::{Block, Widget},
+};
+
+/// Direction of the value axis.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum BoxOrientation {
+    /// Values run bottom to top, groups left to right.
+    #[default]
+    Vertical,
+    /// Values run left to right, groups top to bottom.
+    Horizontal,
+}
+
+/// Five-number summary plus outliers.
+#[derive(Debug, Clone, PartialEq)]
+pub struct BoxStats {
+    /// Lower whisker end.
+    pub min: f64,
+    /// First quartile.
+    pub q1: f64,
+    /// Median.
+    pub median: f64,
+    /// Third quartile.
+    pub q3: f64,
+    /// Upper whisker end.
+    pub max: f64,
+    /// Points outside the whiskers.
+    pub outliers: Vec<f64>,
+}
+
+impl BoxStats {
+    /// Precomputed statistics (no outliers).
+    pub fn new(min: f64, q1: f64, median: f64, q3: f64, max: f64) -> Self {
+        Self {
+            min,
+            q1,
+            median,
+            q3,
+            max,
+            outliers: vec![],
+        }
+    }
+
+    /// Add outliers.
+    pub fn outliers(mut self, o: impl IntoIterator<Item = f64>) -> Self {
+        self.outliers = o.into_iter().filter(|v| v.is_finite()).collect();
+        self
+    }
+
+    /// Compute from samples with whiskers at `k` × IQR (non-finite values ignored).
+    /// Returns `None` when there are no finite samples.
+    pub fn from_samples(samples: &[f64], k: f64) -> Option<Self> {
+        let mut s: Vec<f64> = samples.iter().copied().filter(|v| v.is_finite()).collect();
+        if s.is_empty() {
+            return None;
+        }
+        s.sort_by(|a, b| a.total_cmp(b));
+        let q = |p: f64| {
+            let pos = p * (s.len() - 1) as f64;
+            let (lo, hi) = (pos.floor() as usize, pos.ceil() as usize);
+            s[lo] + (s[hi] - s[lo]) * (pos - lo as f64)
+        };
+        let (q1, med, q3) = (q(0.25), q(0.5), q(0.75));
+        let k = if k.is_finite() && k >= 0.0 { k } else { 1.5 };
+        let iqr = q3 - q1;
+        let (lo_f, hi_f) = (q1 - k * iqr, q3 + k * iqr);
+        let mut inside = s.iter().filter(|v| **v >= lo_f && **v <= hi_f);
+        let min = inside.clone().next().copied().unwrap_or(q1);
+        let max = inside.next_back().copied().unwrap_or(q3);
+        let outliers = s
+            .iter()
+            .copied()
+            .filter(|v| *v < lo_f || *v > hi_f)
+            .collect();
+        Some(Self {
+            min,
+            q1,
+            median: med,
+            q3,
+            max,
+            outliers,
+        })
+    }
+
+    fn valid(&self) -> bool {
+        [self.min, self.q1, self.median, self.q3, self.max]
+            .iter()
+            .all(|v| v.is_finite())
+    }
+}
+
+#[derive(Debug, Clone)]
+struct Group {
+    label: String,
+    stats: Option<BoxStats>,
+}
+
+/// Box-and-whisker chart widget.
+#[derive(Debug, Clone)]
+pub struct BoxPlot {
+    groups: Vec<Group>,
+    colors: Vec<Color>,
+    orientation: BoxOrientation,
+    whisker_iqr: f64,
+    show_outliers: bool,
+    range: Option<(f64, f64)>,
+    block: Option<Block<'static>>,
+}
+
+impl Default for BoxPlot {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl BoxPlot {
+    /// Empty chart.
+    pub fn new() -> Self {
+        Self {
+            groups: vec![],
+            colors: vec![
+                Color::Cyan,
+                Color::Magenta,
+                Color::Yellow,
+                Color::Green,
+                Color::LightRed,
+                Color::LightBlue,
+            ],
+            orientation: BoxOrientation::Vertical,
+            whisker_iqr: 1.5,
+            show_outliers: true,
+            range: None,
+            block: None,
+        }
+    }
+
+    /// Add a group computed from raw samples (uses the current whisker factor,
+    /// so call [`BoxPlot::whisker_iqr`] first if you change it).
+    pub fn group(
+        mut self,
+        label: impl Into<String>,
+        samples: impl IntoIterator<Item = f64>,
+    ) -> Self {
+        let v: Vec<f64> = samples.into_iter().collect();
+        self.groups.push(Group {
+            label: label.into(),
+            stats: BoxStats::from_samples(&v, self.whisker_iqr),
+        });
+        self
+    }
+
+    /// Add a group from precomputed statistics.
+    pub fn stats(mut self, label: impl Into<String>, stats: BoxStats) -> Self {
+        self.groups.push(Group {
+            label: label.into(),
+            stats: Some(stats),
+        });
+        self
+    }
+
+    /// Whisker length as a multiple of the IQR (default 1.5).
+    pub fn whisker_iqr(mut self, k: f64) -> Self {
+        self.whisker_iqr = k;
+        self
+    }
+
+    /// Per-group colors (cycled).
+    pub fn colors(mut self, c: Vec<Color>) -> Self {
+        if !c.is_empty() {
+            self.colors = c;
+        }
+        self
+    }
+
+    /// Orientation.
+    pub fn orientation(mut self, o: BoxOrientation) -> Self {
+        self.orientation = o;
+        self
+    }
+
+    /// Draw outliers (default on).
+    pub fn show_outliers(mut self, on: bool) -> Self {
+        self.show_outliers = on;
+        self
+    }
+
+    /// Fixed value range.
+    pub fn range(mut self, min: f64, max: f64) -> Self {
+        self.range = Some((min, max));
+        self
+    }
+
+    /// Wrap in a block.
+    pub fn block(mut self, b: Block<'static>) -> Self {
+        self.block = Some(b);
+        self
+    }
+
+    fn value_range(&self) -> (f64, f64) {
+        if let Some((a, b)) = self.range {
+            if a.is_finite() && b.is_finite() && b > a {
+                return (a, b);
+            }
+        }
+        let mut lo = f64::INFINITY;
+        let mut hi = f64::NEG_INFINITY;
+        for s in self
+            .groups
+            .iter()
+            .filter_map(|g| g.stats.as_ref())
+            .filter(|s| s.valid())
+        {
+            lo = lo.min(s.min);
+            hi = hi.max(s.max);
+            if self.show_outliers {
+                for &o in &s.outliers {
+                    lo = lo.min(o);
+                    hi = hi.max(o);
+                }
+            }
+        }
+        if !lo.is_finite() {
+            return (0.0, 1.0);
+        }
+        if hi <= lo {
+            return (lo - 1.0, hi + 1.0);
+        }
+        let pad = (hi - lo) * 0.05;
+        (lo - pad, hi + pad)
+    }
+}
+
+fn put_str(buf: &mut Buffer, x: u16, y: u16, max_x: u16, s: &str, style: Style) {
+    for (i, ch) in s.chars().enumerate() {
+        let cx = x as u32 + i as u32;
+        if cx >= max_x as u32 {
+            break;
+        }
+        buf[(cx as u16, y)].set_char(ch).set_style(style);
+    }
+}
+
+fn trunc(s: &str, n: usize) -> String {
+    s.chars().take(n).collect()
+}
+
+impl Widget for &BoxPlot {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        let area = area.intersection(buf.area);
+        let inner = match &self.block {
+            Some(b) => {
+                let i = b.inner(area);
+                b.clone().render(area, buf);
+                i
+            }
+            None => area,
+        };
+        if inner.width < 4 || inner.height < 3 || self.groups.is_empty() {
+            return;
+        }
+        let vert = self.orientation == BoxOrientation::Vertical;
+        let (lo, hi) = self.value_range();
+        let dim = Style::default().fg(Color::DarkGray);
+        let ticks = |len: u16| nice_ticks(lo, hi, (len as usize / 4).max(2));
+        let step = |t: &[f64]| if t.len() >= 2 { t[1] - t[0] } else { 1.0 };
+
+        // Layout: gutter (left) and footer (bottom) are label areas.
+        let (gutter, plot);
+        if vert {
+            let t = ticks(inner.height);
+            let w = t
+                .iter()
+                .map(|v| crate::util::format_tick(*v, step(&t)).chars().count())
+                .max()
+                .unwrap_or(1) as u16;
+            gutter = (w + 1).min(inner.width / 2);
+            plot = Rect::new(
+                inner.x + gutter,
+                inner.y,
+                inner.width - gutter,
+                inner.height - 1,
+            );
+        } else {
+            let w = self
+                .groups
+                .iter()
+                .map(|g| g.label.chars().count())
+                .max()
+                .unwrap_or(0) as u16;
+            gutter = (w + 1).min(inner.width / 3);
+            plot = Rect::new(
+                inner.x + gutter,
+                inner.y,
+                inner.width - gutter,
+                inner.height - 1,
+            );
+        }
+        if plot.width == 0 || plot.height == 0 {
+            return;
+        }
+        let (along_len, cross_len) = if vert {
+            (plot.height, plot.width)
+        } else {
+            (plot.width, plot.height)
+        };
+        let to_a = |v: f64| -> i32 {
+            let f = ((v - lo) / (hi - lo)).clamp(0.0, 1.0);
+            (f * (along_len - 1) as f64).round() as i32
+        };
+        let cell = |a: i32, c: i32| -> Option<(u16, u16)> {
+            if a < 0 || c < 0 || a >= along_len as i32 || c >= cross_len as i32 {
+                return None;
+            }
+            Some(if vert {
+                (plot.x + c as u16, plot.y + plot.height - 1 - a as u16)
+            } else {
+                (plot.x + a as u16, plot.y + c as u16)
+            })
+        };
+        let put = |buf: &mut Buffer, a: i32, c: i32, ch: char, st: Style| {
+            if let Some((x, y)) = cell(a, c) {
+                buf[(x, y)].set_char(ch).set_style(st);
+            }
+        };
+
+        // Value axis labels + faint grid.
+        let t = ticks(along_len);
+        let st = step(&t);
+        for v in &t {
+            let a = to_a(*v);
+            let label = crate::util::format_tick(*v, st);
+            if vert {
+                if let Some((_, y)) = cell(a, 0) {
+                    let lw = label.chars().count() as u16;
+                    put_str(
+                        buf,
+                        inner.x + gutter.saturating_sub(lw + 1),
+                        y,
+                        plot.x,
+                        &label,
+                        dim,
+                    );
+                }
+            } else if let Some((x, _)) = cell(a, 0) {
+                put_str(buf, x, inner.bottom() - 1, inner.right(), &label, dim);
+            }
+            for c in 0..cross_len as i32 {
+                if let Some((x, y)) = cell(a, c) {
+                    if buf[(x, y)].symbol() == " " {
+                        buf[(x, y)].set_char('·').set_style(dim);
+                    }
+                }
+            }
+        }
+
+        // Groups.
+        let n = self.groups.len();
+        let slot = (cross_len as f64 / n as f64).max(0.0);
+        for (i, g) in self.groups.iter().enumerate() {
+            let c0 = (i as f64 * slot).floor() as i32;
+            let c1 = (((i + 1) as f64 * slot).floor() as i32).max(c0 + 1);
+            let span = c1 - c0;
+            let bw = if span >= 5 { span - 2 } else { span.max(1) };
+            let bw = if vert { bw.min(15) } else { bw.min(5) };
+            let left = c0 + (span - bw) / 2;
+            let mid = left + bw / 2;
+            let color = self.colors[i % self.colors.len()];
+            let s = Style::default().fg(color);
+
+            // label
+            if vert {
+                let w = span.max(0) as usize;
+                let l = trunc(&g.label, w);
+                let off = (w.saturating_sub(l.chars().count()) / 2) as u16;
+                put_str(
+                    buf,
+                    plot.x + c0 as u16 + off,
+                    inner.bottom() - 1,
+                    inner.right(),
+                    &l,
+                    Style::default(),
+                );
+            } else if let Some((_, y)) = cell(0, mid) {
+                put_str(
+                    buf,
+                    inner.x,
+                    y,
+                    plot.x,
+                    &trunc(&g.label, gutter.saturating_sub(1) as usize),
+                    Style::default(),
+                );
+            }
+
+            let Some(st) = g.stats.as_ref().filter(|s| s.valid()) else {
+                continue;
+            };
+            let (amin, aq1, amed, aq3, amax) = (
+                to_a(st.min),
+                to_a(st.q1),
+                to_a(st.median),
+                to_a(st.q3),
+                to_a(st.max),
+            );
+            let (wl, cp, ml) = if vert {
+                ('│', '─', '━')
+            } else {
+                ('─', '│', '┃')
+            };
+            for a in amin..aq1 {
+                put(buf, a, mid, wl, s);
+            }
+            for a in aq3 + 1..=amax {
+                put(buf, a, mid, wl, s);
+            }
+            let cw = (bw / 2).max(0);
+            for c in mid - cw / 2..=mid + cw / 2 {
+                put(buf, amin, c, cp, s);
+                put(buf, amax, c, cp, s);
+            }
+            for a in aq1..=aq3 {
+                for c in left..left + bw {
+                    put(buf, a, c, '█', s);
+                }
+            }
+            let ms = Style::default().fg(Color::White).bg(color);
+            for c in left..left + bw {
+                put(buf, amed, c, ml, ms);
+            }
+            if self.show_outliers {
+                for &o in &st.outliers {
+                    put(buf, to_a(o), mid, '○', s);
+                }
+            }
+        }
+    }
+}
+
+impl Widget for BoxPlot {
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        (&self).render(area, buf);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn render(p: &BoxPlot, w: u16, h: u16) -> Buffer {
+        let area = Rect::new(0, 0, w, h);
+        let mut buf = Buffer::empty(area);
+        p.render(area, &mut buf);
+        buf
+    }
+
+    fn count(buf: &Buffer, sym: &str) -> usize {
+        buf.content().iter().filter(|c| c.symbol() == sym).count()
+    }
+
+    #[test]
+    fn quartiles_and_outlier() {
+        let mut v: Vec<f64> = (1..=9).map(|x| x as f64).collect();
+        v.push(100.0);
+        let s = BoxStats::from_samples(&v, 1.5).unwrap();
+        assert_eq!(s.median, 5.5);
+        assert_eq!(s.q1, 3.25);
+        assert_eq!(s.q3, 7.75);
+        assert_eq!(s.max, 9.0);
+        assert_eq!(s.outliers, vec![100.0]);
+    }
+
+    #[test]
+    fn empty_and_nan() {
+        assert!(BoxStats::from_samples(&[], 1.5).is_none());
+        assert!(BoxStats::from_samples(&[f64::NAN], 1.5).is_none());
+    }
+
+    #[test]
+    fn draws_box_median_outlier() {
+        let p = BoxPlot::new().group("a", (1..=9).map(|x| x as f64).chain([100.0]));
+        let b = render(&p, 30, 15);
+        let p2 = BoxPlot::new().stats("a", BoxStats::new(0.0, 2.0, 5.0, 8.0, 10.0));
+        assert!(count(&render(&p2, 30, 15), "█") > 0);
+        assert!(count(&b, "━") > 0);
+        assert_eq!(count(&b, "○"), 1);
+    }
+
+    #[test]
+    fn horizontal_and_multi() {
+        let p = BoxPlot::new()
+            .stats("x", BoxStats::new(0.0, 2.0, 3.0, 4.0, 6.0))
+            .stats("y", BoxStats::new(1.0, 3.0, 5.0, 7.0, 9.0))
+            .orientation(BoxOrientation::Horizontal);
+        let b = render(&p, 40, 12);
+        assert!(count(&b, "┃") > 0);
+    }
+
+    #[test]
+    fn tiny_areas_no_panic() {
+        let p = BoxPlot::new()
+            .group("a", [1.0, f64::NAN, 3.0])
+            .stats("n", BoxStats::new(f64::NAN, 0.0, 0.0, 0.0, 0.0))
+            .block(Block::bordered());
+        for w in 0..8 {
+            for h in 0..6 {
+                render(&p, w, h);
+            }
+        }
+        render(&BoxPlot::new(), 10, 5);
+    }
+}

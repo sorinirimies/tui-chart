@@ -43,40 +43,40 @@
 
 mod axis;
 mod bar;
+mod boxplot;
 mod candle;
 mod canvas;
+mod depth;
+mod gantt;
+mod gauge;
 mod heatmap;
 mod histogram;
 mod layout;
 mod line;
-mod sparkline;
-mod gauge;
 mod radar;
-mod boxplot;
-mod waterfall;
-mod gantt;
-mod depth;
 mod renko;
+mod sparkline;
 mod treemap;
+mod waterfall;
 
 pub mod util;
 
 pub use axis::Axis;
 pub use bar::{BarChart, BarGroup, BarMode, BarOrientation};
+pub use boxplot::{BoxOrientation, BoxPlot, BoxStats};
 pub use candle::{ema, heikin_ashi, sma, Candle, CandleStyle, CandlestickChart, Overlay};
 pub use canvas::{Canvas, Marker};
+pub use depth::DepthChart;
+pub use gantt::{Gantt, Task};
+pub use gauge::{Gauge, GaugeOrientation, GaugeStyle};
 pub use heatmap::{Gradient, Heatmap};
 pub use histogram::{Bin, Histogram};
 pub use line::{LegendPosition, LineChart, LineMode, Series};
-pub use sparkline::Sparkline;
-pub use gauge::Gauge;
-pub use radar::RadarChart;
-pub use boxplot::BoxPlot;
+pub use radar::{RadarChart, RadarSeries};
+pub use renko::{renko_bricks, RenkoBrick, RenkoChart, RenkoStyle};
+pub use sparkline::{Sparkline, SparklineStyle};
+pub use treemap::{Treemap, TreemapItem};
 pub use waterfall::Waterfall;
-pub use gantt::Gantt;
-pub use depth::DepthChart;
-pub use renko::RenkoChart;
-pub use treemap::Treemap;
 
 use ratatui::style::Color;
 
