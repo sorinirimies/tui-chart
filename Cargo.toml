@@ -54,6 +54,42 @@ path = "examples/heatmap.rs"
 name = "showcase"
 path = "examples/showcase.rs"
 
+[[example]]
+name = "sparkline"
+path = "examples/sparkline.rs"
+
+[[example]]
+name = "gauge"
+path = "examples/gauge.rs"
+
+[[example]]
+name = "radar"
+path = "examples/radar.rs"
+
+[[example]]
+name = "boxplot"
+path = "examples/boxplot.rs"
+
+[[example]]
+name = "waterfall"
+path = "examples/waterfall.rs"
+
+[[example]]
+name = "gantt"
+path = "examples/gantt.rs"
+
+[[example]]
+name = "depth"
+path = "examples/depth.rs"
+
+[[example]]
+name = "renko"
+path = "examples/renko.rs"
+
+[[example]]
+name = "treemap"
+path = "examples/treemap.rs"
+
 [profile.dev]
 opt-level = 1
 

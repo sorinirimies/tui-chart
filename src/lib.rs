@@ -49,6 +49,16 @@ mod heatmap;
 mod histogram;
 mod layout;
 mod line;
+mod sparkline;
+mod gauge;
+mod radar;
+mod boxplot;
+mod waterfall;
+mod gantt;
+mod depth;
+mod renko;
+mod treemap;
+
 pub mod util;
 
 pub use axis::Axis;
@@ -58,6 +68,15 @@ pub use canvas::{Canvas, Marker};
 pub use heatmap::{Gradient, Heatmap};
 pub use histogram::{Bin, Histogram};
 pub use line::{LegendPosition, LineChart, LineMode, Series};
+pub use sparkline::Sparkline;
+pub use gauge::Gauge;
+pub use radar::RadarChart;
+pub use boxplot::BoxPlot;
+pub use waterfall::Waterfall;
+pub use gantt::Gantt;
+pub use depth::DepthChart;
+pub use renko::RenkoChart;
+pub use treemap::Treemap;
 
 use ratatui::style::Color;
 
