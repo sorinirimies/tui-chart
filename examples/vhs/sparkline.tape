@@ -10,7 +10,7 @@ Set Padding 20
 Set PlaybackSpeed 1
 
 Hide
-Type "clear && cargo run --release --example sparkline"
+Type "clear && cargo run --release --features theme --example sparkline"
 Enter
 Sleep 5s
 Show

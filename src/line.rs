@@ -309,6 +309,7 @@ impl LineChart {
 
     /// Apply a [`Theme`]: axis/grid/border colors, background fill and the series
     /// palette. Explicit series colors and explicitly styled axes still win.
+    #[cfg(feature = "theme")]
     pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
         let t = theme.into();
         self.x_axis.theme_in_place(&t);
@@ -860,6 +861,7 @@ impl LineChart {
 
 widget_impls!(LineChart);
 
+#[cfg(feature = "theme")]
 impl tui_nuances::Themed for LineChart {
     fn apply_theme(self, theme: &tui_nuances::Theme) -> Self {
         self.theme(theme)
@@ -1085,6 +1087,7 @@ mod tests {
         assert!(t.contains("x 1"));
     }
 
+    #[cfg(feature = "theme")]
     #[test]
     fn crosshair_uses_theme_colors() {
         let th = Theme::dracula();

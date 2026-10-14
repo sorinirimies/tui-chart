@@ -225,6 +225,7 @@ impl BarChart {
     );
 
     /// Apply a [`Theme`] (palette, axes, labels, background). Explicit colors win.
+    #[cfg(feature = "theme")]
     pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
         let t = theme.into();
         self.value_axis.theme_in_place(&t);
@@ -993,6 +994,7 @@ impl BarChart {
 
 widget_impls!(BarChart);
 
+#[cfg(feature = "theme")]
 impl tui_nuances::Themed for BarChart {
     fn apply_theme(self, theme: &tui_nuances::Theme) -> Self {
         self.theme(theme)

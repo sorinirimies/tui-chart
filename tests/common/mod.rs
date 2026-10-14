@@ -94,16 +94,27 @@ fn mk<W: Widget + 'static>(f: impl Fn() -> W + 'static) -> Draw {
     })
 }
 
+/// Theme type accepted by [`all_widgets`]; uninhabited without the `theme` feature.
+#[cfg(feature = "theme")]
+pub type Th = Theme;
+#[cfg(not(feature = "theme"))]
+#[derive(Clone)]
+pub enum Th {}
+
 /// Every public widget, built from `d`, optionally themed. Names are stable.
-pub fn all_widgets(d: Data, theme: Option<Theme>) -> Vec<(&'static str, Draw)> {
+pub fn all_widgets(d: Data, theme: Option<Th>) -> Vec<(&'static str, Draw)> {
     let t = move || theme.clone();
     macro_rules! th {
         ($w:expr, $t:expr) => {{
             let w = $w;
-            match $t {
+            #[cfg(feature = "theme")]
+            let w = match $t {
                 Some(t) => w.theme(t),
                 None => w,
-            }
+            };
+            #[cfg(not(feature = "theme"))]
+            let _ = $t;
+            w
         }};
     }
     let mut v: Vec<(&'static str, Draw)> = Vec::new();

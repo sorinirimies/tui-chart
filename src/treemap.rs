@@ -371,6 +371,7 @@ impl Treemap {
 
 widget_impls!(Treemap);
 
+#[cfg(feature = "theme")]
 impl tui_nuances::Themed for Treemap {
     fn apply_theme(self, theme: &tui_nuances::Theme) -> Self {
         self.theme(theme)
@@ -434,6 +435,7 @@ mod tests {
         assert!((0..40).all(|x| (0..12).all(|y| buf[(x, y)].bg != Color::Reset)));
     }
 
+    #[cfg(feature = "theme")]
     #[test]
     fn theme_gradient_and_override() {
         let t = Theme::dracula();

@@ -11,18 +11,22 @@
 //! regardless of call order.
 //!
 //! ```
+//! # #[cfg(feature = "theme")] {
 //! use tui_chart::{LineChart, Series, Theme};
 //!
 //! let theme = Theme::dracula();
 //! let chart = LineChart::new(vec![Series::new("a").values([1.0, 3.0, 2.0])]).theme(&theme);
 //! # let _ = chart;
+//! # }
 //! ```
 
 use crate::heatmap::Gradient;
 use ratatui::{buffer::Buffer, layout::Rect, style::Color, style::Style};
+#[cfg(feature = "theme")]
 pub use tui_nuances::Theme;
 
 /// Chart-specific helpers derived from a [`Theme`].
+#[cfg(feature = "theme")]
 pub trait ChartThemeExt {
     /// Gradient from a dim tint of the background up to the accent and the
     /// second palette color (used by heatmap / treemap / sparkline).
@@ -35,6 +39,7 @@ pub trait ChartThemeExt {
     fn series_color(&self, i: usize) -> Color;
 }
 
+#[cfg(feature = "theme")]
 impl ChartThemeExt for Theme {
     fn gradient(&self) -> Gradient {
         let accent = to_rgb(self.accent);
@@ -60,6 +65,7 @@ impl ChartThemeExt for Theme {
 }
 
 /// Approximate RGB of any ratatui color.
+#[cfg(feature = "theme")]
 pub(crate) fn to_rgb(c: Color) -> (u8, u8, u8) {
     match c {
         Color::Rgb(r, g, b) => (r, g, b),
@@ -83,6 +89,7 @@ pub(crate) fn to_rgb(c: Color) -> (u8, u8, u8) {
     }
 }
 
+#[cfg(feature = "theme")]
 use crate::scale::mix_rgb as mix;
 
 /// Render helper: fill background / base style, then the (themed) block.
@@ -117,7 +124,76 @@ pub(crate) fn begin(
     }
 }
 
-#[cfg(test)]
+/// Without the `theme` feature no `Theme` value can exist: this uninhabited
+/// stand-in keeps the internal `Option<Theme>` plumbing compiling (always
+/// `None`) so the widgets fall back to their built-in default colors.
+#[cfg(not(feature = "theme"))]
+#[derive(Debug, Clone, PartialEq)]
+#[allow(dead_code)]
+pub(crate) enum Theme {}
+
+#[cfg(not(feature = "theme"))]
+#[allow(dead_code)]
+pub(crate) struct ThemeFields {
+    pub background: Option<Color>,
+    pub foreground: Color,
+    pub muted: Color,
+    pub border: Color,
+    pub title: Color,
+    pub accent: Color,
+    pub axis: Color,
+    pub grid: Color,
+    pub bull: Color,
+    pub bear: Color,
+    pub neutral: Color,
+    pub progress: Color,
+    pub crosshair: Color,
+    pub tooltip_fg: Color,
+    pub tooltip_bg: Color,
+}
+
+#[cfg(not(feature = "theme"))]
+#[allow(dead_code)]
+impl Theme {
+    pub fn color(&self, _i: usize) -> Color {
+        match *self {}
+    }
+    pub fn axis_style(&self) -> Style {
+        match *self {}
+    }
+    pub fn label_style(&self) -> Style {
+        match *self {}
+    }
+    pub fn grid_style(&self) -> Style {
+        match *self {}
+    }
+    pub fn fill(&self, _area: Rect, _buf: &mut Buffer) {
+        match *self {}
+    }
+}
+
+#[cfg(not(feature = "theme"))]
+impl std::ops::Deref for Theme {
+    type Target = ThemeFields;
+    fn deref(&self) -> &ThemeFields {
+        match *self {}
+    }
+}
+
+#[cfg(not(feature = "theme"))]
+#[allow(dead_code)]
+pub(crate) trait ChartThemeExt {
+    fn gradient(&self) -> Gradient;
+}
+
+#[cfg(not(feature = "theme"))]
+impl ChartThemeExt for Theme {
+    fn gradient(&self) -> Gradient {
+        match *self {}
+    }
+}
+
+#[cfg(all(test, feature = "theme"))]
 mod tests {
     use super::*;
 

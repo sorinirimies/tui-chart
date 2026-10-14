@@ -249,6 +249,7 @@ impl Gantt {
 
 widget_impls!(Gantt);
 
+#[cfg(feature = "theme")]
 impl tui_nuances::Themed for Gantt {
     fn apply_theme(self, theme: &tui_nuances::Theme) -> Self {
         self.theme(theme)
@@ -294,6 +295,7 @@ mod tests {
         assert!(row0.starts_with("design"));
     }
 
+    #[cfg(feature = "theme")]
     #[test]
     fn theme_colors_and_override() {
         let t = Theme::gruvbox();

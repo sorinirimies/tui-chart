@@ -29,12 +29,14 @@ ratatui = { version = "0.30", default-features = false }
 unicode-width = "0.2"
 serde = { version = "1", features = ["derive"], optional = true }
 # Shared theme crate; switch to the crates.io version after it is published.
-tui-nuances = { version = "0.1", git = "https://github.com/sorinirimies/tui-nuances" }
+tui-nuances = { version = "0.1", git = "https://github.com/sorinirimies/tui-nuances", optional = true }
 
 [features]
 default = []
-# Derive Serialize/Deserialize on data types and Theme.
-serde = ["dep:serde", "ratatui/serde", "tui-nuances/serde"]
+# Opt-in theming: `Theme`, `.theme(..)` builders on every widget, `Themed` impls.
+theme = ["dep:tui-nuances"]
+# Derive Serialize/Deserialize on data types (and on Theme when `theme` is on).
+serde = ["dep:serde", "ratatui/serde", "tui-nuances?/serde"]
 
 [dev-dependencies]
 anyhow = "1.0"
@@ -45,70 +47,87 @@ ratatui = { version = "0.30", features = ["crossterm"] }
 [[example]]
 name = "line"
 path = "examples/line.rs"
+required-features = ["theme"]
 
 [[example]]
 name = "candlestick"
 path = "examples/candlestick.rs"
+required-features = ["theme"]
 
 [[example]]
 name = "bars"
 path = "examples/bars.rs"
+required-features = ["theme"]
 
 [[example]]
 name = "histogram"
 path = "examples/histogram.rs"
+required-features = ["theme"]
 
 [[example]]
 name = "heatmap"
 path = "examples/heatmap.rs"
+required-features = ["theme"]
 
 [[example]]
 name = "showcase"
 path = "examples/showcase.rs"
+required-features = ["theme"]
 
 [[example]]
 name = "sparkline"
 path = "examples/sparkline.rs"
+required-features = ["theme"]
 
 [[example]]
 name = "gauge"
 path = "examples/gauge.rs"
+required-features = ["theme"]
 
 [[example]]
 name = "radar"
 path = "examples/radar.rs"
+required-features = ["theme"]
 
 [[example]]
 name = "boxplot"
 path = "examples/boxplot.rs"
+required-features = ["theme"]
 
 [[example]]
 name = "waterfall"
 path = "examples/waterfall.rs"
+required-features = ["theme"]
 
 [[example]]
 name = "gantt"
 path = "examples/gantt.rs"
+required-features = ["theme"]
 
 [[example]]
 name = "depth"
 path = "examples/depth.rs"
+required-features = ["theme"]
 
 [[example]]
 name = "renko"
 path = "examples/renko.rs"
+required-features = ["theme"]
 
 [[example]]
 name = "treemap"
 path = "examples/treemap.rs"
+required-features = ["theme"]
 
 [[example]]
 name = "stream"
 path = "examples/stream.rs"
+required-features = ["theme"]
 
 [[example]]
 name = "themes"
 path = "examples/themes.rs"
+required-features = ["theme"]
 
 [profile.dev]
 opt-level = 1

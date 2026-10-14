@@ -108,6 +108,7 @@ impl Histogram {
 
     /// Apply a [`Theme`] (accent bar color, axes, background). An explicit
     /// [`Histogram::color`] wins.
+    #[cfg(feature = "theme")]
     pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
         let t = theme.into();
         self.value_axis.theme_in_place(&t);
@@ -279,6 +280,7 @@ impl Histogram {
         if let Some(b) = self.block.clone() {
             chart = chart.block(b);
         }
+        #[cfg(feature = "theme")]
         if let Some(t) = &self.theme {
             chart = chart.theme(t);
         }
@@ -346,6 +348,7 @@ impl Histogram {
 
 widget_impls!(Histogram);
 
+#[cfg(feature = "theme")]
 impl tui_nuances::Themed for Histogram {
     fn apply_theme(self, theme: &tui_nuances::Theme) -> Self {
         self.theme(theme)

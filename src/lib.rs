@@ -19,20 +19,21 @@
 //!   [`stochastic`], [`vwap`]
 //! - streaming with [`RingBuffer`] / [`Stream`]
 //! - time axis helpers ([`time_ticks`], [`time_hm`], [`date_ymd`], ...)
-//! - [`Theme`]: built-in themes via [`Theme::all`], [`Theme::next`], [`Theme::prev`];
-//!   every widget has `.theme(impl Into<Theme>)`
+//! - optional `theme` cargo feature: `Theme` (built-in themes via `Theme::all`,
+//!   `Theme::next`, `Theme::prev`); every widget then has `.theme(impl Into<Theme>)`
 //! - high resolution: [`Marker`] (`Braille` 2×4 default, `HalfBlock`, `Block`,
 //!   `Dot`, opt-in `Sextant` 2×3 which needs a font with the Unicode
 //!   "Symbols for Legacy Computing" block), [`CandleStyle::Braille`],
 //!   `.marker(..)` on line/bar/sparkline/radar/gauge/histogram/depth/waterfall
 //!   charts and [`OverlapPolicy`] for [`Canvas`] colour conflicts
 //! - optional `serde` cargo feature: `Serialize`/`Deserialize` on data types and
-//!   [`Theme`]
+//!   (with `theme`) `Theme`
 //!
 //! All widgets implement [`ratatui::widgets::Widget`] (both owned and by reference)
 //! and are drawn straight into the buffer.
 //!
 //! ```
+//! # #[cfg(feature = "theme")] {
 //! use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
 //! use tui_chart::{Axis, LineChart, Series, Theme};
 //!
@@ -46,6 +47,7 @@
 //! let area = Rect::new(0, 0, 60, 15);
 //! let mut buf = Buffer::empty(area);
 //! chart.render(area, &mut buf);
+//! # }
 //! ```
 //!
 //! ```
@@ -120,12 +122,14 @@ pub use renko::{renko_bricks, RenkoBrick, RenkoChart, RenkoStyle};
 pub use sparkline::{Sparkline, SparklineStyle};
 pub use stack::{shared_gutter, ChartStack, StackDirection};
 pub use stream::{RingBuffer, Stream};
+#[cfg(feature = "theme")]
 pub use theme::{ChartThemeExt, Theme};
 pub use timeaxis::{
     civil_from_days, date_md, date_ymd, datetime, days_from_civil, time_hm, time_hms,
     time_nice_step, time_ticks,
 };
 pub use treemap::{Treemap, TreemapItem};
+#[cfg(feature = "theme")]
 pub use tui_nuances::{Status, ThemeProvider, ThemeSwitcher, Themed};
 pub use waterfall::Waterfall;
 

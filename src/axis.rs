@@ -158,6 +158,7 @@ impl Axis {
     /// Style axis line, tick labels and grid from `theme`; styles set
     /// explicitly on this axis win regardless of call order.
     #[must_use]
+    #[cfg(feature = "theme")]
     pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
         self.theme_in_place(&theme.into());
         self
@@ -227,6 +228,7 @@ impl Axis {
     }
 }
 
+#[cfg(feature = "theme")]
 impl tui_nuances::Themed for Axis {
     fn apply_theme(self, theme: &Theme) -> Self {
         self.theme(theme)
@@ -269,6 +271,7 @@ mod tests {
         assert!(m[0].1.ends_with("kg"));
     }
 
+    #[cfg(feature = "theme")]
     #[test]
     fn theme_respects_explicit() {
         let t = Theme::dracula();

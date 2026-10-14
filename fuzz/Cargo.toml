@@ -12,7 +12,7 @@ libfuzzer-sys = "0.4"
 arbitrary = { version = "1", features = ["derive"] }
 ratatui = { version = "0.30", default-features = false }
 serde_json = "1"
-tui-chart = { path = "..", features = ["serde"] }
+tui-chart = { path = "..", features = ["serde", "theme"] }
 
 # Not part of the main crate (needs nightly).
 [workspace]

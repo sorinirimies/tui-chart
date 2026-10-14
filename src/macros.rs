@@ -59,6 +59,7 @@ macro_rules! opt_setter {
 macro_rules! theme_setter {
     ($(#[$m:meta])* $field:ident) => {
         $(#[$m])*
+        #[cfg(feature = "theme")]
         pub fn theme(mut self, theme: impl Into<$crate::Theme>) -> Self {
             self.$field = Some(theme.into());
             self
@@ -89,6 +90,7 @@ macro_rules! block_setter {
 }
 
 #[cfg(test)]
+#[cfg_attr(not(feature = "theme"), allow(dead_code))]
 mod tests {
     use ratatui::{buffer::Buffer, layout::Rect, style::Style, widgets::Widget};
 
@@ -96,7 +98,7 @@ mod tests {
     struct Demo {
         n: u32,
         o: Option<u32>,
-        t: Option<crate::Theme>,
+        t: Option<crate::theme::Theme>,
         b: Option<Style>,
         blk: Option<ratatui::widgets::Block<'static>>,
     }
@@ -128,6 +130,7 @@ mod tests {
         assert_eq!((d.n, d.o), (3, Some(4)));
     }
 
+    #[cfg(feature = "theme")]
     #[test]
     fn theme_setters_assign() {
         let d = Demo::default()

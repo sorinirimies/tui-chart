@@ -10,7 +10,7 @@ Set Padding 20
 Set PlaybackSpeed 1
 
 Hide
-Type "clear && cargo run --release --example themes"
+Type "clear && cargo run --release --features theme --example themes"
 Enter
 Sleep 5s
 Show

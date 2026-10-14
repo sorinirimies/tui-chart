@@ -452,6 +452,7 @@ impl BoxPlot {
 
 widget_impls!(BoxPlot);
 
+#[cfg(feature = "theme")]
 impl tui_nuances::Themed for BoxPlot {
     fn apply_theme(self, theme: &tui_nuances::Theme) -> Self {
         self.theme(theme)
@@ -512,6 +513,7 @@ mod tests {
         assert!(count(&b, "┃") > 0);
     }
 
+    #[cfg(feature = "theme")]
     #[test]
     fn theme_colors_and_override() {
         let t = Theme::nord();

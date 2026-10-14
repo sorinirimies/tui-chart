@@ -1,7 +1,9 @@
 #![cfg(feature = "serde")]
 
 use ratatui::style::Color;
-use tui_chart::{Annotation, BarGroup, Bin, BoxStats, Candle, Task, Theme, TradeMarker, TradeSide};
+#[cfg(feature = "theme")]
+use tui_chart::Theme;
+use tui_chart::{Annotation, BarGroup, Bin, BoxStats, Candle, Task, TradeMarker, TradeSide};
 
 fn rt<T>(v: &T) -> T
 where
@@ -41,7 +43,7 @@ fn bin_task_marker_roundtrip() {
 }
 
 #[test]
-fn annotation_boxstats_theme_roundtrip() {
+fn annotation_boxstats_roundtrip() {
     let a = Annotation::hline(3.0);
     assert_eq!(rt(&a), a);
     let s = BoxStats {
@@ -53,6 +55,11 @@ fn annotation_boxstats_theme_roundtrip() {
         outliers: vec![9.0],
     };
     assert_eq!(rt(&s), s);
+}
+
+#[cfg(feature = "theme")]
+#[test]
+fn theme_roundtrip() {
     for t in Theme::all() {
         assert_eq!(rt(&t), t);
     }

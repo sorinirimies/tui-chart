@@ -17,7 +17,7 @@ install-tools:
 
 # Build the project
 build:
-    cargo build
+    cargo build --all-features
 
 # Build release version
 build-release:
@@ -25,78 +25,78 @@ build-release:
 
 # Run line chart example
 run:
-    cargo run --example line
+    cargo run --features theme --example line
 
 # Run bars example
 example-bars:
-    cargo run --example bars
+    cargo run --features theme --example bars
 
 # Run boxplot example
 example-boxplot:
-    cargo run --example boxplot
+    cargo run --features theme --example boxplot
 
 # Run candlestick example
 example-candlestick:
-    cargo run --example candlestick
+    cargo run --features theme --example candlestick
 
 # Run depth example
 example-depth:
-    cargo run --example depth
+    cargo run --features theme --example depth
 
 # Run gantt example
 example-gantt:
-    cargo run --example gantt
+    cargo run --features theme --example gantt
 
 # Run gauge example
 example-gauge:
-    cargo run --example gauge
+    cargo run --features theme --example gauge
 
 # Run heatmap example
 example-heatmap:
-    cargo run --example heatmap
+    cargo run --features theme --example heatmap
 
 # Run histogram example
 example-histogram:
-    cargo run --example histogram
+    cargo run --features theme --example histogram
 
 # Run line example
 example-line:
-    cargo run --example line
+    cargo run --features theme --example line
 
 # Run radar example
 example-radar:
-    cargo run --example radar
+    cargo run --features theme --example radar
 
 # Run renko example
 example-renko:
-    cargo run --example renko
+    cargo run --features theme --example renko
 
 # Run showcase example
 example-showcase:
-    cargo run --example showcase
+    cargo run --features theme --example showcase
 
 # Run sparkline example
 example-sparkline:
-    cargo run --example sparkline
+    cargo run --features theme --example sparkline
 
 # Run stream example
 example-stream:
-    cargo run --example stream
+    cargo run --features theme --example stream
 
 # Run treemap example
 example-treemap:
-    cargo run --example treemap
+    cargo run --features theme --example treemap
 
 # Run waterfall example
 example-waterfall:
-    cargo run --example waterfall
+    cargo run --features theme --example waterfall
 
 # Run all examples (sequentially)
 examples: example-themes example-bars example-boxplot example-candlestick example-depth example-gantt example-gauge example-heatmap example-histogram example-line example-radar example-renko example-showcase example-sparkline example-stream example-treemap example-waterfall
 
 # Run themes example
 example-themes:
-    cargo run --example themes
+    cargo run --features theme --example themes
 
 # Run tests
 test:

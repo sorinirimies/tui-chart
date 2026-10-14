@@ -398,6 +398,7 @@ impl CandlestickChart {
 
     /// Apply a [`Theme`]: bull/bear colors, axes, labels, background fill.
     /// Colors set via [`CandlestickChart::colors`] still win.
+    #[cfg(feature = "theme")]
     pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
         let t = theme.into();
         self.x_axis.theme_in_place(&t);
@@ -1110,6 +1111,7 @@ impl CandlestickChart {
 
 widget_impls!(CandlestickChart);
 
+#[cfg(feature = "theme")]
 impl tui_nuances::Themed for CandlestickChart {
     fn apply_theme(self, theme: &tui_nuances::Theme) -> Self {
         self.theme(theme)
@@ -1232,6 +1234,7 @@ mod tests {
         assert!(t.contains('│'));
     }
 
+    #[cfg(feature = "theme")]
     #[test]
     fn braille_candles_dense_and_colored() {
         let area = Rect::new(0, 0, 40, 16);

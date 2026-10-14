@@ -51,10 +51,10 @@ def main [] {
     print ""
 
     print $"($blue)🔨 Building examples \(release\) so tapes show results only...($reset)"
-    let build = (do { ^cargo build --release --examples } | complete)
+    let build = (do { ^cargo build --release --examples --features theme } | complete)
     if $build.exit_code != 0 {
         print $build.stderr
-        error make { msg: $"($red)❌ cargo build --release --examples failed($reset)" }
+        error make { msg: $"($red)❌ cargo build --release --examples --features theme failed($reset)" }
     }
 
     mut succeeded = 0

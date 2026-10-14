@@ -337,6 +337,7 @@ impl Heatmap {
 
 widget_impls!(Heatmap);
 
+#[cfg(feature = "theme")]
 impl tui_nuances::Themed for Heatmap {
     fn apply_theme(self, theme: &tui_nuances::Theme) -> Self {
         self.theme(theme)

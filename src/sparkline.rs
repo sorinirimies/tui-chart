@@ -243,6 +243,7 @@ impl Sparkline<'_> {
 
 widget_impls!(Sparkline<'_>);
 
+#[cfg(feature = "theme")]
 impl<'a> tui_nuances::Themed for Sparkline<'a> {
     fn apply_theme(self, theme: &tui_nuances::Theme) -> Self {
         self.theme(theme)

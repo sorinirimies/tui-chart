@@ -282,6 +282,7 @@ impl Waterfall {
 
 widget_impls!(Waterfall);
 
+#[cfg(feature = "theme")]
 impl tui_nuances::Themed for Waterfall {
     fn apply_theme(self, theme: &tui_nuances::Theme) -> Self {
         self.theme(theme)
@@ -324,6 +325,7 @@ mod tests {
         assert!(b.content().iter().any(|x| x.symbol() == "┄"));
     }
 
+    #[cfg(feature = "theme")]
     #[test]
     fn theme_colors_and_override() {
         let t = Theme::dracula();

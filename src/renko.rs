@@ -288,6 +288,7 @@ impl RenkoChart {
 
 widget_impls!(RenkoChart);
 
+#[cfg(feature = "theme")]
 impl tui_nuances::Themed for RenkoChart {
     fn apply_theme(self, theme: &tui_nuances::Theme) -> Self {
         self.theme(theme)
@@ -357,6 +358,7 @@ mod tests {
         assert!(s.contains('X') && s.contains('O'));
     }
 
+    #[cfg(feature = "theme")]
     #[test]
     fn theme_colors_and_override() {
         let t = Theme::tokyo_night();

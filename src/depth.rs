@@ -287,6 +287,7 @@ impl DepthChart {
 
 widget_impls!(DepthChart);
 
+#[cfg(feature = "theme")]
 impl tui_nuances::Themed for DepthChart {
     fn apply_theme(self, theme: &tui_nuances::Theme) -> Self {
         self.theme(theme)
@@ -345,6 +346,7 @@ mod tests {
         assert!(g && r);
     }
 
+    #[cfg(feature = "theme")]
     #[test]
     fn theme_colors_and_override() {
         let t = Theme::nord();

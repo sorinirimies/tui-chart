@@ -57,9 +57,17 @@ Dot-based drawing is selected with `Marker`; braille (2×4 dots per cell) is the
 - Streaming data with `RingBuffer` / `Stream`
 - Time axis helpers (`time_ticks`, `time_hm`, `date_ymd`, ...)
 - `ChartStack` with shared gutter
-- Themes (below)
+- Optional theming via the `theme` cargo feature (below)
 
 ## Theming
+
+Theming is opt-in. Enable the `theme` cargo feature (it pulls in `tui-nuances`):
+
+```toml
+tui-chart = { version = "0.1", features = ["theme"] }
+```
+
+Without it the crate has no `tui-nuances` dependency and every widget uses its built-in colors.
 
 `tui_chart::Theme` is the shared [`tui-nuances`](https://github.com/sorinirimies/tui-nuances)
 theme (re-exported), so every component by the same author (`tui-slider`, `tui-spinner`, ...)
@@ -103,7 +111,8 @@ let chart = LineChart::new(series).theme(&app_theme);
 
 | Feature | Description |
 |---|---|
-| `serde` | `Serialize`/`Deserialize` for `Theme` and data types (`Candle`, `BarGroup`, `Bin`, `BoxStats`, `Task`, `Annotation`, `TradeMarker`, ...) |
+| `theme` | `Theme`, `.theme(..)` on every widget, `Themed`/`ThemeProvider`/`ThemeSwitcher` re-exports (adds the `tui-nuances` dependency; off by default) |
+| `serde` | `Serialize`/`Deserialize` for data types (and `Theme` with `theme`) (`Candle`, `BarGroup`, `Bin`, `BoxStats`, `Task`, `Annotation`, `TradeMarker`, ...) |
 
 ## Usage
 
@@ -126,23 +135,24 @@ frame.render_widget(chart, area);
 ## Examples
 
 ```sh
-cargo run --example bars
-cargo run --example boxplot
-cargo run --example candlestick
-cargo run --example depth
-cargo run --example gantt
-cargo run --example gauge
-cargo run --example heatmap
-cargo run --example histogram
-cargo run --example line
-cargo run --example radar
-cargo run --example renko
-cargo run --example showcase
-cargo run --example sparkline
-cargo run --example stream
-cargo run --example themes
-cargo run --example treemap
-cargo run --example waterfall
+# examples need the theme feature: cargo run --features theme --example <name>
+cargo run --features theme --example bars
+cargo run --features theme --example boxplot
+cargo run --features theme --example candlestick
+cargo run --features theme --example depth
+cargo run --features theme --example gantt
+cargo run --features theme --example gauge
+cargo run --features theme --example heatmap
+cargo run --features theme --example histogram
+cargo run --features theme --example line
+cargo run --features theme --example radar
+cargo run --features theme --example renko
+cargo run --features theme --example showcase
+cargo run --features theme --example sparkline
+cargo run --features theme --example stream
+cargo run --features theme --example themes
+cargo run --features theme --example treemap
+cargo run --features theme --example waterfall
 ```
 
 Or `just example-<name>` / `just examples`. Demo GIFs: `just vhs-all` (or `just vhs-<name>`) (needs [vhs](https://github.com/charmbracelet/vhs) and nushell).

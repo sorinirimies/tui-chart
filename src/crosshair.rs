@@ -52,6 +52,7 @@ impl Crosshair {
     /// defaults; explicit [`style`](Self::style) / [`tooltip_style`](Self::tooltip_style)
     /// win regardless of call order.
     #[must_use]
+    #[cfg(feature = "theme")]
     pub fn theme(self, theme: impl Into<crate::theme::Theme>) -> Self {
         self.with_theme(&theme.into())
     }
@@ -179,6 +180,7 @@ pub(crate) fn draw(
     }
 }
 
+#[cfg(feature = "theme")]
 impl tui_nuances::Themed for Crosshair {
     fn apply_theme(self, theme: &tui_nuances::Theme) -> Self {
         self.with_theme(theme)

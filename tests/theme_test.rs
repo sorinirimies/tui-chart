@@ -1,4 +1,5 @@
 //! Theme × widget matrix: no panics, and explicit colors beat the theme.
+#![cfg(feature = "theme")]
 
 mod common;
 use common::*;

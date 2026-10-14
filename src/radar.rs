@@ -233,6 +233,7 @@ impl RadarChart<'_> {
 
 widget_impls!(RadarChart<'_>);
 
+#[cfg(feature = "theme")]
 impl<'a> tui_nuances::Themed for RadarChart<'a> {
     fn apply_theme(self, theme: &tui_nuances::Theme) -> Self {
         self.theme(theme)
@@ -272,6 +273,7 @@ mod tests {
         assert!(t.contains("Atk") && t.contains("Hp"));
     }
 
+    #[cfg(feature = "theme")]
     #[test]
     fn theme_palette_and_override() {
         let t = Theme::nord();
