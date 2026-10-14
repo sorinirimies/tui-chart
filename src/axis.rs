@@ -143,7 +143,7 @@ impl Axis {
     );
 
     /// Apply a theme to every style not set explicitly on this axis.
-    pub(crate) fn apply_theme(&mut self, t: &Theme) {
+    pub(crate) fn theme_in_place(&mut self, t: &Theme) {
         if self.explicit & EXPL_STYLE == 0 {
             self.style = t.axis_style();
         }
@@ -153,6 +153,14 @@ impl Axis {
         if self.explicit & EXPL_GRID == 0 {
             self.grid_style = t.grid_style();
         }
+    }
+
+    /// Style axis line, tick labels and grid from `theme`; styles set
+    /// explicitly on this axis win regardless of call order.
+    #[must_use]
+    pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
+        self.theme_in_place(&theme.into());
+        self
     }
 
     /// Custom, evenly spaced tick labels (overrides numeric ticks).
@@ -219,6 +227,12 @@ impl Axis {
     }
 }
 
+impl tui_nuances::Themed for Axis {
+    fn apply_theme(self, theme: &Theme) -> Self {
+        self.theme(theme)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -259,7 +273,7 @@ mod tests {
     fn theme_respects_explicit() {
         let t = Theme::dracula();
         let mut a = Axis::new().style(Style::default().fg(Color::Red));
-        a.apply_theme(&t);
+        a.theme_in_place(&t);
         assert_eq!(a.style.fg, Some(Color::Red));
         assert_eq!(a.label_style.fg, Some(t.muted));
     }

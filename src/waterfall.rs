@@ -282,6 +282,12 @@ impl Waterfall {
 
 widget_impls!(Waterfall);
 
+impl tui_nuances::Themed for Waterfall {
+    fn apply_theme(self, theme: &tui_nuances::Theme) -> Self {
+        self.theme(theme)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

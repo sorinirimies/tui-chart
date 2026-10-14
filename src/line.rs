@@ -250,7 +250,7 @@ impl LineChart {
     pub fn x_axis(mut self, axis: Axis) -> Self {
         self.x_axis = axis;
         if let Some(t) = &self.theme {
-            self.x_axis.apply_theme(t);
+            self.x_axis.theme_in_place(t);
         }
         self
     }
@@ -259,7 +259,7 @@ impl LineChart {
     pub fn y_axis(mut self, axis: Axis) -> Self {
         self.y_axis = axis;
         if let Some(t) = &self.theme {
-            self.y_axis.apply_theme(t);
+            self.y_axis.theme_in_place(t);
         }
         self
     }
@@ -268,7 +268,7 @@ impl LineChart {
     pub fn y2_axis(mut self, axis: Axis) -> Self {
         self.y2_axis = axis;
         if let Some(t) = &self.theme {
-            self.y2_axis.apply_theme(t);
+            self.y2_axis.theme_in_place(t);
         }
         self
     }
@@ -311,9 +311,9 @@ impl LineChart {
     /// palette. Explicit series colors and explicitly styled axes still win.
     pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
         let t = theme.into();
-        self.x_axis.apply_theme(&t);
-        self.y_axis.apply_theme(&t);
-        self.y2_axis.apply_theme(&t);
+        self.x_axis.theme_in_place(&t);
+        self.y_axis.theme_in_place(&t);
+        self.y2_axis.theme_in_place(&t);
         self.theme = Some(t);
         self
     }
@@ -612,7 +612,7 @@ impl LineChart {
 
         if let Some(ch) = &self.crosshair {
             if let (Some(c), Some(r)) = (x_cell(ch.x), y_cell(ch.y)) {
-                let themed = self.theme.as_ref().map(|t| ch.themed(t));
+                let themed = self.theme.as_ref().map(|t| ch.with_theme(t));
                 let ch = themed.as_ref().unwrap_or(ch);
                 crosshair::draw(buf, plot, ch, c, r, &self.tooltip_lines(ch));
             }
@@ -859,6 +859,12 @@ impl LineChart {
 }
 
 widget_impls!(LineChart);
+
+impl tui_nuances::Themed for LineChart {
+    fn apply_theme(self, theme: &tui_nuances::Theme) -> Self {
+        self.theme(theme)
+    }
+}
 
 #[cfg(test)]
 mod tests {

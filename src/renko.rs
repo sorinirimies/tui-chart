@@ -288,6 +288,12 @@ impl RenkoChart {
 
 widget_impls!(RenkoChart);
 
+impl tui_nuances::Themed for RenkoChart {
+    fn apply_theme(self, theme: &tui_nuances::Theme) -> Self {
+        self.theme(theme)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

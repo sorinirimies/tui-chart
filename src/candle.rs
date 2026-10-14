@@ -400,8 +400,8 @@ impl CandlestickChart {
     /// Colors set via [`CandlestickChart::colors`] still win.
     pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
         let t = theme.into();
-        self.x_axis.apply_theme(&t);
-        self.y_axis.apply_theme(&t);
+        self.x_axis.theme_in_place(&t);
+        self.y_axis.theme_in_place(&t);
         self.theme = Some(t);
         self
     }
@@ -509,7 +509,7 @@ impl CandlestickChart {
     pub fn x_axis(mut self, axis: Axis) -> Self {
         self.x_axis = axis;
         if let Some(t) = &self.theme {
-            self.x_axis.apply_theme(t);
+            self.x_axis.theme_in_place(t);
         }
         self
     }
@@ -518,7 +518,7 @@ impl CandlestickChart {
     pub fn y_axis(mut self, axis: Axis) -> Self {
         self.y_axis = axis;
         if let Some(t) = &self.theme {
-            self.y_axis.apply_theme(t);
+            self.y_axis.theme_in_place(t);
         }
         self
     }
@@ -1109,6 +1109,12 @@ impl CandlestickChart {
 }
 
 widget_impls!(CandlestickChart);
+
+impl tui_nuances::Themed for CandlestickChart {
+    fn apply_theme(self, theme: &tui_nuances::Theme) -> Self {
+        self.theme(theme)
+    }
+}
 
 #[cfg(test)]
 mod tests {

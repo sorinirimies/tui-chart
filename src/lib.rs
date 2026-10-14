@@ -120,12 +120,13 @@ pub use renko::{renko_bricks, RenkoBrick, RenkoChart, RenkoStyle};
 pub use sparkline::{Sparkline, SparklineStyle};
 pub use stack::{shared_gutter, ChartStack, StackDirection};
 pub use stream::{RingBuffer, Stream};
-pub use theme::Theme;
+pub use theme::{ChartThemeExt, Theme};
 pub use timeaxis::{
     civil_from_days, date_md, date_ymd, datetime, days_from_civil, time_hm, time_hms,
     time_nice_step, time_ticks,
 };
 pub use treemap::{Treemap, TreemapItem};
+pub use tui_nuances::{Status, ThemeProvider, ThemeSwitcher, Themed};
 pub use waterfall::Waterfall;
 
 use ratatui::style::Color;

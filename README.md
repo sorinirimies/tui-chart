@@ -61,24 +61,34 @@ Dot-based drawing is selected with `Marker`; braille (2×4 dots per cell) is the
 
 ## Theming
 
-Every widget accepts `.theme(impl Into<Theme>)`.
+`tui_chart::Theme` is the shared [`tui-nuances`](https://github.com/sorinirimies/tui-nuances)
+theme (re-exported), so every component by the same author (`tui-slider`, `tui-spinner`, ...)
+can be styled from one `Theme`. Every widget accepts `.theme(impl Into<Theme>)` (and implements
+`tui_nuances::Themed`, so `.apply_theme(&theme)` / `.themed(&provider)` work too).
 
 ```rust
 use tui_chart::{LineChart, Theme};
 
 let theme = Theme::tokyo_night();
-let chart = LineChart::new(series).theme(theme.clone());
-let next = theme.next(); // cycle with next()/prev()
+let chart = LineChart::new(series).theme(&theme);
+let next = theme.next(); // cycle with next()/prev(), or use ThemeSwitcher
 ```
 
-Built-in themes (`Theme::all()`): `default`, `catppuccin_mocha`, `catppuccin_latte`,
-`dracula`, `nord`, `gruvbox`, `tokyo_night`, `solarized_dark`, `porsche`, `colorblind`.
+Built-in themes (`Theme::all()`): `default`, `catppuccin-mocha`, `catppuccin-latte`, `dracula`,
+`nord`, `gruvbox`, `tokyo-night`, `solarized-dark`, `solarized-light`, `one-dark`, `rose-pine`,
+`monokai`, `porsche`, `colorblind`, `high-contrast`, `mono`.
+
+Chart-specific derived values (heatmap `gradient()`, crosshair/tooltip styles, palette cycling)
+come from the `ChartThemeExt` trait.
+
+**Precedence:** explicit colors/styles (series colors, candle colors, axis styles,
+`.base_style(..)`) always beat the theme, whether set before or after `.theme(..)`.
+With no theme set, rendering is unchanged.
 
 ### Using your app's theme
 
-`Theme` has public fields, and `Theme::from_base(name, bg, fg, accent, bull, bear)` derives
-the rest (muted, grid, palette, tooltip). Implement `From<&AppTheme> for Theme` once in your
-app and pass your own theme straight in:
+`Theme::from_base(name, bg, fg, accent, bull, bear)` derives the rest. Implement
+`ThemeProvider` (any widget: `.themed(&app)`) or `From<&AppTheme> for Theme` once in your app:
 
 ```rust
 impl From<&AppTheme> for tui_chart::Theme {
@@ -88,8 +98,6 @@ impl From<&AppTheme> for tui_chart::Theme {
 }
 let chart = LineChart::new(series).theme(&app_theme);
 ```
-
-Explicit per-series colors and `.base_style(..)` always override the theme.
 
 ## Cargo features
 

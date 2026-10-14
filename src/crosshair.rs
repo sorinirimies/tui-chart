@@ -36,7 +36,7 @@ impl Crosshair {
 
     /// Copy with theme crosshair/tooltip colors for styles still at their
     /// defaults (explicitly set styles are kept).
-    pub(crate) fn themed(&self, t: &crate::theme::Theme) -> Self {
+    pub(crate) fn with_theme(&self, t: &crate::theme::Theme) -> Self {
         let d = Crosshair::new(self.x, self.y);
         let mut c = *self;
         if c.style == d.style {
@@ -46,6 +46,14 @@ impl Crosshair {
             c.tooltip_style = Style::default().fg(t.tooltip_fg).bg(t.tooltip_bg);
         }
         c
+    }
+
+    /// Use the theme's crosshair/tooltip colors for styles still at their
+    /// defaults; explicit [`style`](Self::style) / [`tooltip_style`](Self::tooltip_style)
+    /// win regardless of call order.
+    #[must_use]
+    pub fn theme(self, theme: impl Into<crate::theme::Theme>) -> Self {
+        self.with_theme(&theme.into())
     }
 
     setter!(
@@ -168,6 +176,12 @@ pub(crate) fn draw(
             }
         }
         buf.set_stringn(cx + 1, cy, l, (tw - 2) as usize, ch.tooltip_style);
+    }
+}
+
+impl tui_nuances::Themed for Crosshair {
+    fn apply_theme(self, theme: &tui_nuances::Theme) -> Self {
+        self.with_theme(theme)
     }
 }
 

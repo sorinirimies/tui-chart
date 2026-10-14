@@ -110,7 +110,7 @@ impl Histogram {
     /// [`Histogram::color`] wins.
     pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
         let t = theme.into();
-        self.value_axis.apply_theme(&t);
+        self.value_axis.theme_in_place(&t);
         self.theme = Some(t);
         self
     }
@@ -155,7 +155,7 @@ impl Histogram {
     pub fn value_axis(mut self, a: Axis) -> Self {
         self.value_axis = a;
         if let Some(t) = &self.theme {
-            self.value_axis.apply_theme(t);
+            self.value_axis.theme_in_place(t);
         }
         self
     }
@@ -345,6 +345,12 @@ impl Histogram {
 }
 
 widget_impls!(Histogram);
+
+impl tui_nuances::Themed for Histogram {
+    fn apply_theme(self, theme: &tui_nuances::Theme) -> Self {
+        self.theme(theme)
+    }
+}
 
 #[cfg(test)]
 mod tests {

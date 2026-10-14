@@ -1,7 +1,7 @@
 //! Inline sparkline using block characters `▁▂▃▄▅▆▇█`.
 
 use crate::canvas::{Canvas, Marker};
-use crate::theme::{self, Theme};
+use crate::theme::{self, ChartThemeExt, Theme};
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -242,6 +242,12 @@ impl Sparkline<'_> {
 }
 
 widget_impls!(Sparkline<'_>);
+
+impl<'a> tui_nuances::Themed for Sparkline<'a> {
+    fn apply_theme(self, theme: &tui_nuances::Theme) -> Self {
+        self.theme(theme)
+    }
+}
 
 #[cfg(test)]
 mod tests {

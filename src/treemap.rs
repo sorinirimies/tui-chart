@@ -1,6 +1,6 @@
 //! Treemap: squarified treemap of weighted (optionally nested) items.
 
-use crate::theme::{self, Theme};
+use crate::theme::{self, ChartThemeExt, Theme};
 use crate::util::format_compact;
 use ratatui::{
     buffer::Buffer,
@@ -370,6 +370,12 @@ impl Treemap {
 }
 
 widget_impls!(Treemap);
+
+impl tui_nuances::Themed for Treemap {
+    fn apply_theme(self, theme: &tui_nuances::Theme) -> Self {
+        self.theme(theme)
+    }
+}
 
 #[cfg(test)]
 mod tests {

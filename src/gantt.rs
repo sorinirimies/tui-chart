@@ -249,6 +249,12 @@ impl Gantt {
 
 widget_impls!(Gantt);
 
+impl tui_nuances::Themed for Gantt {
+    fn apply_theme(self, theme: &tui_nuances::Theme) -> Self {
+        self.theme(theme)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

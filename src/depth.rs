@@ -287,6 +287,12 @@ impl DepthChart {
 
 widget_impls!(DepthChart);
 
+impl tui_nuances::Themed for DepthChart {
+    fn apply_theme(self, theme: &tui_nuances::Theme) -> Self {
+        self.theme(theme)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

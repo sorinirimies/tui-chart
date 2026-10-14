@@ -92,7 +92,7 @@ All contributions must be submitted through GitHub using the forking workflow:
 |---|---|
 | `src/lib.rs` | Crate docs, module list, the public `pub use` surface |
 | `src/macros.rs` | Internal `macro_rules!` (see catalog below); declared first with `#[macro_use]` |
-| `src/theme.rs` | `Theme` presets, palette lookup, `theme::begin` (background fill + block → inner area) |
+| `src/theme.rs` | Thin chart glue over the shared `tui_nuances::Theme` (re-exported): `ChartThemeExt` (heatmap gradient, crosshair/tooltip styles), `theme::begin` (background fill + block → inner area). Theme data/built-ins live in `tui-nuances`; every widget also implements `tui_nuances::Themed` |
 | `src/canvas.rs` | Sub-cell drawing surface (braille/half-block/etc.) used by line-like widgets |
 | `src/layout.rs`, `src/axis.rs` | Plot-area computation, axis drawing, tick/label gutters |
 | `src/util.rs` | Public numeric helpers: `nice_ticks`, `nice_bounds`, `format_tick`, `format_compact`, `PALETTE` |

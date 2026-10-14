@@ -265,6 +265,12 @@ impl Gauge<'_> {
 
 widget_impls!(Gauge<'_>);
 
+impl<'a> tui_nuances::Themed for Gauge<'a> {
+    fn apply_theme(self, theme: &tui_nuances::Theme) -> Self {
+        self.theme(theme)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

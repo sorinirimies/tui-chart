@@ -14,10 +14,11 @@ use ratatui::{
 use std::time::Duration;
 use tui_chart::{
     BarChart, BarGroup, Candle, CandlestickChart, Gauge, Heatmap, LineChart, RadarChart,
-    RadarSeries, Series, Sparkline, Theme, Treemap, TreemapItem,
+    RadarSeries, Series, Sparkline, Theme, ThemeSwitcher, Treemap, TreemapItem,
 };
 
 struct State {
+    switcher: ThemeSwitcher,
     theme: Theme,
     candles: Vec<Candle>,
     spark: Vec<f64>,
@@ -39,6 +40,7 @@ fn main() -> anyhow::Result<()> {
     let spark = (0..80).map(|_| rng.f64() * 10.0).collect();
     run(
         State {
+            switcher: ThemeSwitcher::new(),
             theme: Theme::default(),
             candles,
             spark,
@@ -118,8 +120,8 @@ fn main() -> anyhow::Result<()> {
         },
         |s, key| {
             match key {
-                KeyCode::Char('t') => s.theme = s.theme.next(),
-                KeyCode::Char('T') => s.theme = s.theme.prev(),
+                KeyCode::Char('t') => s.theme = s.switcher.next().clone(),
+                KeyCode::Char('T') => s.theme = s.switcher.prev().clone(),
                 KeyCode::Char('q') | KeyCode::Esc => return true,
                 _ => {}
             }

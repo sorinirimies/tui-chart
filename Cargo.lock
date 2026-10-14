@@ -1566,7 +1566,17 @@ dependencies = [
  "ratatui",
  "serde",
  "serde_json",
+ "tui-nuances",
  "unicode-width",
+]
+
+[[package]]
+name = "tui-nuances"
+version = "0.1.0"
+source = "git+https://github.com/sorinirimies/tui-nuances#1222f395209395ddf511d74e42a21f5a5f427e26"
+dependencies = [
+ "ratatui",
+ "serde",
 ]
 
 [[package]]

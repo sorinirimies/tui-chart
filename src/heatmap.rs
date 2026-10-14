@@ -1,7 +1,7 @@
 //! Heatmap with selectable color gradients.
 
 use crate::layout::{self, text_width};
-use crate::theme::{self, Theme};
+use crate::theme::{self, ChartThemeExt, Theme};
 use crate::util::format_compact;
 use ratatui::{
     buffer::Buffer,
@@ -336,6 +336,12 @@ impl Heatmap {
 }
 
 widget_impls!(Heatmap);
+
+impl tui_nuances::Themed for Heatmap {
+    fn apply_theme(self, theme: &tui_nuances::Theme) -> Self {
+        self.theme(theme)
+    }
+}
 
 #[cfg(test)]
 mod tests {
