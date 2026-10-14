@@ -229,7 +229,6 @@ scripts/
 ├── upgrade_deps.nu       # Nightly dependency upgrade
 ├── version.nu            # Print current version
 ├── setup_gitea.nu        # Set up Gitea remote
-├── migrate_to_gitea.nu   # Full Gitea migration
 └── README.md             # Script documentation
 ```
 
