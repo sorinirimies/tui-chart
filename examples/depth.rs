@@ -46,7 +46,7 @@ fn main() -> anyhow::Result<()> {
         Duration::from_millis(250),
         |f, s| {
             let [main, bar] =
-                Layout::vertical([Constraint::Min(5), Constraint::Length(1)]).areas(f.area());
+                Layout::vertical([Constraint::Min(5), Constraint::Length(2)]).areas(f.area());
             let bids = (1..=40).map(|i| {
                 (
                     s.mid - 0.25 - i as f64 * 0.25,

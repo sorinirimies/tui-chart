@@ -29,7 +29,7 @@ fn main() -> anyhow::Result<()> {
         Duration::from_millis(500),
         |f, s| {
             let [main, bar] =
-                Layout::vertical([Constraint::Min(5), Constraint::Length(1)]).areas(f.area());
+                Layout::vertical([Constraint::Min(5), Constraint::Length(2)]).areas(f.area());
             let progress =
                 |start: f64, end: f64| ((s.today - start) / (end - start)).clamp(0.0, 1.0);
             let spec = [

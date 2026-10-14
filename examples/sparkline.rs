@@ -43,7 +43,7 @@ fn main() -> anyhow::Result<()> {
             let [a, b, bar] = Layout::vertical([
                 Constraint::Length(3),
                 Constraint::Min(5),
-                Constraint::Length(1),
+                Constraint::Length(2),
             ])
             .areas(f.area());
             let style = if s.line {

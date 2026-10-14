@@ -46,7 +46,7 @@ fn main() -> anyhow::Result<()> {
         Duration::from_millis(200),
         |f, s| {
             let [main, bar] =
-                Layout::vertical([Constraint::Min(8), Constraint::Length(1)]).areas(f.area());
+                Layout::vertical([Constraint::Min(8), Constraint::Length(2)]).areas(f.area());
             let rows = Layout::vertical([Constraint::Ratio(1, 2); 2]).split(main);
             let top = Layout::horizontal([Constraint::Ratio(1, 4); 4]).split(rows[0]);
             let bot = Layout::horizontal([Constraint::Ratio(1, 4); 4]).split(rows[1]);

@@ -50,7 +50,7 @@ fn main() -> anyhow::Result<()> {
         Duration::from_millis(500),
         |f, s| {
             let [main, bar] =
-                Layout::vertical([Constraint::Min(5), Constraint::Length(1)]).areas(f.area());
+                Layout::vertical([Constraint::Min(5), Constraint::Length(2)]).areas(f.area());
             let mut h = Histogram::new(s.data.clone())
                 .bins(s.bins)
                 .color(Color::LightBlue)

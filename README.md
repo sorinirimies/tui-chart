@@ -1,5 +1,7 @@
 # tui-chart
 
+![tui-chart demo](examples/vhs/output/tui_chart.gif)
+
 [![CI](https://github.com/sorinirimies/tui-chart/actions/workflows/ci.yml/badge.svg)](https://github.com/sorinirimies/tui-chart/actions)
 [![Crates.io](https://img.shields.io/crates/v/tui-chart.svg)](https://crates.io/crates/tui-chart)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)

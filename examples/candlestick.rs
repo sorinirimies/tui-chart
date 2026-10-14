@@ -64,7 +64,7 @@ fn main() -> anyhow::Result<()> {
         Duration::from_millis(400),
         |f, s| {
             let [main, bar] =
-                Layout::vertical([Constraint::Min(8), Constraint::Length(1)]).areas(f.area());
+                Layout::vertical([Constraint::Min(8), Constraint::Length(2)]).areas(f.area());
             let last = s.candles.last().map(|c| c.close).unwrap_or(0.0);
             let mut chart = CandlestickChart::new(s.candles.clone())
                 .style(s.style)

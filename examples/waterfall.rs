@@ -49,7 +49,7 @@ fn main() -> anyhow::Result<()> {
         Duration::from_millis(500),
         |f, s| {
             let [main, bar] =
-                Layout::vertical([Constraint::Min(5), Constraint::Length(1)]).areas(f.area());
+                Layout::vertical([Constraint::Min(5), Constraint::Length(2)]).areas(f.area());
             let mut w = Waterfall::new().initial(100.0);
             for (i, d) in s.deltas.iter().enumerate() {
                 w = w.delta(format!("Q{}", i + 1), *d);

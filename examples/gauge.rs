@@ -34,7 +34,7 @@ fn main() -> anyhow::Result<()> {
         Duration::from_millis(200),
         |f, s| {
             let [main, bar] =
-                Layout::vertical([Constraint::Min(5), Constraint::Length(1)]).areas(f.area());
+                Layout::vertical([Constraint::Min(5), Constraint::Length(2)]).areas(f.area());
             let o = if s.vertical {
                 GaugeOrientation::Vertical
             } else {

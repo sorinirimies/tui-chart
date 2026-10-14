@@ -47,7 +47,7 @@ fn main() -> anyhow::Result<()> {
         Duration::from_millis(100),
         |f, s| {
             let [main, bar] =
-                Layout::vertical([Constraint::Min(5), Constraint::Length(1)]).areas(f.area());
+                Layout::vertical([Constraint::Min(5), Constraint::Length(2)]).areas(f.area());
             let hours: Vec<String> = (0..24).map(|h| format!("{h:02}")).collect();
             let hm = Heatmap::new(grid(s.t))
                 .row_labels(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"])

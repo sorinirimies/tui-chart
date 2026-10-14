@@ -36,7 +36,7 @@ fn main() -> anyhow::Result<()> {
         Duration::from_millis(80),
         |f, s| {
             let [main, bar] =
-                Layout::vertical([Constraint::Min(5), Constraint::Length(1)]).areas(f.area());
+                Layout::vertical([Constraint::Min(5), Constraint::Length(2)]).areas(f.area());
             let a = (0..6).map(|i| 6.0 + 3.0 * (s.t + i as f64).sin());
             let b = (0..6).map(|i| 5.0 + 4.0 * ((s.t * 0.7) + i as f64 * 2.0).cos());
             let c = RadarChart::new(["Speed", "Power", "Range", "Armor", "Stealth", "Cost"])

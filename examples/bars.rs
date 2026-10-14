@@ -69,7 +69,7 @@ fn main() -> anyhow::Result<()> {
         Duration::from_millis(500),
         |f, s| {
             let [main, bar] =
-                Layout::vertical([Constraint::Min(5), Constraint::Length(1)]).areas(f.area());
+                Layout::vertical([Constraint::Min(5), Constraint::Length(2)]).areas(f.area());
             let (groups, names) = data(s.set);
             let mut chart = BarChart::new(groups)
                 .series_names(names)

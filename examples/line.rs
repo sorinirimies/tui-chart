@@ -62,7 +62,7 @@ fn main() -> anyhow::Result<()> {
         Duration::from_millis(80),
         |f, s| {
             let [main, bar] =
-                Layout::vertical([Constraint::Min(5), Constraint::Length(1)]).areas(f.area());
+                Layout::vertical([Constraint::Min(5), Constraint::Length(2)]).areas(f.area());
             let sin = (0..120).map(|i| (i as f64, ((i as f64 + s.t) / 8.0).sin() * 2.0));
             let cos = (0..120).map(|i| (i as f64, ((i as f64 + s.t) / 12.0).cos() * 1.5));
             let walk = s.walk.iter().enumerate().map(|(i, v)| (i as f64, *v));

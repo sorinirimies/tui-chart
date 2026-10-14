@@ -40,7 +40,9 @@ impl Rng {
 /// Render a one-line help bar.
 pub fn help(f: &mut Frame, area: Rect, text: &str) {
     f.render_widget(
-        Paragraph::new(Line::from(text.to_string())).style(Style::default().fg(Color::DarkGray)),
+        Paragraph::new(Line::from(text.to_string()))
+            .wrap(ratatui::widgets::Wrap { trim: true })
+            .style(Style::default().fg(Color::DarkGray)),
         area,
     );
 }
