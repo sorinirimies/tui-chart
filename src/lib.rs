@@ -41,40 +41,58 @@
 //! ```
 #![warn(missing_docs)]
 
+mod annotation;
 mod axis;
 mod bar;
 mod boxplot;
 mod candle;
 mod canvas;
+mod crosshair;
 mod depth;
 mod gantt;
 mod gauge;
 mod heatmap;
 mod histogram;
+mod indicator;
 mod layout;
 mod line;
 mod radar;
 mod renko;
 mod sparkline;
+mod stack;
+mod stream;
+mod timeaxis;
 mod treemap;
 mod waterfall;
 
 pub mod util;
 
+pub use annotation::{draw_annotations, Annotation, AnnotationKind};
 pub use axis::Axis;
-pub use bar::{BarChart, BarGroup, BarMode, BarOrientation};
+pub use bar::{BarChart, BarGroup, BarMode, BarOrientation, LabelPosition};
 pub use boxplot::{BoxOrientation, BoxPlot, BoxStats};
-pub use candle::{ema, heikin_ashi, sma, Candle, CandleStyle, CandlestickChart, Overlay};
+pub use candle::{
+    ema, heikin_ashi, sma, BandOverlay, Candle, CandleStyle, CandlestickChart, HLine,
+    IndicatorPane, Overlay, TradeMarker, TradeSide,
+};
 pub use canvas::{Canvas, Marker};
+pub use crosshair::{nearest_point, Crosshair, NearestPoint};
 pub use depth::DepthChart;
 pub use gantt::{Gantt, Task};
 pub use gauge::{Gauge, GaugeOrientation, GaugeStyle};
 pub use heatmap::{Gradient, Heatmap};
 pub use histogram::{Bin, Histogram};
+pub use indicator::{atr, bollinger, macd, rsi, stochastic, vwap};
 pub use line::{LegendPosition, LineChart, LineMode, Series};
 pub use radar::{RadarChart, RadarSeries};
 pub use renko::{renko_bricks, RenkoBrick, RenkoChart, RenkoStyle};
 pub use sparkline::{Sparkline, SparklineStyle};
+pub use stack::{shared_gutter, ChartStack, StackDirection};
+pub use stream::{RingBuffer, Stream};
+pub use timeaxis::{
+    civil_from_days, date_md, date_ymd, datetime, days_from_civil, time_hm, time_hms,
+    time_nice_step, time_ticks,
+};
 pub use treemap::{Treemap, TreemapItem};
 pub use waterfall::Waterfall;
 

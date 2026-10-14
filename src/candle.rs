@@ -1,12 +1,13 @@
 //! Candlestick / OHLC chart for price data (stocks, crypto, FX…).
 
 use crate::axis::Axis;
+use crate::indicator;
 use crate::layout::{self, text_width};
 use crate::util::{format_compact, nice_bounds};
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::{Color, Style},
+    style::{Color, Modifier, Style},
     widgets::{Block, Widget},
 };
 
@@ -98,6 +99,138 @@ impl Overlay {
     }
 }
 
+/// Shaded band between two series (e.g. Bollinger bands) aligned to the candle index.
+#[derive(Debug, Clone)]
+pub struct BandOverlay {
+    /// Legend name.
+    pub name: String,
+    /// Upper bound per candle.
+    pub upper: Vec<Option<f64>>,
+    /// Lower bound per candle.
+    pub lower: Vec<Option<f64>>,
+    /// Shading color.
+    pub color: Color,
+}
+
+impl BandOverlay {
+    /// Create a band overlay.
+    pub fn new(
+        name: impl Into<String>,
+        upper: Vec<Option<f64>>,
+        lower: Vec<Option<f64>>,
+        color: Color,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            upper,
+            lower,
+            color,
+        }
+    }
+
+    /// Bollinger band (`period`, `k` standard deviations) over `candles`.
+    pub fn bollinger(candles: &[Candle], period: usize, k: f64, color: Color) -> Self {
+        let (_, up, lo) = indicator::bollinger(candles, period, k);
+        Self::new(format!("BB{period}"), up, lo, color)
+    }
+}
+
+/// Sub-pane drawn below the price (and volume) panel, sharing the x axis.
+#[derive(Debug, Clone)]
+pub enum IndicatorPane {
+    /// RSI with 30/70 reference lines.
+    Rsi {
+        /// Lookback period (commonly 14).
+        period: usize,
+    },
+    /// MACD lines plus histogram bars.
+    Macd {
+        /// Fast EMA period (commonly 12).
+        fast: usize,
+        /// Slow EMA period (commonly 26).
+        slow: usize,
+        /// Signal EMA period (commonly 9).
+        signal: usize,
+    },
+    /// Arbitrary line series, auto-scaled.
+    Custom {
+        /// Pane label.
+        name: String,
+        /// One value per candle.
+        values: Vec<Option<f64>>,
+        /// Line color.
+        color: Color,
+    },
+}
+
+/// Side of a [`TradeMarker`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TradeSide {
+    /// Buy (drawn as ▲ in the up color).
+    Buy,
+    /// Sell (drawn as ▼ in the down color).
+    Sell,
+}
+
+/// A buy/sell marker placed at a candle index and price.
+#[derive(Debug, Clone, PartialEq)]
+pub struct TradeMarker {
+    /// Index into the full candle list.
+    pub index: usize,
+    /// Price level of the marker.
+    pub price: f64,
+    /// Buy or sell.
+    pub side: TradeSide,
+    /// Optional text drawn next to the glyph.
+    pub label: Option<String>,
+}
+
+impl TradeMarker {
+    /// Create a marker without label.
+    pub fn new(index: usize, price: f64, side: TradeSide) -> Self {
+        Self {
+            index,
+            price,
+            side,
+            label: None,
+        }
+    }
+
+    /// Attach a label.
+    pub fn label(mut self, label: impl Into<String>) -> Self {
+        self.label = Some(label.into());
+        self
+    }
+}
+
+/// Horizontal reference line (support / resistance / target…).
+#[derive(Debug, Clone, PartialEq)]
+pub struct HLine {
+    /// Price level.
+    pub price: f64,
+    /// Optional label (defaults to the price).
+    pub label: Option<String>,
+    /// Line color.
+    pub color: Color,
+}
+
+impl HLine {
+    /// Create a line at `price`.
+    pub fn new(price: f64, color: Color) -> Self {
+        Self {
+            price,
+            label: None,
+            color,
+        }
+    }
+
+    /// Attach a label.
+    pub fn label(mut self, label: impl Into<String>) -> Self {
+        self.label = Some(label.into());
+        self
+    }
+}
+
 /// Simple moving average of closes (`None` until `period` values exist).
 pub fn sma(candles: &[Candle], period: usize) -> Vec<Option<f64>> {
     let period = period.max(1);
@@ -163,6 +296,25 @@ pub fn heikin_ashi(candles: &[Candle]) -> Vec<Candle> {
     out
 }
 
+fn hline_row(buf: &mut Buffer, area: Rect, row: u16, ch: char, style: Style) {
+    for x in area.x..area.right() {
+        if let Some(cell) = buf.cell_mut((x, area.y + row)) {
+            if cell.symbol() == " " || cell.symbol() == "·" || cell.symbol() == "░" {
+                cell.set_char(ch).set_style(style);
+            }
+        }
+    }
+}
+
+/// Right-aligned text tag on a row of `area`.
+fn tag(buf: &mut Buffer, area: Rect, row: u16, text: &str, style: Style) {
+    let w = text_width(text);
+    if w + 2 > area.width {
+        return;
+    }
+    buf.set_string(area.right() - w, area.y + row, text, style);
+}
+
 const EIGHTHS: [char; 9] = [' ', '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
 
 /// Candlestick / OHLC chart with optional volume panel and overlays.
@@ -178,6 +330,11 @@ pub struct CandlestickChart {
     last_price_line: bool,
     scroll: usize,
     overlays: Vec<Overlay>,
+    bands: Vec<BandOverlay>,
+    panes: Vec<IndicatorPane>,
+    markers: Vec<TradeMarker>,
+    hlines: Vec<HLine>,
+    volume_profile: bool,
     block: Option<Block<'static>>,
     x_axis: Axis,
     y_axis: Axis,
@@ -197,6 +354,11 @@ impl CandlestickChart {
             last_price_line: true,
             scroll: 0,
             overlays: vec![],
+            bands: vec![],
+            panes: vec![],
+            markers: vec![],
+            hlines: vec![],
+            volume_profile: false,
             block: None,
             x_axis: Axis::new().ticks(6),
             y_axis: Axis::new().grid(true),
@@ -252,6 +414,46 @@ impl CandlestickChart {
         self
     }
 
+    /// Add a shaded band (e.g. Bollinger) behind the candles.
+    pub fn band(mut self, band: BandOverlay) -> Self {
+        self.bands.push(band);
+        self
+    }
+
+    /// Add an indicator sub-pane below price/volume (dropped if there is no room).
+    pub fn pane(mut self, pane: IndicatorPane) -> Self {
+        self.panes.push(pane);
+        self
+    }
+
+    /// Add a buy/sell marker.
+    pub fn marker(mut self, marker: TradeMarker) -> Self {
+        self.markers.push(marker);
+        self
+    }
+
+    /// Add a horizontal reference line.
+    pub fn hline(mut self, line: HLine) -> Self {
+        self.hlines.push(line);
+        self
+    }
+
+    /// Support level (green dashed line labelled "S").
+    pub fn support(self, price: f64) -> Self {
+        self.hline(HLine::new(price, Color::Green).label(format!("S {price:.2}")))
+    }
+
+    /// Resistance level (red dashed line labelled "R").
+    pub fn resistance(self, price: f64) -> Self {
+        self.hline(HLine::new(price, Color::Red).label(format!("R {price:.2}")))
+    }
+
+    /// Horizontal volume-by-price histogram along the right of the price panel.
+    pub fn volume_profile(mut self, on: bool) -> Self {
+        self.volume_profile = on;
+        self
+    }
+
     /// Wrap in a block.
     pub fn block(mut self, block: Block<'static>) -> Self {
         self.block = Some(block);
@@ -288,6 +490,156 @@ impl CandlestickChart {
             self.up_color
         } else {
             self.down_color
+        }
+    }
+
+    fn draw_profile(
+        &self,
+        buf: &mut Buffer,
+        price: Rect,
+        vis: &[&Candle],
+        sub: &dyn Fn(f64) -> i32,
+    ) {
+        let mut bins = vec![0.0f64; price.height as usize];
+        for c in vis.iter().filter(|c| c.is_valid() && c.volume.is_finite()) {
+            let (r0, r1) = ((sub(c.high) / 2) as usize, (sub(c.low) / 2) as usize);
+            let share = c.volume / (r1 - r0 + 1) as f64;
+            for b in bins.iter_mut().take(r1 + 1).skip(r0) {
+                *b += share;
+            }
+        }
+        let max = bins.iter().cloned().fold(0.0, f64::max);
+        if max <= 0.0 {
+            return;
+        }
+        let w = (price.width / 5).clamp(1, 20) as f64;
+        let st = Style::default().fg(Color::DarkGray);
+        for (r, v) in bins.iter().enumerate() {
+            let len = (v / max * w).round() as u16;
+            for dx in 0..len {
+                buf.set_string(price.right() - 1 - dx, price.y + r as u16, "▒", st);
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn draw_pane(
+        &self,
+        buf: &mut Buffer,
+        r: Rect,
+        gutter: Rect,
+        pane: &IndicatorPane,
+        start: usize,
+        n_vis: usize,
+        slot: usize,
+        bw: u16,
+    ) {
+        if r.height == 0 || r.width == 0 {
+            return;
+        }
+        let dim = Style::default().fg(Color::DarkGray);
+        // (name, lines [(values,color)], hist, bounds, refs)
+        let (name, lines, hist, (lo, hi), refs): (String, Vec<_>, Option<Vec<_>>, _, Vec<f64>) =
+            match pane {
+                IndicatorPane::Rsi { period } => (
+                    format!("RSI {period}"),
+                    vec![(indicator::rsi(&self.candles, *period), Color::Cyan)],
+                    None,
+                    (0.0, 100.0),
+                    vec![70.0, 30.0],
+                ),
+                IndicatorPane::Macd { fast, slow, signal } => {
+                    let (m, s, h) = indicator::macd(&self.candles, *fast, *slow, *signal);
+                    let range = (start..start + n_vis)
+                        .flat_map(|i| [m.get(i), s.get(i), h.get(i)])
+                        .flatten()
+                        .flatten()
+                        .fold(0.0f64, |a, v| a.max(v.abs()));
+                    let range = if range > 0.0 { range } else { 1.0 };
+                    (
+                        format!("MACD {fast},{slow},{signal}"),
+                        vec![(m, Color::Cyan), (s, Color::Yellow)],
+                        Some(h),
+                        (-range, range),
+                        vec![0.0],
+                    )
+                }
+                IndicatorPane::Custom {
+                    name,
+                    values,
+                    color,
+                } => {
+                    let vals = || {
+                        (start..start + n_vis)
+                            .filter_map(|i| values.get(i).copied().flatten())
+                            .filter(|v| v.is_finite())
+                    };
+                    let lo = vals().fold(f64::INFINITY, f64::min);
+                    let hi = vals().fold(f64::NEG_INFINITY, f64::max);
+                    let b = if hi > lo { (lo, hi) } else { (0.0, 1.0) };
+                    (
+                        name.clone(),
+                        vec![(values.clone(), *color)],
+                        None,
+                        b,
+                        vec![],
+                    )
+                }
+            };
+        let h = r.height as f64;
+        let row = |v: f64| -> u16 {
+            ((hi - v) / (hi - lo) * (h - 1.0))
+                .round()
+                .clamp(0.0, h - 1.0) as u16
+        };
+        let mut ticks = vec![];
+        for rv in &refs {
+            let rr = row(*rv);
+            hline_row(buf, r, rr, '┄', dim);
+            ticks.push((rr, format!("{rv:.0}")));
+        }
+        layout::draw_y_labels(buf, gutter, &ticks, dim);
+        let xs = |i: usize| r.x + (i * slot) as u16;
+        if let Some(hs) = &hist {
+            let z = row(0.0);
+            for i in 0..n_vis {
+                let Some(Some(v)) = hs.get(start + i) else {
+                    continue;
+                };
+                if !v.is_finite() {
+                    continue;
+                }
+                let col = if *v >= 0.0 {
+                    self.up_color
+                } else {
+                    self.down_color
+                };
+                let rv = row(*v);
+                for dx in 0..bw {
+                    let x = xs(i) + dx;
+                    if x >= r.right() {
+                        break;
+                    }
+                    for y in z.min(rv)..=z.max(rv) {
+                        buf.set_string(x, r.y + y, "█", Style::default().fg(col));
+                    }
+                }
+            }
+        }
+        for (vals, col) in &lines {
+            for i in 0..n_vis {
+                let Some(Some(v)) = vals.get(start + i) else {
+                    continue;
+                };
+                let x = xs(i) + bw / 2;
+                if !v.is_finite() || x >= r.right() {
+                    continue;
+                }
+                buf.set_string(x, r.y + row(*v), "●", Style::default().fg(*col));
+            }
+        }
+        if text_width(&name) < r.width {
+            buf.set_string(r.x + 1, r.y, &name, dim);
         }
     }
 
@@ -350,7 +702,19 @@ impl CandlestickChart {
         } else {
             0
         };
-        let price = Rect::new(plot.x, plot.y, plot.width, plot.height - vol_h);
+        let pane_each = (plot.height / 6).max(3);
+        let mut panes_n = 0usize;
+        let mut panes_h = 0u16;
+        for _ in &self.panes {
+            let nh = panes_h + pane_each;
+            if plot.height.saturating_sub(nh + vol_h) < 5 {
+                break;
+            }
+            panes_n += 1;
+            panes_h = nh;
+        }
+        let vol_bottom = plot.bottom() - panes_h;
+        let price = Rect::new(plot.x, plot.y, plot.width, plot.height - vol_h - panes_h);
         let sub_n = price.height as f64 * 2.0;
         let sub = |p: f64| -> i32 {
             ((hi - p) / (hi - lo) * (sub_n - 1.0))
@@ -368,20 +732,57 @@ impl CandlestickChart {
             layout::draw_grid(buf, price, &[], &rows, self.y_axis.grid_style);
         }
 
-        // last price line
-        if self.last_price_line {
-            if let Some(c) = vis.iter().rev().find(|c| c.is_valid()) {
-                let row = (sub(c.close) / 2) as u16;
-                let style = Style::default().fg(self.color_of(c));
-                for x in price.x..price.right() {
-                    if let Some(cell) = buf.cell_mut((x, price.y + row)) {
-                        if cell.symbol() == " " || cell.symbol() == "·" {
-                            cell.set_char('┈').set_style(style);
+        // volume profile + bands (behind candles)
+        if self.volume_profile && price.width >= 20 {
+            self.draw_profile(buf, price, &vis, &sub);
+        }
+        for band in &self.bands {
+            let st = Style::default().fg(band.color);
+            for i in 0..vis.len() {
+                let (Some(Some(u)), Some(Some(l))) =
+                    (band.upper.get(start + i), band.lower.get(start + i))
+                else {
+                    continue;
+                };
+                if !u.is_finite() || !l.is_finite() || (*u < lo && *l < lo) || (*u > hi && *l > hi)
+                {
+                    continue;
+                }
+                let x0 = price.x + (i * slot) as u16;
+                for dx in 0..slot.min(2).max(bw as usize) as u16 {
+                    let x = x0 + dx;
+                    if x >= price.right() {
+                        break;
+                    }
+                    for r in (sub(*u) / 2)..=(sub(*l) / 2) {
+                        if let Some(cell) = buf.cell_mut((x, price.y + r as u16)) {
+                            if cell.symbol() == " " || cell.symbol() == "·" {
+                                cell.set_char('░').set_style(st);
+                            }
                         }
                     }
                 }
             }
         }
+
+        // horizontal lines + last price line
+        for h in &self.hlines {
+            if h.price.is_finite() && h.price >= lo && h.price <= hi {
+                let row = (sub(h.price) / 2) as u16;
+                let label = h.label.clone().unwrap_or_else(|| format!("{:.2}", h.price));
+                hline_row(buf, price, row, '┄', Style::default().fg(h.color));
+                tag(buf, price, row, &label, Style::default().fg(h.color));
+            }
+        }
+        let last_tag = if self.last_price_line {
+            vis.iter().rev().find(|c| c.is_valid()).map(|c| {
+                let row = (sub(c.close) / 2) as u16;
+                hline_row(buf, price, row, '┈', Style::default().fg(self.color_of(c)));
+                (row, format!("{:.2}", c.close), self.color_of(c))
+            })
+        } else {
+            None
+        };
 
         let max_vol = vis
             .iter()
@@ -463,7 +864,7 @@ impl CandlestickChart {
                     if fill == 0 {
                         break;
                     }
-                    let y = plot.bottom() - 1 - r as u16;
+                    let y = vol_bottom - 1 - r as u16;
                     for dx in 0..bw {
                         buf.set_string(x0 + dx, y, EIGHTHS[fill].to_string(), st);
                     }
@@ -489,6 +890,49 @@ impl CandlestickChart {
             }
         }
 
+        // trade markers
+        for m in &self.markers {
+            if m.index < start || m.index >= start + vis.len() || !m.price.is_finite() {
+                continue;
+            }
+            if m.price < lo || m.price > hi {
+                continue;
+            }
+            let i = m.index - start;
+            let x = price.x + (i * slot) as u16 + bw / 2;
+            if x >= price.right() {
+                continue;
+            }
+            let row = (sub(m.price) / 2) as u16;
+            let (g, col) = match m.side {
+                TradeSide::Buy => ('▲', self.up_color),
+                TradeSide::Sell => ('▼', self.down_color),
+            };
+            let st = Style::default().fg(col).add_modifier(Modifier::BOLD);
+            buf.set_string(x, price.y + row, g.to_string(), st);
+            if let Some(l) = &m.label {
+                if x + 1 + text_width(l) < price.right() {
+                    buf.set_string(x + 1, price.y + row, l, Style::default().fg(col));
+                }
+            }
+        }
+        if let Some((row, text, col)) = last_tag {
+            let st = Style::default().fg(Color::Black).bg(col);
+            tag(buf, price, row, &format!(" {text} "), st);
+        }
+
+        // indicator panes
+        for (k, pane) in self.panes.iter().take(panes_n).enumerate() {
+            let r = Rect::new(
+                plot.x,
+                plot.bottom() - panes_h + k as u16 * pane_each,
+                plot.width,
+                pane_each,
+            );
+            let gutter = Rect::new(a.y_labels.x, r.y, a.y_labels.width, r.height);
+            self.draw_pane(buf, r, gutter, pane, start, vis.len(), slot, bw);
+        }
+
         layout::draw_axes(buf, &a, self.x_axis.style, self.y_axis.style);
         layout::draw_y_labels(
             buf,
@@ -497,7 +941,7 @@ impl CandlestickChart {
             self.y_axis.label_style,
         );
         if vol_h > 0 {
-            let top = Rect::new(a.y_labels.x, plot.bottom() - vol_h, a.y_labels.width, vol_h);
+            let top = Rect::new(a.y_labels.x, vol_bottom - vol_h, a.y_labels.width, vol_h);
             let label = format_compact(max_vol);
             layout::draw_y_labels(
                 buf,

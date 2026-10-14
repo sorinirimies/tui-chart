@@ -1,9 +1,11 @@
 //! Line, step, area and scatter charts.
 
+use crate::annotation::{draw_annotations, Annotation};
 use crate::axis::Axis;
 use crate::canvas::{Canvas, Marker};
+use crate::crosshair::{self, nearest_point, Crosshair, NearestPoint};
 use crate::layout::{self, text_width};
-use crate::util::nice_bounds;
+use crate::util::{format_compact, format_tick, nice_bounds};
 use crate::PALETTE;
 use ratatui::{
     buffer::Buffer,
@@ -49,6 +51,10 @@ pub struct Series {
     pub(crate) data: Vec<(f64, f64)>,
     pub(crate) color: Option<Color>,
     pub(crate) mode: Option<LineMode>,
+    pub(crate) y_err: Vec<f64>,
+    pub(crate) band: Vec<(f64, f64)>,
+    pub(crate) smooth: bool,
+    pub(crate) secondary: bool,
 }
 
 impl Series {
@@ -88,6 +94,30 @@ impl Series {
         self
     }
 
+    /// Symmetric error bars: `y ± err[i]` for point `i`.
+    pub fn y_err(mut self, err: impl IntoIterator<Item = f64>) -> Self {
+        self.y_err = err.into_iter().collect();
+        self
+    }
+
+    /// Confidence band: `(lo, hi)` y-values for point `i`, shaded around the line.
+    pub fn band(mut self, band: impl IntoIterator<Item = (f64, f64)>) -> Self {
+        self.band = band.into_iter().collect();
+        self
+    }
+
+    /// Smooth the line with Catmull-Rom spline interpolation (Line/Area modes).
+    pub fn smooth(mut self, smooth: bool) -> Self {
+        self.smooth = smooth;
+        self
+    }
+
+    /// Plot against the secondary (right) y axis.
+    pub fn secondary_axis(mut self, secondary: bool) -> Self {
+        self.secondary = secondary;
+        self
+    }
+
     /// Series name.
     pub fn name(&self) -> &str {
         &self.name
@@ -102,6 +132,78 @@ impl Series {
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
     }
+
+    /// All finite y extents (points, error bars, band edges).
+    fn y_values(&self) -> impl Iterator<Item = f64> + '_ {
+        self.data
+            .iter()
+            .enumerate()
+            .filter(|(_, (x, y))| x.is_finite() && y.is_finite())
+            .flat_map(|(i, &(_, y))| {
+                let mut v = vec![y];
+                if let Some(e) = self.y_err.get(i).filter(|e| e.is_finite()) {
+                    v.push(y - e.abs());
+                    v.push(y + e.abs());
+                }
+                if let Some(&(lo, hi)) = self.band.get(i) {
+                    v.push(lo);
+                    v.push(hi);
+                }
+                v
+            })
+            .filter(|v| v.is_finite())
+    }
+}
+
+/// Linear or log10 value → 0..=1 fraction mapping.
+#[derive(Debug, Clone, Copy)]
+struct Scale {
+    lo: f64,
+    hi: f64,
+    log: bool,
+}
+
+impl Scale {
+    fn frac(&self, v: f64) -> Option<f64> {
+        if !v.is_finite() {
+            return None;
+        }
+        if self.log {
+            if v <= 0.0 || self.lo <= 0.0 {
+                return None;
+            }
+            let (l0, l1) = (self.lo.log10(), self.hi.log10());
+            Some((v.log10() - l0) / (l1 - l0))
+        } else {
+            Some((v - self.lo) / (self.hi - self.lo))
+        }
+    }
+}
+
+/// Decade-aligned bounds from a raw positive range.
+fn log_bounds(raw: Option<(f64, f64)>) -> (f64, f64) {
+    match raw {
+        None => (1.0, 10.0),
+        Some((a, b)) => {
+            let lo = 10f64.powf(a.log10().floor());
+            let mut hi = 10f64.powf(b.log10().ceil());
+            if hi <= lo {
+                hi = lo * 10.0;
+            }
+            (lo, hi)
+        }
+    }
+}
+
+fn decade_label(k: i32) -> String {
+    if (0..=5).contains(&k) {
+        format!("{}", 10u64.pow(k as u32))
+    } else if (-3..0).contains(&k) {
+        let v = 10f64.powi(k);
+        format_tick(v, v)
+    } else {
+        format!("1e{k}")
+    }
 }
 
 /// Multi-series line / step / area / scatter chart with sub-cell resolution.
@@ -110,6 +212,11 @@ pub struct LineChart {
     series: Vec<Series>,
     x_axis: Axis,
     y_axis: Axis,
+    y2_axis: Axis,
+    y_log: bool,
+    smooth: bool,
+    annotations: Vec<Annotation>,
+    crosshair: Option<Crosshair>,
     block: Option<Block<'static>>,
     marker: Marker,
     mode: LineMode,
@@ -143,6 +250,37 @@ impl LineChart {
         self
     }
 
+    /// Secondary (right) y axis configuration, used by `secondary_axis(true)` series.
+    pub fn y2_axis(mut self, axis: Axis) -> Self {
+        self.y2_axis = axis;
+        self
+    }
+
+    /// Logarithmic (base 10) primary y axis with decade ticks. Non-positive
+    /// values are not drawn.
+    pub fn y_log(mut self, log: bool) -> Self {
+        self.y_log = log;
+        self
+    }
+
+    /// Smooth all Line/Area series with Catmull-Rom splines.
+    pub fn smooth(mut self, smooth: bool) -> Self {
+        self.smooth = smooth;
+        self
+    }
+
+    /// Add an annotation (reference line, region or label).
+    pub fn annotation(mut self, annotation: Annotation) -> Self {
+        self.annotations.push(annotation);
+        self
+    }
+
+    /// Set (or clear) the crosshair cursor.
+    pub fn crosshair(mut self, crosshair: Option<Crosshair>) -> Self {
+        self.crosshair = crosshair;
+        self
+    }
+
     /// Wrap the chart in a block.
     pub fn block(mut self, block: Block<'static>) -> Self {
         self.block = Some(block);
@@ -167,18 +305,35 @@ impl LineChart {
         self
     }
 
-    /// Resolved `(x_bounds, y_bounds)`.
+    fn has_secondary(&self) -> bool {
+        self.series.iter().any(|s| s.secondary && !s.is_empty())
+    }
+
+    /// Raw `(min, max)` of y values of primary or secondary series.
+    fn y_range(&self, secondary: bool, positive_only: bool) -> Option<(f64, f64)> {
+        let mut r: Option<(f64, f64)> = None;
+        for v in self
+            .series
+            .iter()
+            .filter(|s| s.secondary == secondary)
+            .flat_map(|s| s.y_values())
+            .filter(|v| !positive_only || *v > 0.0)
+        {
+            r = Some(r.map_or((v, v), |(a, b)| (a.min(v), b.max(v))));
+        }
+        r
+    }
+
+    /// Resolved `(x_bounds, y_bounds)` (primary axis, data coordinates).
     pub fn bounds(&self) -> ((f64, f64), (f64, f64)) {
         let mut xs = (f64::INFINITY, f64::NEG_INFINITY);
-        let mut ys = (f64::INFINITY, f64::NEG_INFINITY);
-        for &(x, y) in self
+        for &(x, _) in self
             .series
             .iter()
             .flat_map(|s| s.data.iter())
             .filter(|(x, y)| x.is_finite() && y.is_finite())
         {
             xs = (xs.0.min(x), xs.1.max(x));
-            ys = (ys.0.min(y), ys.1.max(y));
         }
         let x = self.x_axis.bounds.unwrap_or_else(|| {
             if xs.0.is_finite() {
@@ -191,14 +346,108 @@ impl LineChart {
                 (0.0, 1.0)
             }
         });
-        let y = self.y_axis.bounds.unwrap_or_else(|| {
-            if ys.0.is_finite() {
-                nice_bounds(ys.0, ys.1, self.y_axis.ticks)
-            } else {
-                (0.0, 1.0)
+        let y = if self.y_log {
+            match self.y_axis.bounds {
+                Some((a, b)) if a > 0.0 && b > a => (a, b),
+                _ => log_bounds(self.y_range(false, true)),
             }
-        });
+        } else {
+            self.y_axis.bounds.unwrap_or_else(|| {
+                self.y_range(false, false)
+                    .map_or((0.0, 1.0), |(a, b)| nice_bounds(a, b, self.y_axis.ticks))
+            })
+        };
         (x, y)
+    }
+
+    /// Bounds of the secondary y axis, or `None` when no series uses it.
+    pub fn y2_bounds(&self) -> Option<(f64, f64)> {
+        if !self.has_secondary() {
+            return None;
+        }
+        Some(self.y2_axis.bounds.unwrap_or_else(|| {
+            self.y_range(true, false)
+                .map_or((0.0, 1.0), |(a, b)| nice_bounds(a, b, self.y2_axis.ticks))
+        }))
+    }
+
+    fn scales(&self) -> (Scale, Scale, Option<Scale>) {
+        let (xb, yb) = self.bounds();
+        (
+            Scale {
+                lo: xb.0,
+                hi: xb.1,
+                log: false,
+            },
+            Scale {
+                lo: yb.0,
+                hi: yb.1,
+                log: self.y_log,
+            },
+            self.y2_bounds().map(|b| Scale {
+                lo: b.0,
+                hi: b.1,
+                log: false,
+            }),
+        )
+    }
+
+    /// Data point (over all series) closest to data position `(x, y)`, measured
+    /// in plot-fraction space so both axes weigh equally. `y` is in primary-axis
+    /// units; secondary series are compared by their position on the plot.
+    pub fn nearest(&self, x: f64, y: f64) -> Option<NearestPoint> {
+        let (sx, sy, sy2) = self.scales();
+        let target = (sx.frac(x)?, sy.frac(y)?);
+        let mut best: Option<(f64, NearestPoint)> = None;
+        for (si, s) in self.series.iter().enumerate() {
+            let ys = if s.secondary { sy2.unwrap_or(sy) } else { sy };
+            let pts = s
+                .data
+                .iter()
+                .map(|&(px, py)| match (sx.frac(px), ys.frac(py)) {
+                    (Some(a), Some(b)) => (a, b),
+                    _ => (f64::NAN, f64::NAN),
+                });
+            if let Some((i, d)) = nearest_point(pts, target, (1.0, 1.0)) {
+                if best.is_none_or(|(bd, _)| d < bd) {
+                    let (px, py) = s.data[i];
+                    best = Some((
+                        d,
+                        NearestPoint {
+                            series: si,
+                            index: i,
+                            x: px,
+                            y: py,
+                        },
+                    ));
+                }
+            }
+        }
+        best.map(|b| b.1)
+    }
+
+    fn y_marks(&self, b: (f64, f64)) -> Vec<(f64, String)> {
+        if !self.y_log || self.y_axis.labels.is_some() {
+            return self.y_axis.tick_marks(b);
+        }
+        let (l0, l1) = (b.0.log10(), b.1.log10());
+        if l1.is_nan() || l1 <= l0 {
+            return vec![];
+        }
+        let (k0, k1) = ((l0 - 1e-9).ceil() as i32, (l1 + 1e-9).floor() as i32);
+        let n = (k1 - k0 + 1).max(0) as usize;
+        let stride = n.div_ceil(self.y_axis.ticks.max(2)).max(1);
+        (k0..=k1)
+            .step_by(stride)
+            .map(|k| {
+                let label = match self.y_axis.formatter {
+                    Some(f) => f(10f64.powi(k)),
+                    None => decade_label(k),
+                };
+                (f64::from(k) - l0, label)
+            })
+            .map(|(d, l)| (d / (l1 - l0), l))
+            .collect()
     }
 
     fn render_inner(&self, area: Rect, buf: &mut Buffer) {
@@ -207,8 +456,27 @@ impl LineChart {
         if xb.1 <= xb.0 || yb.1 <= yb.0 {
             return;
         }
-        let y_marks = self.y_axis.tick_marks(yb);
+        let (sx, sy, sy2) = self.scales();
+        let y_marks = self.y_marks(yb);
         let x_marks = self.x_axis.tick_marks(xb);
+        let y2_marks = match (&sy2, self.y2_bounds()) {
+            (Some(_), Some(b)) if b.1 > b.0 => self.y2_axis.tick_marks(b),
+            _ => vec![],
+        };
+        let y2_reserve = if sy2.is_some() {
+            y2_marks
+                .iter()
+                .map(|(_, l)| text_width(l))
+                .max()
+                .unwrap_or(0)
+                + 1
+        } else {
+            0
+        };
+        let inner = Rect {
+            width: inner.width.saturating_sub(y2_reserve),
+            ..inner
+        };
         let yw = y_marks
             .iter()
             .map(|(_, l)| text_width(l))
@@ -246,32 +514,93 @@ impl LineChart {
         };
         layout::draw_grid(buf, plot, &grid_cols, &grid_rows, self.x_axis.grid_style);
 
+        // cell mappings relative to the plot (unclamped, may be outside)
+        let clampi = |v: f64| v.round().clamp(-20_000.0, 20_000.0) as i32;
+        let (nw, nh) = (
+            (plot.width as f64 * rx as f64 - 1.0).max(0.0),
+            (plot.height as f64 * ry as f64 - 1.0).max(0.0),
+        );
+        let x_cell = |x: f64| sx.frac(x).map(|f| clampi(f * nw).div_euclid(rx as i32));
+        let y_cell = |y: f64| {
+            sy.frac(y)
+                .map(|f| clampi((1.0 - f) * nh).div_euclid(ry as i32))
+        };
+        draw_annotations(buf, plot, &self.annotations, &x_cell, &y_cell);
+
         let mut canvas = Canvas::new(plot.width, plot.height, self.marker);
         let (pw, ph) = (canvas.px_w(), canvas.px_h());
-        let project = |x: f64, y: f64| -> (i32, i32) {
-            let px = (x - xb.0) / (xb.1 - xb.0) * (pw - 1) as f64;
-            let py = (1.0 - (y - yb.0) / (yb.1 - yb.0)) * (ph - 1) as f64;
-            (
-                px.round().clamp(-20_000.0, 20_000.0) as i32,
-                py.round().clamp(-20_000.0, 20_000.0) as i32,
-            )
+        let proj = |x: f64, y: f64, sec: bool| -> Option<(i32, i32)> {
+            let ys = if sec { sy2.as_ref()? } else { &sy };
+            let (fx, fy) = (sx.frac(x)?, ys.frac(y)?);
+            Some((
+                clampi(fx * (pw - 1) as f64),
+                clampi((1.0 - fy) * (ph - 1) as f64),
+            ))
         };
         for (i, s) in self.series.iter().enumerate() {
             let color = s.color.unwrap_or(PALETTE[i % PALETTE.len()]);
             let mode = s.mode.unwrap_or(self.mode);
-            let pts: Vec<(i32, i32)> = s
-                .data
-                .iter()
-                .filter(|(x, y)| x.is_finite() && y.is_finite())
-                .map(|&(x, y)| project(x, y))
-                .collect();
+            let sec = s.secondary && sy2.is_some();
+            let mut pts: Vec<(i32, i32)> = Vec::with_capacity(s.data.len());
+            let mut band: Vec<(i32, i32, i32)> = Vec::new();
+            for (k, &(x, y)) in s.data.iter().enumerate() {
+                if !x.is_finite() || !y.is_finite() {
+                    continue;
+                }
+                let Some(p) = proj(x, y, sec) else { continue };
+                pts.push(p);
+                if let Some(&(lo, hi)) = s.band.get(k) {
+                    let lo_p = proj(x, lo, sec).map_or(ph - 1, |q| q.1);
+                    let hi_p = proj(x, hi, sec).map_or(ph - 1, |q| q.1);
+                    band.push((p.0, lo_p, hi_p));
+                }
+                if let Some(e) = s.y_err.get(k).filter(|e| e.is_finite()) {
+                    let e = e.abs();
+                    let lo_p = proj(x, y - e, sec).map_or(ph - 1, |q| q.1);
+                    let hi_p = proj(x, y + e, sec).map_or(ph - 1, |q| q.1);
+                    canvas.line(p.0, lo_p, p.0, hi_p, color);
+                    canvas.line(p.0 - 2, lo_p, p.0 + 2, lo_p, color);
+                    canvas.line(p.0 - 2, hi_p, p.0 + 2, hi_p, color);
+                }
+            }
+            fill_band(&mut canvas, &band, color);
+            if (s.smooth || self.smooth) && matches!(mode, LineMode::Line | LineMode::Area) {
+                pts = catmull_rom(&pts);
+            }
             draw_series(&mut canvas, &pts, mode, color);
         }
         canvas.render(buf, plot);
 
+        if let Some(ch) = &self.crosshair {
+            if let (Some(c), Some(r)) = (x_cell(ch.x), y_cell(ch.y)) {
+                crosshair::draw(buf, plot, ch, c, r, &self.tooltip_lines(ch));
+            }
+        }
+
         layout::draw_axes(buf, &a, self.x_axis.style, self.y_axis.style);
         layout::draw_y_labels(buf, a.y_labels, &y_ticks, self.y_axis.label_style);
         layout::draw_x_labels(buf, a.x_labels, &x_ticks, self.x_axis.label_style);
+        if y2_reserve > 0 {
+            for y in plot.y..a.axis_row {
+                buf.set_string(plot.right(), y, "│", self.y2_axis.style);
+            }
+            buf.set_string(plot.right(), a.axis_row, "┘", self.x_axis.style);
+            let mut last: Option<u16> = None;
+            for (f, label) in &y2_marks {
+                let row = layout::frac_row(*f, plot.height, ry);
+                if last == Some(row) {
+                    continue;
+                }
+                last = Some(row);
+                buf.set_stringn(
+                    plot.right() + 1,
+                    plot.y + row,
+                    label,
+                    (y2_reserve - 1) as usize,
+                    self.y2_axis.label_style,
+                );
+            }
+        }
         layout::draw_titles(
             buf,
             inner,
@@ -286,6 +615,21 @@ impl LineChart {
                 .map(|t| (t, self.y_axis.label_style)),
         );
         self.draw_legend(buf, plot);
+    }
+
+    fn tooltip_lines(&self, ch: &Crosshair) -> Vec<String> {
+        let mut lines = vec![
+            format!("x {}", format_compact(ch.x)),
+            format!("y {}", format_compact(ch.y)),
+        ];
+        for s in self.series.iter().filter(|s| !s.name.is_empty()) {
+            if let Some((i, _)) =
+                nearest_point(s.data.iter().copied(), (ch.x, 0.0), (1.0, f64::INFINITY))
+            {
+                lines.push(format!("{} {}", s.name, format_compact(s.data[i].1)));
+            }
+        }
+        lines
     }
 
     fn draw_legend(&self, buf: &mut Buffer, plot: Rect) {
@@ -329,6 +673,73 @@ impl LineChart {
             };
             buf.set_string(x, y, "●", Style::default().fg(*color));
             buf.set_string(x + 2, y, name, Style::default().fg(Color::Gray));
+        }
+    }
+}
+
+/// Catmull-Rom spline through `pts` (pixel space), densified for line drawing.
+fn catmull_rom(pts: &[(i32, i32)]) -> Vec<(i32, i32)> {
+    if pts.len() < 3 {
+        return pts.to_vec();
+    }
+    let n = pts.len();
+    let mut out = Vec::with_capacity(n * 4);
+    for i in 0..n - 1 {
+        let p0 = pts[i.saturating_sub(1)];
+        let (p1, p2) = (pts[i], pts[i + 1]);
+        let p3 = pts[(i + 2).min(n - 1)];
+        out.push(p1);
+        let span = (p2.0 - p1.0).abs().max((p2.1 - p1.1).abs());
+        let steps = (span / 2).clamp(1, 64);
+        for k in 1..steps {
+            let t = k as f64 / steps as f64;
+            let (t2, t3) = (t * t, t * t * t);
+            let f = |a: i32, b: i32, c: i32, d: i32| {
+                let (a, b, c, d) = (a as f64, b as f64, c as f64, d as f64);
+                (0.5 * (2.0 * b
+                    + (c - a) * t
+                    + (2.0 * a - 5.0 * b + 4.0 * c - d) * t2
+                    + (3.0 * b - a - 3.0 * c + d) * t3))
+                    .round()
+                    .clamp(-20_000.0, 20_000.0) as i32
+            };
+            out.push((f(p0.0, p1.0, p2.0, p3.0), f(p0.1, p1.1, p2.1, p3.1)));
+        }
+    }
+    out.push(pts[n - 1]);
+    out
+}
+
+/// Dotted shading between `(px, lo_py, hi_py)` samples.
+fn fill_band(canvas: &mut Canvas, band: &[(i32, i32, i32)], color: Color) {
+    let (pw, ph) = (canvas.px_w(), canvas.px_h());
+    let column = |px: i32, a: i32, b: i32, canvas: &mut Canvas| {
+        if !(0..pw).contains(&px) {
+            return;
+        }
+        for py in a.min(b).max(0)..=a.max(b).min(ph - 1) {
+            if (px + py) % 2 == 0 {
+                canvas.set(px, py, color);
+            }
+        }
+    };
+    if band.len() == 1 {
+        column(band[0].0, band[0].1, band[0].2, canvas);
+    }
+    for w in band.windows(2) {
+        let (l, r) = if w[0].0 <= w[1].0 {
+            (w[0], w[1])
+        } else {
+            (w[1], w[0])
+        };
+        for px in l.0.max(0)..=r.0.min(pw - 1) {
+            let t = if r.0 == l.0 {
+                0.0
+            } else {
+                (px - l.0) as f64 / (r.0 - l.0) as f64
+            };
+            let lerp = |a: i32, b: i32| (a as f64 + t * (b - a) as f64).round() as i32;
+            column(px, lerp(l.1, r.1), lerp(l.2, r.2), canvas);
         }
     }
 }
@@ -508,5 +919,107 @@ mod tests {
             .map(|p| buf[p].symbol().to_string())
             .collect();
         assert!(!text.contains('●'));
+    }
+
+    fn text_of(buf: &Buffer, w: u16, h: u16) -> String {
+        (0..h)
+            .flat_map(|y| (0..w).map(move |x| (x, y)))
+            .map(|p| buf[p].symbol().to_string())
+            .collect()
+    }
+
+    #[test]
+    fn log_bounds_decades_and_labels() {
+        let c = LineChart::new(vec![Series::new("a").data([
+            (0.0, 3.0),
+            (1.0, 4500.0),
+            (2.0, -1.0),
+        ])])
+        .y_log(true);
+        assert_eq!(c.bounds().1, (1.0, 10_000.0));
+        let m = c.y_marks((1.0, 10_000.0));
+        assert_eq!(m.first().unwrap().1, "1");
+        assert_eq!(m.last().unwrap().1, "10000");
+        assert!((m[2].0 - 0.5).abs() < 1e-9);
+        assert_eq!(LineChart::default().y_log(true).bounds().1, (1.0, 10.0));
+    }
+
+    #[test]
+    fn secondary_axis_bounds_and_render() {
+        let c = LineChart::new(vec![
+            Series::new("a").values([1.0, 2.0]),
+            Series::new("b").values([100.0, 900.0]).secondary_axis(true),
+        ]);
+        assert!(c.bounds().1 .1 < 10.0);
+        let b2 = c.y2_bounds().unwrap();
+        assert!(b2.1 >= 900.0);
+        let area = Rect::new(0, 0, 40, 10);
+        let mut buf = Buffer::empty(area);
+        c.render(area, &mut buf);
+        assert!(text_of(&buf, 40, 10).contains('┘'));
+        assert!(LineChart::default().y2_bounds().is_none());
+    }
+
+    #[test]
+    fn err_band_extend_bounds() {
+        let c = LineChart::new(vec![Series::new("a")
+            .values([1.0, 2.0])
+            .y_err([10.0, 10.0])]);
+        assert!(c.bounds().1 .1 >= 12.0);
+        let c = LineChart::new(vec![Series::new("a")
+            .values([1.0, 2.0])
+            .band([(-5.0, 1.0), (0.0, 3.0)])]);
+        assert!(c.bounds().1 .0 <= -5.0);
+    }
+
+    #[test]
+    fn catmull_densifies() {
+        let p = catmull_rom(&[(0, 0), (20, 10), (40, 0), (60, 10)]);
+        assert!(p.len() > 4);
+        assert_eq!(p[0], (0, 0));
+        assert_eq!(*p.last().unwrap(), (60, 10));
+        assert_eq!(catmull_rom(&[(1, 1)]), vec![(1, 1)]);
+    }
+
+    #[test]
+    fn nearest_finds_point() {
+        let n = chart().nearest(3.0, 4.0).unwrap();
+        assert_eq!((n.series, n.index), (1, 1));
+        assert!(LineChart::default().nearest(0.0, 0.0).is_none());
+    }
+
+    #[test]
+    fn features_render_safely_everywhere() {
+        let c = LineChart::new(vec![
+            Series::new("a")
+                .values([1.0, 0.0, f64::NAN, 5.0])
+                .y_err([0.5, f64::NAN, 1.0])
+                .smooth(true),
+            Series::new("b")
+                .values([10.0, 20.0, 5.0])
+                .band([(1.0, 30.0), (2.0, 40.0), (0.0, 9.0)])
+                .secondary_axis(true),
+        ])
+        .y_log(true)
+        .annotation(Annotation::hline(2.0).text("lim"))
+        .annotation(Annotation::x_region(0.5, 1.5))
+        .crosshair(Some(Crosshair::new(1.0, 2.0)));
+        for (w, h) in [(0, 0), (1, 1), (5, 3), (12, 6), (60, 20)] {
+            let area = Rect::new(0, 0, w, h);
+            let mut buf = Buffer::empty(area);
+            (&c).render(area, &mut buf);
+        }
+    }
+
+    #[test]
+    fn crosshair_draws_tooltip() {
+        let area = Rect::new(0, 0, 50, 16);
+        let mut buf = Buffer::empty(area);
+        chart()
+            .crosshair(Some(Crosshair::new(1.0, 2.0)))
+            .render(area, &mut buf);
+        let t = text_of(&buf, 50, 16);
+        assert!(t.contains('┼'));
+        assert!(t.contains("x 1"));
     }
 }

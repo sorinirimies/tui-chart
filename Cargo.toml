@@ -90,6 +90,10 @@ path = "examples/renko.rs"
 name = "treemap"
 path = "examples/treemap.rs"
 
+[[example]]
+name = "stream"
+path = "examples/stream.rs"
+
 [profile.dev]
 opt-level = 1
 

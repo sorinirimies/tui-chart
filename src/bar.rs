@@ -38,6 +38,18 @@ pub struct BarGroup {
     pub label: String,
     /// One value per series.
     pub values: Vec<f64>,
+    /// Optional per-bar color overrides (index = series); `None` uses the series color.
+    pub bar_colors: Vec<Option<Color>>,
+}
+
+/// Where value labels are placed relative to their bar.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum LabelPosition {
+    /// Just beyond the bar end (default).
+    #[default]
+    Outside,
+    /// Inside the bar end, drawn on the bar color (needs a wide/long enough bar).
+    Inside,
 }
 
 impl BarGroup {
@@ -46,7 +58,17 @@ impl BarGroup {
         Self {
             label: label.into(),
             values: values.into_iter().collect(),
+            bar_colors: vec![],
         }
+    }
+
+    /// Override the color of the bar for series `index`.
+    pub fn bar_color(mut self, index: usize, color: Color) -> Self {
+        if self.bar_colors.len() <= index {
+            self.bar_colors.resize(index + 1, None);
+        }
+        self.bar_colors[index] = Some(color);
+        self
     }
 }
 
@@ -65,6 +87,7 @@ pub struct BarChart {
     bar_gap: u16,
     group_gap: Option<u16>,
     show_values: bool,
+    label_position: LabelPosition,
     max: Option<f64>,
     block: Option<Block<'static>>,
     value_axis: Axis,
@@ -133,6 +156,12 @@ impl BarChart {
         self
     }
 
+    /// Where value labels go relative to bars (see [`LabelPosition`]).
+    pub fn label_position(mut self, p: LabelPosition) -> Self {
+        self.label_position = p;
+        self
+    }
+
     /// Fixed maximum of the value axis.
     pub fn max(mut self, max: f64) -> Self {
         self.max = Some(max);
@@ -173,6 +202,15 @@ impl BarChart {
             .unwrap_or(PALETTE[i % PALETTE.len()])
     }
 
+    fn color_for(&self, g: &BarGroup, i: usize) -> Color {
+        g.bar_colors
+            .get(i)
+            .copied()
+            .flatten()
+            .unwrap_or_else(|| self.color(i))
+    }
+
+    /// Negative and non-finite values are drawn as zero-length bars.
     fn clean(v: f64) -> f64 {
         if v.is_finite() && v > 0.0 {
             v
@@ -332,9 +370,9 @@ impl BarChart {
                             .iter()
                             .position(|&c| p < c)
                             .unwrap_or(eighths.len() - 1);
-                        self.color(k)
+                        self.color_for(g, k)
                     } else {
-                        self.color(bi)
+                        self.color_for(g, bi)
                     };
                     let y = plot.bottom() - 1 - r as u16;
                     for dx in 0..bw {
@@ -355,7 +393,18 @@ impl BarChart {
                     let text = self.format_value(value);
                     let tw = text_width(&text);
                     let top_cells = (total + 7) / 8;
-                    if top_cells < plot.height as i32 && tw <= bw + 1 + self.bar_gap {
+                    if self.label_position == LabelPosition::Inside {
+                        if top_cells >= 1 && tw <= bw {
+                            let y = plot.bottom() - top_cells as u16;
+                            let tx = x + (bw - tw) / 2;
+                            let c = if self.mode == BarMode::Stacked {
+                                self.color_for(g, g.values.len().saturating_sub(1))
+                            } else {
+                                self.color_for(g, bi)
+                            };
+                            buf.set_string(tx, y, text, Style::default().fg(Color::Black).bg(c));
+                        }
+                    } else if top_cells < plot.height as i32 && tw <= bw + 1 + self.bar_gap {
                         let y = plot.bottom() - 1 - top_cells as u16;
                         let tx = (x + bw / 2).saturating_sub(tw / 2).max(plot.x);
                         let tx = tx.min(plot.right().saturating_sub(tw));
@@ -465,9 +514,9 @@ impl BarChart {
                             .iter()
                             .position(|&e| p < e)
                             .unwrap_or(eighths.len() - 1);
-                        self.color(k)
+                        self.color_for(g, k)
                     } else {
-                        self.color(bi)
+                        self.color_for(g, bi)
                     };
                     for dy in 0..bh {
                         buf.set_string(
@@ -487,7 +536,21 @@ impl BarChart {
                     let text = self.format_value(value);
                     let tw = text_width(&text);
                     let end = ((total + 7) / 8) as u16;
-                    if end + 1 + tw <= plot.width {
+                    if self.label_position == LabelPosition::Inside {
+                        if end >= tw {
+                            let c = if self.mode == BarMode::Stacked {
+                                self.color_for(g, g.values.len().saturating_sub(1))
+                            } else {
+                                self.color_for(g, bi)
+                            };
+                            buf.set_string(
+                                plot.x + end - tw,
+                                y + bh / 2,
+                                text,
+                                Style::default().fg(Color::Black).bg(c),
+                            );
+                        }
+                    } else if end + 1 + tw <= plot.width {
                         buf.set_string(
                             plot.x + end + 1,
                             y + bh / 2,

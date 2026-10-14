@@ -30,6 +30,8 @@ pub struct Histogram {
     color: Color,
     orientation: BarOrientation,
     show_values: bool,
+    cumulative: bool,
+    normalized: bool,
     block: Option<Block<'static>>,
     value_axis: Axis,
 }
@@ -44,6 +46,8 @@ impl Histogram {
             color: Color::Cyan,
             orientation: BarOrientation::Vertical,
             show_values: false,
+            cumulative: false,
+            normalized: false,
             block: None,
             value_axis: Axis::new().grid(true),
         }
@@ -76,6 +80,19 @@ impl Histogram {
     /// Print counts.
     pub fn show_values(mut self, on: bool) -> Self {
         self.show_values = on;
+        self
+    }
+
+    /// Cumulative mode: each bar shows the running total up to and including its bin.
+    pub fn cumulative(mut self, on: bool) -> Self {
+        self.cumulative = on;
+        self
+    }
+
+    /// Normalized mode: bars show probability density (area = 1); combined with
+    /// [`cumulative`](Self::cumulative) the last bar reaches 1.
+    pub fn normalized(mut self, on: bool) -> Self {
+        self.normalized = on;
         self
     }
 
@@ -127,20 +144,79 @@ impl Histogram {
         bins
     }
 
+    /// Bar heights per bin, honouring the cumulative / normalized modes.
+    pub fn heights(&self) -> Vec<f64> {
+        let bins = self.compute_bins();
+        let total: usize = bins.iter().map(|b| b.count).sum();
+        let mut acc = 0.0;
+        bins.iter()
+            .map(|b| {
+                let mut v = b.count as f64;
+                if self.normalized && total > 0 {
+                    v /= total as f64;
+                    if !self.cumulative {
+                        v /= (b.end - b.start).abs().max(f64::MIN_POSITIVE);
+                    }
+                }
+                if self.cumulative {
+                    acc += v;
+                    acc
+                } else {
+                    v
+                }
+            })
+            .collect()
+    }
+
+    /// Gaussian kernel density estimate sampled at `points` evenly spaced x
+    /// values across the bin range, as `(x, density)` pairs ready for a
+    /// [`Series`](crate::Series). `bandwidth` of `None` uses Silverman's rule.
+    /// Scale by `n * bin_width` to overlay on a count histogram.
+    pub fn kde(&self, points: usize, bandwidth: Option<f64>) -> Vec<(f64, f64)> {
+        let bins = self.compute_bins();
+        let (Some(first), Some(last)) = (bins.first(), bins.last()) else {
+            return vec![];
+        };
+        let (lo, hi) = (first.start, last.end);
+        let n = self.data.len() as f64;
+        let mean = self.data.iter().sum::<f64>() / n;
+        let sd = (self.data.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / n).sqrt();
+        let h = bandwidth
+            .filter(|h| h.is_finite() && *h > 0.0)
+            .unwrap_or_else(|| {
+                let h = 1.06 * sd * n.powf(-0.2);
+                if h.is_finite() && h > 0.0 {
+                    h
+                } else {
+                    (hi - lo) / 10.0
+                }
+            });
+        let points = points.max(2);
+        let norm = 1.0 / (n * h * (2.0 * std::f64::consts::PI).sqrt());
+        (0..points)
+            .map(|i| {
+                let x = lo + (hi - lo) * i as f64 / (points - 1) as f64;
+                let d: f64 = self
+                    .data
+                    .iter()
+                    .map(|v| (-0.5 * ((x - v) / h).powi(2)).exp())
+                    .sum();
+                (x, d * norm)
+            })
+            .collect()
+    }
+
     fn to_bar_chart(&self) -> BarChart {
         let bins = self.compute_bins();
         let step = bins
             .first()
             .map(|b| nice_step((b.end - b.start).abs() / 2.0))
             .unwrap_or(1.0);
+        let heights = self.heights();
         let groups: Vec<BarGroup> = bins
             .iter()
-            .map(|b| {
-                BarGroup::new(
-                    format_tick(b.start, step.min(b.end - b.start)),
-                    [b.count as f64],
-                )
-            })
+            .zip(heights)
+            .map(|(b, h)| BarGroup::new(format_tick(b.start, step.min(b.end - b.start)), [h]))
             .collect();
         let mut chart = BarChart::new(groups)
             .colors(vec![self.color])
@@ -241,5 +317,36 @@ mod tests {
             .orientation(BarOrientation::Horizontal)
             .show_values(true)
             .render(area, &mut buf);
+    }
+
+    #[test]
+    fn cumulative_ends_at_total() {
+        let h = Histogram::new((0..100).map(|i| i as f64)).bins(10);
+        let c = h.clone().cumulative(true).heights();
+        assert_eq!(*c.last().unwrap(), 100.0);
+        assert!(c.windows(2).all(|w| w[0] <= w[1]));
+        let n = h.cumulative(true).normalized(true).heights();
+        assert!((n.last().unwrap() - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn density_integrates_to_one() {
+        let h = Histogram::new((0..100).map(|i| i as f64)).bins(10);
+        let w = h.compute_bins()[0].end - h.compute_bins()[0].start;
+        let s: f64 = h.normalized(true).heights().iter().map(|d| d * w).sum();
+        assert!((s - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn kde_shape_and_degenerate() {
+        let h = Histogram::new((0..200).map(|i| ((i * 7) % 50) as f64));
+        let k = h.kde(30, None);
+        assert_eq!(k.len(), 30);
+        assert!(k.iter().all(|p| p.1.is_finite() && p.1 >= 0.0));
+        assert!(Histogram::new(Vec::<f64>::new()).kde(10, None).is_empty());
+        assert!(Histogram::new([3.0; 5])
+            .kde(5, None)
+            .iter()
+            .all(|p| p.1.is_finite()));
     }
 }
