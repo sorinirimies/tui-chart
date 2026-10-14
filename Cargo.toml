@@ -29,7 +29,7 @@ ratatui = { version = "0.30", default-features = false }
 unicode-width = "0.2"
 serde = { version = "1", features = ["derive"], optional = true }
 # Shared theme crate; switch to the crates.io version after it is published.
-tui-nuances = { version = "0.1.5", git = "https://github.com/sorinirimies/tui-nuances", optional = true }
+tui-nuances = { version = "0.1.6", git = "https://github.com/sorinirimies/tui-nuances", optional = true }
 
 [features]
 default = []
