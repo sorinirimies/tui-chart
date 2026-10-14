@@ -1,6 +1,6 @@
 //! Line / step / area / scatter chart demo.
 //! Keys: m mode · k marker · g grid · l log · s smooth · e bands · a annotations ·
-//!       y 2nd axis · c crosshair (←/→) · space pause · q quit
+//!       y 2nd axis · c crosshair (←/→) · space pause · t/T theme · q quit
 
 #[path = "common/mod.rs"]
 mod common;
@@ -13,9 +13,12 @@ use ratatui::{
     widgets::Block,
 };
 use std::time::Duration;
-use tui_chart::{Annotation, Axis, Crosshair, LegendPosition, LineChart, LineMode, Marker, Series};
+use tui_chart::{
+    Annotation, Axis, Crosshair, LegendPosition, LineChart, LineMode, Marker, Series, Theme,
+};
 
 struct State {
+    theme: Theme,
     t: f64,
     walk: Vec<f64>,
     rng: Rng,
@@ -39,6 +42,7 @@ fn main() -> anyhow::Result<()> {
         walk.push(last + rng.gauss() * 0.3);
     }
     let state = State {
+        theme: Theme::default(),
         t: 0.0,
         walk,
         rng,
@@ -95,6 +99,7 @@ fn main() -> anyhow::Result<()> {
             .legend(LegendPosition::TopRight)
             .x_axis(Axis::new().title("sample").grid(s.grid))
             .y_axis(Axis::new().title("value").grid(s.grid))
+            .theme(s.theme.clone())
             .block(
                 Block::bordered().title(format!(" Line chart · {:?} · {:?} ", s.mode, s.marker)),
             );
@@ -108,11 +113,13 @@ fn main() -> anyhow::Result<()> {
             help(
                 f,
                 bar,
-                " m mode · k marker · g grid · l log · s smooth · e bands · a notes · y 2nd axis · c/←/→ crosshair · q quit",
+                " m mode · k marker · g grid · l log · s smooth · e bands · a notes · y 2nd axis · c/←/→ crosshair · t/T theme · q quit",
             );
         },
         |s, key| {
             match key {
+                KeyCode::Char('t') => s.theme = s.theme.next(),
+                KeyCode::Char('T') => s.theme = s.theme.prev(),
                 KeyCode::Char('q') | KeyCode::Esc => return true,
                 KeyCode::Char('m') => {
                     s.mode = match s.mode {

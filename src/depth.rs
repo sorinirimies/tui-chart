@@ -1,5 +1,6 @@
 //! DepthChart: order-book depth chart (cumulative bids left, asks right).
 
+use crate::theme::{self, Theme};
 use crate::util::{format_compact, format_tick};
 use ratatui::{
     buffer::Buffer,
@@ -16,8 +17,10 @@ const EIGHTHS: [char; 8] = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '�
 pub struct DepthChart {
     bids: Vec<(f64, f64)>,
     asks: Vec<(f64, f64)>,
-    bid_color: Color,
-    ask_color: Color,
+    bid_color: Option<Color>,
+    ask_color: Option<Color>,
+    theme: Option<Theme>,
+    base: Option<Style>,
     show_mid: bool,
     show_spread: bool,
     block: Option<Block<'static>>,
@@ -40,8 +43,10 @@ impl DepthChart {
         Self {
             bids: clean(bids),
             asks: clean(asks),
-            bid_color: Color::Green,
-            ask_color: Color::Red,
+            bid_color: None,
+            ask_color: None,
+            theme: None,
+            base: None,
             show_mid: true,
             show_spread: true,
             block: None,
@@ -50,14 +55,37 @@ impl DepthChart {
 
     /// Bid (buy side) color.
     pub fn bid_color(mut self, c: Color) -> Self {
-        self.bid_color = c;
+        self.bid_color = Some(c);
         self
     }
 
     /// Ask (sell side) color.
     pub fn ask_color(mut self, c: Color) -> Self {
-        self.ask_color = c;
+        self.ask_color = Some(c);
         self
+    }
+
+    /// Apply a [`Theme`]: bull/bear side colors, text colors and background
+    /// fill. Explicit [`DepthChart::bid_color`] / [`DepthChart::ask_color`] win.
+    pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
+        self.theme = Some(theme.into());
+        self
+    }
+
+    /// Base style painted over the whole area (beats the theme).
+    pub fn base_style(mut self, style: Style) -> Self {
+        self.base = Some(style);
+        self
+    }
+
+    fn bid(&self) -> Color {
+        self.bid_color
+            .unwrap_or_else(|| self.theme.as_ref().map_or(Color::Green, |t| t.bull))
+    }
+
+    fn ask(&self) -> Color {
+        self.ask_color
+            .unwrap_or_else(|| self.theme.as_ref().map_or(Color::Red, |t| t.bear))
     }
 
     /// Show the mid-price marker line.
@@ -146,17 +174,12 @@ fn put_str(buf: &mut Buffer, area: Rect, x: u16, y: u16, s: &str, style: Style) 
 impl Widget for &DepthChart {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let area = area.intersection(buf.area);
-        let inner = match &self.block {
-            Some(b) => {
-                let i = b.inner(area);
-                b.clone().render(area, buf);
-                i
-            }
-            None => area,
-        };
+        let inner = theme::begin(&self.block, &self.theme, self.base, area, buf);
         if inner.width < 2 || inner.height < 3 {
             return;
         }
+        let dim_c = self.theme.as_ref().map_or(Color::DarkGray, |t| t.grid);
+        let txt_c = self.theme.as_ref().map_or(Color::Gray, |t| t.muted);
         let Some((lo, hi)) = self.price_range() else {
             return;
         };
@@ -183,9 +206,9 @@ impl Widget for &DepthChart {
         for (i, &(b, a)) in depths.iter().enumerate() {
             let x = inner.x + i as u16;
             let (v, color) = if b > 0.0 {
-                (b, self.bid_color)
+                (b, self.bid())
             } else {
-                (a, self.ask_color)
+                (a, self.ask())
             };
             let units = if max > 0.0 {
                 v / max * plot_h as f64 * 8.0
@@ -202,7 +225,7 @@ impl Widget for &DepthChart {
                 } else if have > 0 {
                     put(buf, inner, x, y, &EIGHTHS[have - 1].to_string(), style);
                 } else if mid_col == Some(i) {
-                    put(buf, inner, x, y, "│", Style::default().fg(Color::DarkGray));
+                    put(buf, inner, x, y, "│", Style::default().fg(dim_c));
                 }
             }
         }
@@ -215,21 +238,14 @@ impl Widget for &DepthChart {
                     pct
                 );
                 let x = inner.x + (inner.width.saturating_sub(txt.chars().count() as u16)) / 2;
-                put_str(
-                    buf,
-                    inner,
-                    x,
-                    inner.y,
-                    &txt,
-                    Style::default().fg(Color::Gray),
-                );
+                put_str(buf, inner, x, inner.y, &txt, Style::default().fg(txt_c));
             }
         }
         let label_y = inner.bottom() - 1;
         let step = ((hi - lo) / 4.0).max(1e-9);
         let l = format_tick(lo, step);
         let r = format_tick(hi, step);
-        let dim = Style::default().fg(Color::DarkGray);
+        let dim = Style::default().fg(txt_c);
         put_str(buf, inner, inner.x, label_y, &l, dim);
         let rx = inner.right().saturating_sub(r.chars().count() as u16);
         put_str(buf, inner, rx.max(inner.x), label_y, &r, dim);
@@ -302,6 +318,24 @@ mod tests {
             }
         }
         assert!(g && r);
+    }
+
+    #[test]
+    fn theme_colors_and_override() {
+        let t = Theme::nord();
+        let has = |b: &Buffer, c: Color| b.content().iter().any(|x| x.symbol() == "█" && x.fg == c);
+        let b = render(&book().theme(&t), 40, 12);
+        assert!(has(&b, t.bull) && has(&b, t.bear));
+        assert_eq!(b[(0, 5)].bg, t.background.unwrap());
+        let b = render(
+            &book()
+                .theme(&t)
+                .bid_color(Color::Yellow)
+                .ask_color(Color::Magenta),
+            40,
+            12,
+        );
+        assert!(has(&b, Color::Yellow) && has(&b, Color::Magenta) && !has(&b, t.bull));
     }
 
     #[test]

@@ -27,5 +27,12 @@ Sleep 1s
 Type "g"
 Sleep 2s
 
+Type "t"
+Sleep 1500ms
+Type "t"
+Sleep 1500ms
+Type "T"
+Sleep 1500ms
+
 Type "q"
 Sleep 1s

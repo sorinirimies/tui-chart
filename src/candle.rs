@@ -3,6 +3,7 @@
 use crate::axis::Axis;
 use crate::indicator;
 use crate::layout::{self, text_width};
+use crate::theme::{self, Theme};
 use crate::util::{format_compact, nice_bounds};
 use ratatui::{
     buffer::Buffer,
@@ -13,6 +14,7 @@ use ratatui::{
 
 /// One OHLC(V) bar.
 #[derive(Debug, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Candle {
     /// Opening price.
     pub open: f64,
@@ -67,6 +69,7 @@ impl Candle {
 
 /// Visual style of each bar.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum CandleStyle {
     /// Japanese candlesticks with body and wicks.
     #[default]
@@ -165,6 +168,7 @@ pub enum IndicatorPane {
 
 /// Side of a [`TradeMarker`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum TradeSide {
     /// Buy (drawn as ▲ in the up color).
     Buy,
@@ -174,6 +178,7 @@ pub enum TradeSide {
 
 /// A buy/sell marker placed at a candle index and price.
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TradeMarker {
     /// Index into the full candle list.
     pub index: usize,
@@ -205,6 +210,7 @@ impl TradeMarker {
 
 /// Horizontal reference line (support / resistance / target…).
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct HLine {
     /// Price level.
     pub price: f64,
@@ -322,8 +328,10 @@ const EIGHTHS: [char; 9] = [' ', '▁', '▂', '▃', '▄', '▅', '▆', '▇'
 pub struct CandlestickChart {
     candles: Vec<Candle>,
     style: CandleStyle,
-    up_color: Color,
-    down_color: Color,
+    colors: Option<(Color, Color)>,
+    hollow: bool,
+    theme: Option<Theme>,
+    base: Option<Style>,
     candle_width: u16,
     gap: u16,
     show_volume: bool,
@@ -346,8 +354,10 @@ impl CandlestickChart {
         Self {
             candles,
             style: CandleStyle::Candle,
-            up_color: Color::Green,
-            down_color: Color::Red,
+            colors: None,
+            hollow: false,
+            theme: None,
+            base: None,
             candle_width: 1,
             gap: 1,
             show_volume: false,
@@ -373,9 +383,54 @@ impl CandlestickChart {
 
     /// Colors for bullish / bearish bars.
     pub fn colors(mut self, up: Color, down: Color) -> Self {
-        self.up_color = up;
-        self.down_color = down;
+        self.colors = Some((up, down));
         self
+    }
+
+    /// Draw bullish candle bodies hollow (outlined) and bearish ones filled.
+    pub fn hollow(mut self, on: bool) -> Self {
+        self.hollow = on;
+        self
+    }
+
+    /// Apply a [`Theme`]: bull/bear colors, axes, labels, background fill.
+    /// Colors set via [`CandlestickChart::colors`] still win.
+    pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
+        let t = theme.into();
+        self.x_axis.apply_theme(&t);
+        self.y_axis.apply_theme(&t);
+        self.theme = Some(t);
+        self
+    }
+
+    /// Base style painted over the whole area (beats the theme).
+    pub fn base_style(mut self, style: Style) -> Self {
+        self.base = Some(style);
+        self
+    }
+
+    fn up_color(&self) -> Color {
+        match (&self.colors, &self.theme) {
+            (Some((u, _)), _) => *u,
+            (None, Some(t)) => t.bull,
+            _ => Color::Green,
+        }
+    }
+
+    fn down_color(&self) -> Color {
+        match (&self.colors, &self.theme) {
+            (Some((_, d)), _) => *d,
+            (None, Some(t)) => t.bear,
+            _ => Color::Red,
+        }
+    }
+
+    fn dim_color(&self) -> Color {
+        self.theme.as_ref().map_or(Color::DarkGray, |t| t.axis)
+    }
+
+    fn label_color(&self) -> Color {
+        self.theme.as_ref().map_or(Color::Gray, |t| t.muted)
     }
 
     /// Body width in cells (ignored for OHLC bars; min 1).
@@ -463,12 +518,18 @@ impl CandlestickChart {
     /// X axis (title / label style; labels come from [`Candle::label`]).
     pub fn x_axis(mut self, axis: Axis) -> Self {
         self.x_axis = axis;
+        if let Some(t) = &self.theme {
+            self.x_axis.apply_theme(t);
+        }
         self
     }
 
     /// Y (price) axis.
     pub fn y_axis(mut self, axis: Axis) -> Self {
         self.y_axis = axis;
+        if let Some(t) = &self.theme {
+            self.y_axis.apply_theme(t);
+        }
         self
     }
 
@@ -487,9 +548,9 @@ impl CandlestickChart {
 
     fn color_of(&self, c: &Candle) -> Color {
         if c.is_bullish() {
-            self.up_color
+            self.up_color()
         } else {
-            self.down_color
+            self.down_color()
         }
     }
 
@@ -513,7 +574,7 @@ impl CandlestickChart {
             return;
         }
         let w = (price.width / 5).clamp(1, 20) as f64;
-        let st = Style::default().fg(Color::DarkGray);
+        let st = Style::default().fg(self.dim_color());
         for (r, v) in bins.iter().enumerate() {
             let len = (v / max * w).round() as u16;
             for dx in 0..len {
@@ -537,7 +598,7 @@ impl CandlestickChart {
         if r.height == 0 || r.width == 0 {
             return;
         }
-        let dim = Style::default().fg(Color::DarkGray);
+        let dim = Style::default().fg(self.dim_color());
         // (name, lines [(values,color)], hist, bounds, refs)
         let (name, lines, hist, (lo, hi), refs): (String, Vec<_>, Option<Vec<_>>, _, Vec<f64>) =
             match pane {
@@ -610,9 +671,9 @@ impl CandlestickChart {
                     continue;
                 }
                 let col = if *v >= 0.0 {
-                    self.up_color
+                    self.up_color()
                 } else {
-                    self.down_color
+                    self.down_color()
                 };
                 let rv = row(*v);
                 for dx in 0..bw {
@@ -644,7 +705,7 @@ impl CandlestickChart {
     }
 
     fn render_inner(&self, area: Rect, buf: &mut Buffer) {
-        let inner = layout::render_block(&self.block, area, buf);
+        let inner = theme::begin(&self.block, &self.theme, self.base, area, buf);
         let src: Vec<Candle> = match self.style {
             CandleStyle::HeikinAshi => heikin_ashi(&self.candles),
             _ => self.candles.clone(),
@@ -729,7 +790,14 @@ impl CandlestickChart {
             .collect();
         if self.y_axis.grid {
             let rows: Vec<u16> = y_ticks.iter().map(|t| t.0).collect();
-            layout::draw_grid(buf, price, &[], &rows, self.y_axis.grid_style);
+            layout::draw_grid(
+                buf,
+                price,
+                &[],
+                &rows,
+                self.y_axis.grid_style,
+                self.y_axis.grid_kind,
+            );
         }
 
         // volume profile + bands (behind candles)
@@ -828,6 +896,7 @@ impl CandlestickChart {
                     let body_b = b >= b0 && b <= b1;
                     let wick_t = t >= w0 && t <= w1;
                     let wick_b = b >= w0 && b <= w1;
+                    let hollow = self.hollow && c.is_bullish();
                     let body_ch = match (body_t, body_b) {
                         (true, true) => Some('█'),
                         (true, false) => Some('▀'),
@@ -845,6 +914,25 @@ impl CandlestickChart {
                             body_ch.or(wick_ch)
                         } else {
                             body_ch
+                        };
+                        let ch = match ch {
+                            Some('█') if hollow => {
+                                let (top_r, bot_r) = (b0 / 2, b1 / 2);
+                                if bw == 1 {
+                                    Some('┃')
+                                } else if dx == 0 {
+                                    Some('▌')
+                                } else if dx == bw - 1 {
+                                    Some('▐')
+                                } else if r == top_r {
+                                    Some('▔')
+                                } else if r == bot_r {
+                                    Some('▁')
+                                } else {
+                                    Some(' ')
+                                }
+                            }
+                            other => other,
                         };
                         if let Some(ch) = ch {
                             buf.set_string(x0 + dx, price.y + r as u16, ch.to_string(), st);
@@ -905,8 +993,8 @@ impl CandlestickChart {
             }
             let row = (sub(m.price) / 2) as u16;
             let (g, col) = match m.side {
-                TradeSide::Buy => ('▲', self.up_color),
-                TradeSide::Sell => ('▼', self.down_color),
+                TradeSide::Buy => ('▲', self.up_color()),
+                TradeSide::Sell => ('▼', self.down_color()),
             };
             let st = Style::default().fg(col).add_modifier(Modifier::BOLD);
             buf.set_string(x, price.y + row, g.to_string(), st);
@@ -947,7 +1035,7 @@ impl CandlestickChart {
                 buf,
                 top,
                 &[(0, label)],
-                Style::default().fg(Color::DarkGray),
+                Style::default().fg(self.dim_color()),
             );
         }
         layout::draw_x_labels(buf, a.x_labels, &x_ticks, self.x_axis.label_style);
@@ -972,7 +1060,12 @@ impl CandlestickChart {
                 break;
             }
             buf.set_string(x, plot.y, "●", Style::default().fg(ov.color));
-            buf.set_string(x + 2, plot.y, &ov.name, Style::default().fg(Color::Gray));
+            buf.set_string(
+                x + 2,
+                plot.y,
+                &ov.name,
+                Style::default().fg(self.label_color()),
+            );
             x += w + 1;
         }
     }

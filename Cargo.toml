@@ -4,11 +4,11 @@ version = "0.1.0"
 edition = "2021"
 authors = ["Sorin Irimies <sorinirimies@gmail.com>"]
 license = "MIT"
-description = "A collection of terminal chart widgets for ratatui: line, area, scatter, bar, candlestick (stock/trading), histogram and heatmap"
+description = "Terminal chart widgets for ratatui: line, bar, candlestick, histogram, heatmap, gauge, radar, treemap and more, with themes, annotations and streaming"
 repository = "https://github.com/sorinirimies/tui-chart"
 readme = "README.md"
-keywords = ["tui", "chart", "ratatui", "terminal", "candlestick"]
-categories = ["command-line-interface", "gui", "visualization", "rendering"]
+keywords = ["tui", "chart", "ratatui", "candlestick", "plot"]
+categories = ["command-line-interface", "visualization", "rendering"]
 rust-version = "1.88.0"
 exclude = [
     ".gitea/**",
@@ -24,9 +24,16 @@ exclude = [
 [dependencies]
 ratatui = { version = "0.30", default-features = false }
 unicode-width = "0.2"
+serde = { version = "1", features = ["derive"], optional = true }
+
+[features]
+default = []
+# Derive Serialize/Deserialize on data types and Theme.
+serde = ["dep:serde", "ratatui/serde"]
 
 [dev-dependencies]
 anyhow = "1.0"
+serde_json = "1"
 crossterm = "0.29"
 ratatui = { version = "0.30", features = ["crossterm"] }
 
@@ -93,6 +100,10 @@ path = "examples/treemap.rs"
 [[example]]
 name = "stream"
 path = "examples/stream.rs"
+
+[[example]]
+name = "themes"
+path = "examples/themes.rs"
 
 [profile.dev]
 opt-level = 1

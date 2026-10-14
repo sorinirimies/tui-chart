@@ -1,5 +1,5 @@
 //! Bar chart demo.
-//! Keys: o orientation · s stacked/grouped · v values · d dataset · q quit
+//! Keys: o orientation · s stacked/grouped · v values · d dataset · t/T theme · q quit
 
 #[path = "common/mod.rs"]
 mod common;
@@ -12,9 +12,10 @@ use ratatui::{
     widgets::Block,
 };
 use std::time::Duration;
-use tui_chart::{Axis, BarChart, BarGroup, BarMode, BarOrientation};
+use tui_chart::{Axis, BarChart, BarGroup, BarMode, BarOrientation, Theme};
 
 struct State {
+    theme: Theme,
     orientation: BarOrientation,
     mode: BarMode,
     values: bool,
@@ -49,6 +50,7 @@ fn data(set: usize) -> (Vec<BarGroup>, Vec<&'static str>) {
 fn main() -> anyhow::Result<()> {
     run(
         State {
+            theme: Theme::default(),
             orientation: BarOrientation::Vertical,
             mode: BarMode::Grouped,
             values: true,
@@ -66,6 +68,7 @@ fn main() -> anyhow::Result<()> {
                 .mode(s.mode)
                 .show_values(s.values)
                 .value_axis(Axis::new().grid(true).title("units"))
+                .theme(s.theme.clone())
                 .block(
                     Block::bordered()
                         .title(format!(" Bar chart · {:?} · {:?} ", s.orientation, s.mode)),
@@ -74,11 +77,13 @@ fn main() -> anyhow::Result<()> {
             help(
                 f,
                 bar,
-                " o orientation · s stacked · v values · d dataset · q quit",
+                " o orientation · s stacked · v values · d dataset · t/T theme · q quit",
             );
         },
         |s, key| {
             match key {
+                KeyCode::Char('t') => s.theme = s.theme.next(),
+                KeyCode::Char('T') => s.theme = s.theme.prev(),
                 KeyCode::Char('q') | KeyCode::Esc => return true,
                 KeyCode::Char('o') => {
                     s.orientation = match s.orientation {

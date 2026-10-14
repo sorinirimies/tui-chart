@@ -1,12 +1,46 @@
 //! # tui-chart
 //!
-//! Chart widgets for [ratatui](https://ratatui.rs): line / step / area / scatter,
-//! bar (vertical, horizontal, grouped, stacked), candlestick & OHLC (with volume
-//! and indicator overlays), histogram and heatmap.
+//! Chart widgets for [ratatui](https://ratatui.rs).
+//!
+//! ## Widgets
+//!
+//! - [`LineChart`] – line / step / area / scatter, multi-series, secondary y axis
+//! - [`CandlestickChart`] – candles, Heikin-Ashi, OHLC, volume, indicator panes
+//! - [`BarChart`] – vertical/horizontal, grouped/stacked
+//! - [`Histogram`], [`Heatmap`], [`Sparkline`], [`Gauge`], [`RadarChart`]
+//! - [`BoxPlot`], [`Waterfall`], [`Gantt`], [`DepthChart`], [`RenkoChart`], [`Treemap`]
+//! - [`ChartStack`] – stack charts with a shared gutter
+//!
+//! ## Features
+//!
+//! - [`Annotation`]s (lines, regions, labels) and an interactive [`Crosshair`]
+//! - log scale (`y_log`), spline smoothing, error bars and bands
+//! - indicators: [`sma`], [`ema`], [`bollinger`], [`rsi`], [`macd`], [`atr`],
+//!   [`stochastic`], [`vwap`]
+//! - streaming with [`RingBuffer`] / [`Stream`]
+//! - time axis helpers ([`time_ticks`], [`time_hm`], [`date_ymd`], ...)
+//! - [`Theme`]: built-in themes via [`Theme::all`], [`Theme::next`], [`Theme::prev`];
+//!   every widget has `.theme(impl Into<Theme>)`
+//! - optional `serde` cargo feature: `Serialize`/`Deserialize` on data types and
+//!   [`Theme`]
 //!
 //! All widgets implement [`ratatui::widgets::Widget`] (both owned and by reference)
-//! and are drawn straight into the buffer; no extra runtime dependencies.
+//! and are drawn straight into the buffer.
 //!
+//! ```
+//! use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
+//! use tui_chart::{Axis, LineChart, Series, Theme};
+//!
+//! let chart = LineChart::new(vec![Series::new("sin").data(
+//!     (0..50).map(|i| (i as f64, (i as f64 / 5.0).sin())),
+//! )])
+//! .theme(Theme::nord())
+//! .x_axis(Axis::new().title("t"))
+//! .y_axis(Axis::new().grid(true));
+//!
+//! let area = Rect::new(0, 0, 60, 15);
+//! let mut buf = Buffer::empty(area);
+//! chart.render(area, &mut buf);
 //! ```
 //! use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
 //! use tui_chart::{Axis, LineChart, Series};
@@ -61,6 +95,7 @@ mod renko;
 mod sparkline;
 mod stack;
 mod stream;
+mod theme;
 mod timeaxis;
 mod treemap;
 mod waterfall;
@@ -68,7 +103,7 @@ mod waterfall;
 pub mod util;
 
 pub use annotation::{draw_annotations, Annotation, AnnotationKind};
-pub use axis::Axis;
+pub use axis::{Axis, GridStyle};
 pub use bar::{BarChart, BarGroup, BarMode, BarOrientation, LabelPosition};
 pub use boxplot::{BoxOrientation, BoxPlot, BoxStats};
 pub use candle::{
@@ -89,6 +124,7 @@ pub use renko::{renko_bricks, RenkoBrick, RenkoChart, RenkoStyle};
 pub use sparkline::{Sparkline, SparklineStyle};
 pub use stack::{shared_gutter, ChartStack, StackDirection};
 pub use stream::{RingBuffer, Stream};
+pub use theme::Theme;
 pub use timeaxis::{
     civil_from_days, date_md, date_ymd, datetime, days_from_civil, time_hm, time_hms,
     time_nice_step, time_ticks,

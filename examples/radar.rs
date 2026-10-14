@@ -1,5 +1,5 @@
 //! Radar chart demo.
-//! Keys: f fill · r rings · space animate · q quit
+//! Keys: f fill · r rings · space animate · t/T theme · q quit
 
 #[path = "common/mod.rs"]
 mod common;
@@ -12,9 +12,10 @@ use ratatui::{
     widgets::Block,
 };
 use std::time::Duration;
-use tui_chart::{RadarChart, RadarSeries};
+use tui_chart::{RadarChart, RadarSeries, Theme};
 
 struct State {
+    theme: Theme,
     t: f64,
     fill: bool,
     rings: usize,
@@ -24,6 +25,7 @@ struct State {
 fn main() -> anyhow::Result<()> {
     run(
         State {
+            theme: Theme::default(),
             t: 0.0,
             fill: false,
             rings: 4,
@@ -41,12 +43,19 @@ fn main() -> anyhow::Result<()> {
                 .max(10.0)
                 .rings(s.rings)
                 .fill(s.fill)
+                .theme(s.theme.clone())
                 .block(Block::bordered().title(" Radar "));
             f.render_widget(&c, main);
-            help(f, bar, " f fill · r rings · space animate · q quit");
+            help(
+                f,
+                bar,
+                " f fill · r rings · space animate · t/T theme · q quit",
+            );
         },
         |s, key| {
             match key {
+                KeyCode::Char('t') => s.theme = s.theme.next(),
+                KeyCode::Char('T') => s.theme = s.theme.prev(),
                 KeyCode::Char('q') | KeyCode::Esc => return true,
                 KeyCode::Char('f') => s.fill = !s.fill,
                 KeyCode::Char('r') => s.rings = s.rings % 6 + 1,

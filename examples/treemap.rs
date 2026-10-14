@@ -1,5 +1,5 @@
 //! Treemap demo.
-//! Keys: g gradient · b borders · v values · r randomize · q quit
+//! Keys: g gradient · b borders · v values · r randomize · t/T theme · q quit
 
 #[path = "common/mod.rs"]
 mod common;
@@ -12,9 +12,10 @@ use ratatui::{
     widgets::Block,
 };
 use std::time::Duration;
-use tui_chart::{Treemap, TreemapItem};
+use tui_chart::{Theme, Treemap, TreemapItem};
 
 struct State {
+    theme: Theme,
     rng: Rng,
     weights: Vec<f64>,
     gradient: bool,
@@ -30,6 +31,7 @@ fn randomize(s: &mut State) {
 
 fn main() -> anyhow::Result<()> {
     let mut state = State {
+        theme: Theme::default(),
         rng: Rng::new(5),
         weights: vec![],
         gradient: false,
@@ -54,15 +56,21 @@ fn main() -> anyhow::Result<()> {
             if s.gradient {
                 t = t.gradient(Color::Rgb(30, 60, 160), Color::Rgb(60, 220, 120));
             }
-            f.render_widget(t.block(Block::bordered().title(" Treemap ")), main);
+            f.render_widget(
+                t.theme(s.theme.clone())
+                    .block(Block::bordered().title(" Treemap ")),
+                main,
+            );
             help(
                 f,
                 bar,
-                " g gradient · b borders · v values · r randomize · q quit",
+                " g gradient · b borders · v values · r randomize · t/T theme · q quit",
             );
         },
         |s, key| {
             match key {
+                KeyCode::Char('t') => s.theme = s.theme.next(),
+                KeyCode::Char('T') => s.theme = s.theme.prev(),
                 KeyCode::Char('q') | KeyCode::Esc => return true,
                 KeyCode::Char('g') => s.gradient = !s.gradient,
                 KeyCode::Char('b') => s.border = !s.border,

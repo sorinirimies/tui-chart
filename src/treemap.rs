@@ -1,5 +1,6 @@
 //! Treemap: squarified treemap of weighted (optionally nested) items.
 
+use crate::theme::{self, Theme};
 use crate::util::format_compact;
 use ratatui::{
     buffer::Buffer,
@@ -22,6 +23,7 @@ const PALETTE: [(u8, u8, u8); 8] = [
 /// One treemap item. A leaf uses `value`; an item with children is sized by
 /// the sum of its children.
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TreemapItem {
     /// Label drawn inside the cell.
     pub label: String,
@@ -77,7 +79,9 @@ pub struct Treemap {
     items: Vec<TreemapItem>,
     gradient: Option<(Color, Color)>,
     border: bool,
-    border_color: Color,
+    border_color: Option<Color>,
+    theme: Option<Theme>,
+    base: Option<Style>,
     show_values: bool,
     block: Option<Block<'static>>,
 }
@@ -89,7 +93,9 @@ impl Treemap {
             items: items.into_iter().collect(),
             gradient: None,
             border: false,
-            border_color: Color::Black,
+            border_color: None,
+            theme: None,
+            base: None,
             show_values: true,
             block: None,
         }
@@ -110,7 +116,21 @@ impl Treemap {
 
     /// Border color.
     pub fn border_color(mut self, c: Color) -> Self {
-        self.border_color = c;
+        self.border_color = Some(c);
+        self
+    }
+
+    /// Apply a [`Theme`]: items without a color are colored by value along the
+    /// theme gradient; cell borders use the theme background. Explicit item
+    /// colors, [`Treemap::gradient`] and [`Treemap::border_color`] win.
+    pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
+        self.theme = Some(theme.into());
+        self
+    }
+
+    /// Base style painted over the whole area (beats the theme).
+    pub fn base_style(mut self, style: Style) -> Self {
+        self.base = Some(style);
         self
     }
 
@@ -261,7 +281,14 @@ impl Treemap {
     }
 
     fn draw_border(&self, buf: &mut Buffer, r: Rect, bg: Color) {
-        let st = Style::default().bg(bg).fg(self.border_color);
+        let st = Style::default()
+            .bg(bg)
+            .fg(self.border_color.unwrap_or_else(|| {
+                self.theme
+                    .as_ref()
+                    .and_then(|t| t.background)
+                    .unwrap_or(Color::Black)
+            }));
         let (x1, y1) = (r.right() - 1, r.bottom() - 1);
         for x in r.x..=x1 {
             buf[(x, r.y)].set_symbol("─").set_style(st);
@@ -285,6 +312,14 @@ impl Treemap {
                 0.5
             };
             return lerp_color(lo, hi, t);
+        }
+        if let Some(t) = &self.theme {
+            let f = if range.1 > range.0 {
+                ((weight - range.0) / (range.1 - range.0)).clamp(0.0, 1.0)
+            } else {
+                0.5
+            };
+            return t.gradient().color_at(f);
         }
         let p = PALETTE[idx % PALETTE.len()];
         Color::Rgb(p.0, p.1, p.2)
@@ -337,14 +372,7 @@ fn put_text(buf: &mut Buffer, area: Rect, row: u16, s: &str, style: Style) {
 impl Widget for &Treemap {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let area = area.intersection(buf.area);
-        let inner = match &self.block {
-            Some(b) => {
-                let i = b.inner(area);
-                b.clone().render(area, buf);
-                i
-            }
-            None => area,
-        };
+        let inner = theme::begin(&self.block, &self.theme, self.base, area, buf);
         if inner.width == 0 || inner.height == 0 {
             return;
         }
@@ -414,6 +442,32 @@ mod tests {
             .collect();
         assert!(t.contains("alpha") && t.contains("beta"));
         assert!((0..40).all(|x| (0..12).all(|y| buf[(x, y)].bg != Color::Reset)));
+    }
+
+    #[test]
+    fn theme_gradient_and_override() {
+        let t = Theme::dracula();
+        let area = Rect::new(0, 0, 40, 12);
+        let items = || {
+            [
+                TreemapItem::new("alpha", 5.0).color(Color::Red),
+                TreemapItem::new("beta", 3.0),
+                TreemapItem::new("gamma", 1.0),
+            ]
+        };
+        let mut buf = Buffer::empty(area);
+        Treemap::new(items()).theme(&t).render(area, &mut buf);
+        let g = t.gradient();
+        let has = |b: &Buffer, c: Color| b.content().iter().any(|x| x.bg == c);
+        assert!(has(&buf, Color::Red));
+        assert!(has(&buf, g.color_at(1.0)) || has(&buf, g.color_at(0.5)));
+        assert!(has(&buf, g.color_at(0.0)));
+        let mut buf = Buffer::empty(area);
+        Treemap::new(items())
+            .theme(&t)
+            .gradient(Color::Rgb(1, 2, 3), Color::Rgb(1, 2, 3))
+            .render(area, &mut buf);
+        assert!(has(&buf, Color::Rgb(1, 2, 3)) && !has(&buf, g.color_at(0.0)));
     }
 
     #[test]

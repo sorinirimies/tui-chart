@@ -1,5 +1,5 @@
 //! Gauge demo.
-//! Keys: s style · o orientation · up/down value · q quit
+//! Keys: s style · o orientation · up/down value · t/T theme · q quit
 
 #[path = "common/mod.rs"]
 mod common;
@@ -12,9 +12,10 @@ use ratatui::{
     widgets::Block,
 };
 use std::time::Duration;
-use tui_chart::{Gauge, GaugeOrientation, GaugeStyle};
+use tui_chart::{Gauge, GaugeOrientation, GaugeStyle, Theme};
 
 struct State {
+    theme: Theme,
     value: f64,
     style: GaugeStyle,
     vertical: bool,
@@ -23,6 +24,7 @@ struct State {
 fn main() -> anyhow::Result<()> {
     run(
         State {
+            theme: Theme::default(),
             value: 55.0,
             style: GaugeStyle::Linear,
             vertical: false,
@@ -46,12 +48,19 @@ fn main() -> anyhow::Result<()> {
                 ])
                 .target(70.0)
                 .label(format!("{:.0}%", s.value))
+                .theme(s.theme.clone())
                 .block(Block::bordered().title(format!(" Gauge · {:?} ", s.style)));
             f.render_widget(&g, main);
-            help(f, bar, " s style · o orientation · up/down value · q quit");
+            help(
+                f,
+                bar,
+                " s style · o orientation · up/down value · t/T theme · q quit",
+            );
         },
         |s, key| {
             match key {
+                KeyCode::Char('t') => s.theme = s.theme.next(),
+                KeyCode::Char('T') => s.theme = s.theme.prev(),
                 KeyCode::Char('q') | KeyCode::Esc => return true,
                 KeyCode::Char('s') => {
                     s.style = match s.style {

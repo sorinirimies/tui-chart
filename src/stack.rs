@@ -4,6 +4,7 @@ use ratatui::layout::Rect;
 
 /// Direction in which panes are stacked.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum StackDirection {
     /// Panes stacked top to bottom (shared x axis, e.g. price + volume + indicator).
     #[default]

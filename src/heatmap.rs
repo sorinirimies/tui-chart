@@ -1,6 +1,7 @@
 //! Heatmap with selectable color gradients.
 
 use crate::layout::{self, text_width};
+use crate::theme::{self, Theme};
 use crate::util::format_compact;
 use ratatui::{
     buffer::Buffer,
@@ -11,6 +12,7 @@ use ratatui::{
 
 /// Color gradient presets.
 #[derive(Debug, Clone, PartialEq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Gradient {
     /// Perceptual purple → teal → yellow.
     #[default]
@@ -106,7 +108,9 @@ pub struct Heatmap {
     data: Vec<Vec<f64>>,
     row_labels: Vec<String>,
     col_labels: Vec<String>,
-    gradient: Gradient,
+    gradient: Option<Gradient>,
+    theme: Option<Theme>,
+    style: Option<Style>,
     cell_width: u16,
     cell_height: u16,
     bounds: Option<(f64, f64)>,
@@ -149,8 +153,37 @@ impl Heatmap {
 
     /// Color gradient.
     pub fn gradient(mut self, g: Gradient) -> Self {
-        self.gradient = g;
+        self.gradient = Some(g);
         self
+    }
+
+    /// Apply a [`Theme`]: gradient derived from its accent/palette (unless
+    /// [`Heatmap::gradient`] was set), label colors and background fill.
+    pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
+        self.theme = Some(theme.into());
+        self
+    }
+
+    /// Base style painted over the whole area (beats the theme).
+    pub fn base_style(mut self, style: Style) -> Self {
+        self.style = Some(style);
+        self
+    }
+
+    fn grad(&self) -> Gradient {
+        match (&self.gradient, &self.theme) {
+            (Some(g), _) => g.clone(),
+            (None, Some(t)) => t.gradient(),
+            _ => Gradient::default(),
+        }
+    }
+
+    fn label_color(&self) -> Color {
+        self.theme.as_ref().map_or(Color::Gray, |t| t.muted)
+    }
+
+    fn dim_color(&self) -> Color {
+        self.theme.as_ref().map_or(Color::DarkGray, |t| t.axis)
     }
 
     /// Cell width in columns (default 2).
@@ -205,26 +238,27 @@ impl Heatmap {
     }
 
     fn render_inner(&self, area: Rect, buf: &mut Buffer) {
-        let mut inner = layout::render_block(&self.block, area, buf);
+        let mut inner = theme::begin(&self.block, &self.theme, self.style, area, buf);
+        let grad = self.grad();
         let (lo, hi) = self.scale();
         let span = if hi > lo { hi - lo } else { 1.0 };
         if self.legend && inner.height > 4 {
             let y = inner.bottom() - 1;
             let (a, b) = (format_compact(lo), format_compact(hi));
             let (aw, bw) = (text_width(&a), text_width(&b));
-            buf.set_string(inner.x, y, &a, Style::default().fg(Color::Gray));
+            buf.set_string(inner.x, y, &a, Style::default().fg(self.label_color()));
             buf.set_string(
                 inner.right().saturating_sub(bw),
                 y,
                 &b,
-                Style::default().fg(Color::Gray),
+                Style::default().fg(self.label_color()),
             );
             let bar_x = inner.x + aw + 1;
             let bar_end = inner.right().saturating_sub(bw + 1);
             if bar_end > bar_x {
                 let n = (bar_end - bar_x) as f64;
                 for (i, x) in (bar_x..bar_end).enumerate() {
-                    let c = self.gradient.color_at(i as f64 / (n - 1.0).max(1.0));
+                    let c = grad.color_at(i as f64 / (n - 1.0).max(1.0));
                     buf.set_string(x, y, " ", Style::default().bg(c));
                 }
             }
@@ -268,9 +302,9 @@ impl Heatmap {
                     }
                 }
                 let color = if v.is_finite() {
-                    self.gradient.color_at((v - lo) / span)
+                    grad.color_at((v - lo) / span)
                 } else {
-                    Color::DarkGray
+                    self.dim_color()
                 };
                 let fg = if luminance(color) > 140.0 {
                     Color::Black
@@ -301,11 +335,12 @@ impl Heatmap {
         layout::draw_axes(
             buf,
             &a,
-            Style::default().fg(Color::DarkGray),
-            Style::default().fg(Color::DarkGray),
+            Style::default().fg(self.dim_color()),
+            Style::default().fg(self.dim_color()),
         );
-        layout::draw_y_labels(buf, a.y_labels, &y_ticks, Style::default().fg(Color::Gray));
-        layout::draw_x_labels(buf, a.x_labels, &x_ticks, Style::default().fg(Color::Gray));
+        let lab = Style::default().fg(self.label_color());
+        layout::draw_y_labels(buf, a.y_labels, &y_ticks, lab);
+        layout::draw_x_labels(buf, a.x_labels, &x_ticks, lab);
     }
 }
 

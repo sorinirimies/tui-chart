@@ -1,5 +1,6 @@
 //! RenkoChart: renko bricks (or point-and-figure columns) from a price series.
 
+use crate::theme::{self, Theme};
 use crate::util::format_tick;
 use ratatui::{
     buffer::Buffer,
@@ -10,6 +11,7 @@ use ratatui::{
 
 /// A single renko brick.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct RenkoBrick {
     /// Price at the brick's start.
     pub open: f64,
@@ -36,6 +38,7 @@ impl RenkoBrick {
 
 /// Rendering style.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum RenkoStyle {
     /// Solid renko bricks.
     #[default]
@@ -100,8 +103,10 @@ pub fn renko_bricks(closes: &[f64], brick_size: f64) -> Vec<RenkoBrick> {
 pub struct RenkoChart {
     bricks: Vec<RenkoBrick>,
     brick_size: f64,
-    up_color: Color,
-    down_color: Color,
+    up_color: Option<Color>,
+    down_color: Option<Color>,
+    theme: Option<Theme>,
+    base: Option<Style>,
     style: RenkoStyle,
     brick_width: u16,
     block: Option<Block<'static>>,
@@ -118,8 +123,10 @@ impl RenkoChart {
         Self {
             bricks,
             brick_size,
-            up_color: Color::Green,
-            down_color: Color::Red,
+            up_color: None,
+            down_color: None,
+            theme: None,
+            base: None,
             style: RenkoStyle::Bricks,
             brick_width: 2,
             block: None,
@@ -128,14 +135,38 @@ impl RenkoChart {
 
     /// Up brick / `X` color.
     pub fn up_color(mut self, c: Color) -> Self {
-        self.up_color = c;
+        self.up_color = Some(c);
         self
     }
 
     /// Down brick / `O` color.
     pub fn down_color(mut self, c: Color) -> Self {
-        self.down_color = c;
+        self.down_color = Some(c);
         self
+    }
+
+    /// Apply a [`Theme`]: bull/bear brick colors, axis label color and
+    /// background fill. Explicit [`RenkoChart::up_color`] /
+    /// [`RenkoChart::down_color`] win.
+    pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
+        self.theme = Some(theme.into());
+        self
+    }
+
+    /// Base style painted over the whole area (beats the theme).
+    pub fn base_style(mut self, style: Style) -> Self {
+        self.base = Some(style);
+        self
+    }
+
+    fn up(&self) -> Color {
+        self.up_color
+            .unwrap_or_else(|| self.theme.as_ref().map_or(Color::Green, |t| t.bull))
+    }
+
+    fn down(&self) -> Color {
+        self.down_color
+            .unwrap_or_else(|| self.theme.as_ref().map_or(Color::Red, |t| t.bear))
     }
 
     /// Rendering style.
@@ -180,14 +211,7 @@ impl RenkoChart {
 impl Widget for &RenkoChart {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let area = area.intersection(buf.area);
-        let inner = match &self.block {
-            Some(b) => {
-                let i = b.inner(area);
-                b.clone().render(area, buf);
-                i
-            }
-            None => area,
-        };
+        let inner = theme::begin(&self.block, &self.theme, self.base, area, buf);
         if self.bricks.is_empty() || inner.height == 0 || inner.width < 2 {
             return;
         }
@@ -222,7 +246,7 @@ impl Widget for &RenkoChart {
         if plot.width == 0 {
             return;
         }
-        let dim = Style::default().fg(Color::DarkGray);
+        let dim = Style::default().fg(self.theme.as_ref().map_or(Color::DarkGray, |t| t.muted));
         for (txt, y) in [(&l2, plot.y), (&l1, plot.bottom() - 1)] {
             for (i, ch) in txt.chars().take(gutter as usize).enumerate() {
                 buf[(inner.x + i as u16, y)]
@@ -250,20 +274,16 @@ impl Widget for &RenkoChart {
                     let tol = span / h / 2.0;
                     if p >= l - tol && p <= u + tol {
                         let (s, c) = if up {
-                            ("X", self.up_color)
+                            ("X", self.up())
                         } else {
-                            ("O", self.down_color)
+                            ("O", self.down())
                         };
                         buf[(x0, y)].set_symbol(s).set_style(Style::default().fg(c));
                     }
                 } else {
                     let b = self.bricks[idx];
                     if p >= b.low() && p <= b.high() {
-                        let c = if b.is_up() {
-                            self.up_color
-                        } else {
-                            self.down_color
-                        };
+                        let c = if b.is_up() { self.up() } else { self.down() };
                         for dx in 0..cw {
                             if x0 + dx < plot.right() {
                                 buf[(x0 + dx, y)]
@@ -344,6 +364,25 @@ mod tests {
             .map(|p| buf[p].symbol().to_string())
             .collect();
         assert!(s.contains('X') && s.contains('O'));
+    }
+
+    #[test]
+    fn theme_colors_and_override() {
+        let t = Theme::tokyo_night();
+        let data = [10.0, 14.0, 11.0, 15.0, 9.0];
+        let has = |b: &Buffer, c: Color| b.content().iter().any(|x| x.symbol() == "█" && x.fg == c);
+        let b = draw(RenkoChart::new(&data, 1.0).theme(&t), 40, 12);
+        assert!(has(&b, t.bull) && has(&b, t.bear));
+        assert_eq!(b[(39, 0)].bg, t.background.unwrap());
+        let b = draw(
+            RenkoChart::new(&data, 1.0)
+                .theme(&t)
+                .up_color(Color::Yellow)
+                .down_color(Color::Magenta),
+            40,
+            12,
+        );
+        assert!(has(&b, Color::Yellow) && has(&b, Color::Magenta) && !has(&b, t.bull));
     }
 
     #[test]

@@ -1,5 +1,5 @@
 //! Live trading chart demo.
-//! Keys: s style · v volume · a SMA · e EMA · ←/→ scroll · space pause · q quit
+//! Keys: s style · v volume · a SMA · e EMA · ←/→ scroll · space pause · t/T theme · q quit
 
 #[path = "common/mod.rs"]
 mod common;
@@ -12,9 +12,10 @@ use ratatui::{
     widgets::Block,
 };
 use std::time::Duration;
-use tui_chart::{ema, sma, Axis, Candle, CandleStyle, CandlestickChart, Overlay};
+use tui_chart::{ema, sma, Axis, Candle, CandleStyle, CandlestickChart, Overlay, Theme};
 
 struct State {
+    theme: Theme,
     candles: Vec<Candle>,
     rng: Rng,
     style: CandleStyle,
@@ -47,6 +48,7 @@ fn main() -> anyhow::Result<()> {
         candles.push(c);
     }
     let state = State {
+        theme: Theme::default(),
         candles,
         rng,
         style: CandleStyle::Candle,
@@ -70,6 +72,7 @@ fn main() -> anyhow::Result<()> {
                 .scroll(s.scroll)
                 .y_axis(Axis::new().grid(true).title("price"))
                 .x_axis(Axis::new().ticks(6))
+                .theme(s.theme.clone())
                 .block(Block::bordered().title(format!(" ACME · {:?} · last {last:.2} ", s.style)));
             if s.sma {
                 chart = chart.overlay(Overlay::new("SMA20", sma(&s.candles, 20), Color::Yellow));
@@ -81,11 +84,13 @@ fn main() -> anyhow::Result<()> {
             help(
                 f,
                 bar,
-                " s style · v volume · a SMA · e EMA · ←/→ scroll · space pause · q quit",
+                " s style · v volume · a SMA · e EMA · ←/→ scroll · space pause · t/T theme · q quit",
             );
         },
         |s, key| {
             match key {
+                KeyCode::Char('t') => s.theme = s.theme.next(),
+                KeyCode::Char('T') => s.theme = s.theme.prev(),
                 KeyCode::Char('q') | KeyCode::Esc => return true,
                 KeyCode::Char('s') => {
                     s.style = match s.style {

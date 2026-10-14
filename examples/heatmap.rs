@@ -1,5 +1,5 @@
 //! Heatmap demo.
-//! Keys: g gradient · v values · space pause · q quit
+//! Keys: g gradient · v values · space pause · t/T theme · q quit
 
 #[path = "common/mod.rs"]
 mod common;
@@ -11,9 +11,10 @@ use ratatui::{
     widgets::Block,
 };
 use std::time::Duration;
-use tui_chart::{Gradient, Heatmap};
+use tui_chart::{Gradient, Heatmap, Theme};
 
 struct State {
+    theme: Theme,
     t: f64,
     gradient: Gradient,
     values: bool,
@@ -37,6 +38,7 @@ fn grid(t: f64) -> Vec<Vec<f64>> {
 fn main() -> anyhow::Result<()> {
     run(
         State {
+            theme: Theme::default(),
             t: 0.0,
             gradient: Gradient::Viridis,
             values: false,
@@ -53,12 +55,19 @@ fn main() -> anyhow::Result<()> {
                 .cell_width(3)
                 .gradient(s.gradient.clone())
                 .show_values(s.values)
+                .theme(s.theme.clone())
                 .block(Block::bordered().title(format!(" Heatmap · {} ", s.gradient.name())));
             f.render_widget(&hm, main);
-            help(f, bar, " g gradient · v values · space pause · q quit");
+            help(
+                f,
+                bar,
+                " g gradient · v values · space pause · t/T theme · q quit",
+            );
         },
         |s, key| {
             match key {
+                KeyCode::Char('t') => s.theme = s.theme.next(),
+                KeyCode::Char('T') => s.theme = s.theme.prev(),
                 KeyCode::Char('q') | KeyCode::Esc => return true,
                 KeyCode::Char('g') => s.gradient = s.gradient.next(),
                 KeyCode::Char('v') => s.values = !s.values,

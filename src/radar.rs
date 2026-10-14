@@ -1,22 +1,24 @@
 //! Radar (spider) chart drawn on a braille canvas.
 
 use crate::canvas::{Canvas, Marker};
+use crate::theme::{self, Theme};
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::Color,
+    style::{Color, Style},
     widgets::{Block, Widget},
 };
 
 /// One data series of a [`RadarChart`].
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct RadarSeries {
     /// Series name.
     pub name: String,
     /// One value per axis.
     pub values: Vec<f64>,
-    /// Series color.
-    pub color: Color,
+    /// Optional series color (overrides the theme palette).
+    pub color: Option<Color>,
 }
 
 impl RadarSeries {
@@ -25,12 +27,12 @@ impl RadarSeries {
         Self {
             name: name.into(),
             values: values.into_iter().collect(),
-            color: Color::Cyan,
+            color: None,
         }
     }
     /// Set color.
     pub fn color(mut self, c: Color) -> Self {
-        self.color = c;
+        self.color = Some(c);
         self
     }
 }
@@ -44,6 +46,8 @@ pub struct RadarChart<'a> {
     rings: usize,
     fill: bool,
     show_labels: bool,
+    theme: Option<Theme>,
+    base: Option<Style>,
     block: Option<Block<'a>>,
 }
 
@@ -57,6 +61,8 @@ impl<'a> RadarChart<'a> {
             rings: 4,
             fill: false,
             show_labels: true,
+            theme: None,
+            base: None,
             block: None,
         }
     }
@@ -84,6 +90,21 @@ impl<'a> RadarChart<'a> {
     pub fn show_labels(mut self, s: bool) -> Self {
         self.show_labels = s;
         self
+    }
+    /// Apply a [`Theme`]: palette series colors, grid/label colors and
+    /// background fill. Explicit [`RadarSeries::color`] wins.
+    pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
+        self.theme = Some(theme.into());
+        self
+    }
+    /// Base style painted over the whole area (beats the theme).
+    pub fn base_style(mut self, style: Style) -> Self {
+        self.base = Some(style);
+        self
+    }
+    fn series_color(&self, i: usize, s: &RadarSeries) -> Color {
+        s.color
+            .unwrap_or_else(|| self.theme.as_ref().map_or(Color::Cyan, |t| t.color(i)))
     }
     /// Wrap in a block.
     pub fn block(mut self, b: Block<'a>) -> Self {
@@ -138,7 +159,8 @@ impl<'a> RadarChart<'a> {
                 (cy + rad * ang(i).sin()).round() as i32,
             )
         };
-        let grid = Color::DarkGray;
+        let grid = self.theme.as_ref().map_or(Color::DarkGray, |t| t.grid);
+        let fg = self.theme.as_ref().map_or(Color::White, |t| t.foreground);
         for k in 1..=self.rings {
             let rad = r * k as f64 / self.rings as f64;
             for i in 0..n {
@@ -150,7 +172,8 @@ impl<'a> RadarChart<'a> {
             let b = pt(i, r);
             cv.line(cx.round() as i32, cy.round() as i32, b.0, b.1, grid);
         }
-        for s in &self.series {
+        for (si, s) in self.series.iter().enumerate() {
+            let color = self.series_color(si, s);
             let pts: Vec<(i32, i32)> = (0..n)
                 .map(|i| {
                     let v = s
@@ -169,13 +192,13 @@ impl<'a> RadarChart<'a> {
                     for t in 0..=steps {
                         let x = a.0 + (b.0 - a.0) * t / steps;
                         let y = a.1 + (b.1 - a.1) * t / steps;
-                        cv.line(cx.round() as i32, cy.round() as i32, x, y, s.color);
+                        cv.line(cx.round() as i32, cy.round() as i32, x, y, color);
                     }
                 }
             }
             for i in 0..n {
                 let (a, b) = (pts[i], pts[(i + 1) % n]);
-                cv.line(a.0, a.1, b.0, b.1, s.color);
+                cv.line(a.0, a.1, b.0, b.1, color);
             }
         }
         cv.render(buf, plot);
@@ -199,7 +222,7 @@ impl<'a> RadarChart<'a> {
                     let xx = x + j as i32;
                     if xx >= area.x as i32 && xx < area.right() as i32 {
                         if let Some(c) = buf.cell_mut((xx as u16, y as u16)) {
-                            c.set_char(ch).set_fg(Color::White);
+                            c.set_char(ch).set_fg(fg);
                         }
                     }
                 }
@@ -216,14 +239,7 @@ impl Widget for RadarChart<'_> {
 
 impl Widget for &RadarChart<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let inner = match &self.block {
-            Some(b) => {
-                let i = b.inner(area);
-                b.clone().render(area, buf);
-                i
-            }
-            None => area,
-        };
+        let inner = theme::begin(&self.block, &self.theme, self.base, area, buf);
         self.draw(inner, buf);
     }
 }
@@ -258,6 +274,26 @@ mod tests {
             .any(|c| c.fg == Color::DarkGray && c.symbol() != " "));
         let t: String = b.content().iter().map(|c| c.symbol()).collect();
         assert!(t.contains("Atk") && t.contains("Hp"));
+    }
+
+    #[test]
+    fn theme_palette_and_override() {
+        let t = Theme::nord();
+        let mk = |c: Option<Color>| {
+            let s = RadarSeries::new("a", [5.0, 3.0, 4.0, 2.0, 5.0]);
+            let s = if let Some(c) = c { s.color(c) } else { s };
+            RadarChart::new(["Atk", "Def", "Spd", "Int", "Hp"])
+                .series(s)
+                .series(RadarSeries::new("b", [1.0, 2.0, 3.0, 4.0, 5.0]))
+                .max(5.0)
+                .theme(&t)
+        };
+        let has = |b: &Buffer, c: Color| b.content().iter().any(|x| x.fg == c && x.symbol() != " ");
+        let b = run(mk(None), 40, 20);
+        assert!(has(&b, t.color(0)) && has(&b, t.color(1)));
+        assert_eq!(b[(0, 0)].bg, t.background.unwrap());
+        let b = run(mk(Some(Color::Red)), 40, 20);
+        assert!(has(&b, Color::Red) && !has(&b, t.color(0)) && has(&b, t.color(1)));
     }
 
     #[test]

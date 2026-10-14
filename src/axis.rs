@@ -1,10 +1,42 @@
 //! Axis configuration shared by all charts.
 
+use crate::theme::Theme;
 use crate::util::{format_tick, nice_ticks, tick_step};
 use ratatui::style::{Color, Style};
+use std::fmt;
+use std::sync::Arc;
+
+/// Shared tick-label formatter.
+pub(crate) type Formatter = Arc<dyn Fn(f64) -> String + Send + Sync>;
+
+/// Look of grid lines.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum GridStyle {
+    /// Dotted (`·`), the default.
+    #[default]
+    Dotted,
+    /// Dashed (`╌` / `╎`).
+    Dashed,
+    /// Solid thin lines (`─` / `│`).
+    Solid,
+}
+
+impl GridStyle {
+    /// Glyph for a horizontal (`true`) or vertical grid line.
+    pub(crate) fn glyph(self, horizontal: bool) -> char {
+        match (self, horizontal) {
+            (GridStyle::Dotted, _) => '·',
+            (GridStyle::Dashed, true) => '╌',
+            (GridStyle::Dashed, false) => '╎',
+            (GridStyle::Solid, true) => '─',
+            (GridStyle::Solid, false) => '│',
+        }
+    }
+}
 
 /// Configuration for a chart axis (title, bounds, ticks, grid, labels).
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Axis {
     pub(crate) title: Option<String>,
     pub(crate) bounds: Option<(f64, f64)>,
@@ -14,7 +46,27 @@ pub struct Axis {
     pub(crate) grid: bool,
     pub(crate) grid_style: Style,
     pub(crate) labels: Option<Vec<String>>,
-    pub(crate) formatter: Option<fn(f64) -> String>,
+    pub(crate) formatter: Option<Formatter>,
+    pub(crate) grid_kind: GridStyle,
+    pub(crate) explicit: u8,
+}
+
+const EXPL_STYLE: u8 = 1;
+const EXPL_LABEL: u8 = 2;
+const EXPL_GRID: u8 = 4;
+
+impl fmt::Debug for Axis {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Axis")
+            .field("title", &self.title)
+            .field("bounds", &self.bounds)
+            .field("ticks", &self.ticks)
+            .field("grid", &self.grid)
+            .field("grid_kind", &self.grid_kind)
+            .field("labels", &self.labels)
+            .field("formatter", &self.formatter.as_ref().map(|_| "<fn>"))
+            .finish()
+    }
 }
 
 impl Default for Axis {
@@ -29,6 +81,8 @@ impl Default for Axis {
             grid_style: Style::default().fg(Color::DarkGray),
             labels: None,
             formatter: None,
+            grid_kind: GridStyle::default(),
+            explicit: 0,
         }
     }
 }
@@ -60,12 +114,14 @@ impl Axis {
     /// Style of the axis line.
     pub fn style(mut self, style: Style) -> Self {
         self.style = style;
+        self.explicit |= EXPL_STYLE;
         self
     }
 
     /// Style of tick labels and the title.
     pub fn label_style(mut self, style: Style) -> Self {
         self.label_style = style;
+        self.explicit |= EXPL_LABEL;
         self
     }
 
@@ -78,7 +134,27 @@ impl Axis {
     /// Style of the grid lines.
     pub fn grid_style(mut self, style: Style) -> Self {
         self.grid_style = style;
+        self.explicit |= EXPL_GRID;
         self
+    }
+
+    /// Grid line look: dotted (default), dashed or solid.
+    pub fn grid_lines(mut self, kind: GridStyle) -> Self {
+        self.grid_kind = kind;
+        self
+    }
+
+    /// Apply a theme to every style not set explicitly on this axis.
+    pub(crate) fn apply_theme(&mut self, t: &Theme) {
+        if self.explicit & EXPL_STYLE == 0 {
+            self.style = t.axis_style();
+        }
+        if self.explicit & EXPL_LABEL == 0 {
+            self.label_style = t.label_style();
+        }
+        if self.explicit & EXPL_GRID == 0 {
+            self.grid_style = t.grid_style();
+        }
     }
 
     /// Custom, evenly spaced tick labels (overrides numeric ticks).
@@ -91,10 +167,22 @@ impl Axis {
         self
     }
 
-    /// Custom number formatter for tick labels.
-    pub fn formatter(mut self, f: fn(f64) -> String) -> Self {
+    /// Custom number formatter for tick labels. Accepts function pointers and
+    /// (capturing) closures.
+    pub fn formatter(mut self, f: impl Fn(f64) -> String + Send + Sync + 'static) -> Self {
+        self.formatter = Some(Arc::new(f));
+        self
+    }
+
+    /// Alias of [`Axis::formatter`] taking an already shared formatter.
+    pub fn formatter_fn(mut self, f: Arc<dyn Fn(f64) -> String + Send + Sync>) -> Self {
         self.formatter = Some(f);
         self
+    }
+
+    /// Format a value with the custom formatter, if any.
+    pub(crate) fn format(&self, v: f64) -> Option<String> {
+        self.formatter.as_ref().map(|f| f(v))
     }
 
     /// `(fraction in 0..=1, label)` for each tick within `bounds`.
@@ -123,8 +211,8 @@ impl Axis {
         ticks
             .iter()
             .map(|&v| {
-                let label = match self.formatter {
-                    Some(f) => f(v),
+                let label = match self.format(v) {
+                    Some(l) => l,
                     None => format_tick(v, step),
                 };
                 ((v - lo) / (hi - lo), label)
@@ -158,6 +246,24 @@ mod tests {
             .formatter(|v| format!("${v}"))
             .tick_marks((0.0, 10.0));
         assert!(m[0].1.starts_with('$'));
+    }
+
+    #[test]
+    fn closure_formatter_captures() {
+        let unit = String::from("kg");
+        let m = Axis::new()
+            .formatter(move |v| format!("{v}{unit}"))
+            .tick_marks((0.0, 10.0));
+        assert!(m[0].1.ends_with("kg"));
+    }
+
+    #[test]
+    fn theme_respects_explicit() {
+        let t = Theme::dracula();
+        let mut a = Axis::new().style(Style::default().fg(Color::Red));
+        a.apply_theme(&t);
+        assert_eq!(a.style.fg, Some(Color::Red));
+        assert_eq!(a.label_style.fg, Some(t.muted));
     }
 
     #[test]

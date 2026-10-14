@@ -1,5 +1,5 @@
 //! Waterfall demo.
-//! Keys: c toggle connectors · v toggle values · r randomize · q quit
+//! Keys: c toggle connectors · v toggle values · r randomize · t/T theme · q quit
 
 #[path = "common/mod.rs"]
 mod common;
@@ -11,9 +11,10 @@ use ratatui::{
     widgets::Block,
 };
 use std::time::Duration;
-use tui_chart::Waterfall;
+use tui_chart::{Theme, Waterfall};
 
 struct State {
+    theme: Theme,
     rng: Rng,
     deltas: Vec<f64>,
     connectors: bool,
@@ -29,6 +30,7 @@ fn main() -> anyhow::Result<()> {
     let deltas = sample(&mut rng);
     run(
         State {
+            theme: Theme::default(),
             rng,
             deltas,
             connectors: true,
@@ -46,12 +48,19 @@ fn main() -> anyhow::Result<()> {
                 .total("Total")
                 .connectors(s.connectors)
                 .show_values(s.values)
+                .theme(s.theme.clone())
                 .block(Block::bordered().title(" Waterfall "));
             f.render_widget(&w, main);
-            help(f, bar, " c connectors · v values · r randomize · q quit");
+            help(
+                f,
+                bar,
+                " c connectors · v values · r randomize · t/T theme · q quit",
+            );
         },
         |s, key| {
             match key {
+                KeyCode::Char('t') => s.theme = s.theme.next(),
+                KeyCode::Char('T') => s.theme = s.theme.prev(),
                 KeyCode::Char('q') | KeyCode::Esc => return true,
                 KeyCode::Char('c') => s.connectors = !s.connectors,
                 KeyCode::Char('v') => s.values = !s.values,

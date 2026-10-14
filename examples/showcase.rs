@@ -1,5 +1,5 @@
 //! Dashboard showing every chart type at once.
-//! Keys: space pause · q quit
+//! Keys: space pause · t/T theme · q quit
 
 #[path = "common/mod.rs"]
 mod common;
@@ -14,10 +14,11 @@ use ratatui::{
 use std::time::Duration;
 use tui_chart::{
     sma, Axis, BarChart, BarGroup, BarMode, Candle, CandlestickChart, Gradient, Heatmap, Histogram,
-    LineChart, LineMode, Overlay, Series,
+    LineChart, LineMode, Overlay, Series, Theme,
 };
 
 struct State {
+    theme: Theme,
     t: f64,
     rng: Rng,
     candles: Vec<Candle>,
@@ -42,6 +43,7 @@ fn main() -> anyhow::Result<()> {
     let samples = (0..500).map(|_| rng.gauss()).collect();
     run(
         State {
+            theme: Theme::default(),
             t: 0.0,
             rng,
             candles,
@@ -63,6 +65,7 @@ fn main() -> anyhow::Result<()> {
             let candle = CandlestickChart::new(s.candles.clone())
                 .show_volume(true)
                 .overlay(Overlay::new("SMA10", sma(&s.candles, 10), Color::Yellow))
+                .theme(s.theme.clone())
                 .block(Block::bordered().title(" Candlestick "));
             f.render_widget(&candle, a);
 
@@ -75,6 +78,7 @@ fn main() -> anyhow::Result<()> {
             ])
             .mode(LineMode::Area)
             .y_axis(Axis::new().grid(true))
+            .theme(s.theme.clone())
             .block(Block::bordered().title(" Area / Step "));
             f.render_widget(&area_chart, b);
 
@@ -84,11 +88,13 @@ fn main() -> anyhow::Result<()> {
                 BarGroup::new("C", [5.0, 6.0]),
             ])
             .mode(BarMode::Stacked)
+            .theme(s.theme.clone())
             .block(Block::bordered().title(" Stacked bars "));
             f.render_widget(&bars, c);
 
             let hist = Histogram::new(s.samples.clone())
                 .bins(10)
+                .theme(s.theme.clone())
                 .block(Block::bordered().title(" Histogram "));
             f.render_widget(&hist, d);
 
@@ -101,13 +107,16 @@ fn main() -> anyhow::Result<()> {
                 .collect();
             let hm = Heatmap::new(grid)
                 .gradient(Gradient::Heat)
+                .theme(s.theme.clone())
                 .block(Block::bordered().title(" Heatmap "));
             f.render_widget(&hm, e);
 
-            help(f, bar, " space pause · q quit");
+            help(f, bar, " space pause · t/T theme · q quit");
         },
         |s, key| {
             match key {
+                KeyCode::Char('t') => s.theme = s.theme.next(),
+                KeyCode::Char('T') => s.theme = s.theme.prev(),
                 KeyCode::Char('q') | KeyCode::Esc => return true,
                 KeyCode::Char(' ') => s.paused = !s.paused,
                 _ => {}

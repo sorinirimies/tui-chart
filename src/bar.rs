@@ -1,7 +1,9 @@
 //! Vertical / horizontal, grouped / stacked bar charts.
 
 use crate::axis::Axis;
+use crate::heatmap::Gradient;
 use crate::layout::{self, text_width};
+use crate::theme::{self, Theme};
 use crate::util::{format_compact, nice_bounds};
 use crate::PALETTE;
 use ratatui::{
@@ -13,6 +15,7 @@ use ratatui::{
 
 /// Bar direction.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum BarOrientation {
     /// Bars grow upwards.
     #[default]
@@ -23,6 +26,7 @@ pub enum BarOrientation {
 
 /// How multiple values per group are combined.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum BarMode {
     /// Side by side.
     #[default]
@@ -33,6 +37,7 @@ pub enum BarMode {
 
 /// A labelled group of bars (one value per series).
 #[derive(Debug, Clone, Default, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BarGroup {
     /// Category label.
     pub label: String,
@@ -44,6 +49,7 @@ pub struct BarGroup {
 
 /// Where value labels are placed relative to their bar.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum LabelPosition {
     /// Just beyond the bar end (default).
     #[default]
@@ -92,6 +98,9 @@ pub struct BarChart {
     block: Option<Block<'static>>,
     value_axis: Axis,
     category_axis: Axis,
+    gradient: Option<Gradient>,
+    theme: Option<Theme>,
+    style: Option<Style>,
 }
 
 impl BarChart {
@@ -168,6 +177,32 @@ impl BarChart {
         self
     }
 
+    /// Color bars by value (bottom/left = low, tip = high) using a gradient.
+    /// Explicit per-bar colors still win.
+    pub fn gradient(mut self, gradient: Gradient) -> Self {
+        self.gradient = Some(gradient);
+        self
+    }
+
+    /// Apply a [`Theme`] (palette, axes, labels, background). Explicit colors win.
+    pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
+        let t = theme.into();
+        self.value_axis.apply_theme(&t);
+        self.category_axis.apply_theme(&t);
+        self.theme = Some(t);
+        self
+    }
+
+    /// Base style painted over the whole area (beats the theme).
+    pub fn base_style(mut self, style: Style) -> Self {
+        self.style = Some(style);
+        self
+    }
+
+    fn label_color(&self) -> Color {
+        self.theme.as_ref().map_or(Color::Gray, |t| t.muted)
+    }
+
     /// Wrap in a block.
     pub fn block(mut self, b: Block<'static>) -> Self {
         self.block = Some(b);
@@ -199,7 +234,10 @@ impl BarChart {
         self.colors
             .get(i)
             .copied()
-            .unwrap_or(PALETTE[i % PALETTE.len()])
+            .unwrap_or_else(|| match &self.theme {
+                Some(t) => t.color(i),
+                None => PALETTE[i % PALETTE.len()],
+            })
     }
 
     fn color_for(&self, g: &BarGroup, i: usize) -> Color {
@@ -210,7 +248,7 @@ impl BarChart {
             .unwrap_or_else(|| self.color(i))
     }
 
-    /// Negative and non-finite values are drawn as zero-length bars.
+    /// Non-finite values are ignored; this keeps only the positive part.
     fn clean(v: f64) -> f64 {
         if v.is_finite() && v > 0.0 {
             v
@@ -226,10 +264,99 @@ impl BarChart {
         }
     }
 
-    /// Value-axis bounds `(min, max)`.
+    /// Negative magnitude of a value (0 for non-negative / non-finite).
+    fn neg(v: f64) -> f64 {
+        if v.is_finite() && v < 0.0 {
+            -v
+        } else {
+            0.0
+        }
+    }
+
+    /// Largest negative magnitude of a group (stacked: summed).
+    fn group_neg_total(&self, g: &BarGroup) -> f64 {
+        match self.mode {
+            BarMode::Stacked => g.values.iter().map(|&v| Self::neg(v)).sum(),
+            BarMode::Grouped => g.values.iter().map(|&v| Self::neg(v)).fold(0.0, f64::max),
+        }
+    }
+
+    /// Row/column (in cells from the bottom/left) of the zero baseline.
+    fn baseline(cells: u16, lo: f64, hi: f64) -> u16 {
+        if lo >= 0.0 || cells == 0 {
+            0
+        } else if hi <= 0.0 {
+            cells
+        } else {
+            let z = (-lo / (hi - lo) * cells as f64).round() as i64;
+            z.clamp(1, (cells as i64 - 1).max(1)) as u16
+        }
+    }
+
+    /// Display fraction (0..=1 from bottom/left) of axis fraction `f`.
+    fn display_frac(f: f64, lo: f64, hi: f64, cells: u16, zc: u16) -> f64 {
+        if zc == 0 || cells == 0 {
+            return f;
+        }
+        let v = lo + f * (hi - lo);
+        let z = zc as f64;
+        let c = cells as f64;
+        let cell = if v >= 0.0 && hi > 0.0 {
+            z + v / hi * (c - z)
+        } else if lo < 0.0 {
+            z + v / -lo * z
+        } else {
+            z
+        };
+        cell / c
+    }
+
+    /// Cumulative negative magnitudes per bar in eighths of a cell
+    /// (`cells` available below the baseline for `-lo`).
+    fn neg_eighths(&self, g: &BarGroup, lo: f64, cells: u16) -> Vec<i32> {
+        if lo >= 0.0 || cells == 0 {
+            return vec![0; g.values.len()];
+        }
+        let scale = cells as f64 * 8.0 / -lo;
+        let cap = cells as i32 * 8;
+        match self.mode {
+            BarMode::Stacked => {
+                let mut acc = 0.0;
+                g.values
+                    .iter()
+                    .map(|&v| {
+                        acc += Self::neg(v);
+                        ((acc * scale).round() as i32).clamp(0, cap)
+                    })
+                    .collect()
+            }
+            BarMode::Grouped => g
+                .values
+                .iter()
+                .map(|&v| ((Self::neg(v) * scale).round() as i32).clamp(0, cap))
+                .collect(),
+        }
+    }
+
+    /// Value-axis bounds `(min, max)`. Negative values extend `min` below zero.
     pub fn bounds(&self) -> (f64, f64) {
         if let Some(b) = self.value_axis.bounds {
             return b;
+        }
+        let min_neg = self
+            .groups
+            .iter()
+            .map(|g| self.group_neg_total(g))
+            .fold(0.0, f64::max);
+        if min_neg > 0.0 {
+            let max = self.max.unwrap_or_else(|| {
+                self.groups
+                    .iter()
+                    .map(|g| self.group_total(g))
+                    .fold(0.0, f64::max)
+            });
+            let (lo, hi) = nice_bounds(-min_neg, max.max(0.0), self.value_axis.ticks);
+            return (lo, if max > 0.0 { hi } else { 0.0 });
         }
         let max = self.max.unwrap_or_else(|| {
             self.groups
@@ -245,14 +372,17 @@ impl BarChart {
     }
 
     fn format_value(&self, v: f64) -> String {
-        match self.value_axis.formatter {
-            Some(f) => f(v),
+        match self.value_axis.format(v) {
+            Some(l) => l,
             None => format_compact(v),
         }
     }
 
     /// Segment boundaries (cumulative eighths) per bar for stacked mode.
     fn eighths_for(&self, g: &BarGroup, lo: f64, hi: f64, cells: u16) -> Vec<i32> {
+        if hi <= lo || cells == 0 {
+            return vec![0; g.values.len()];
+        }
         let scale = cells as f64 * 8.0 / (hi - lo);
         match self.mode {
             BarMode::Stacked => {
@@ -293,8 +423,39 @@ impl BarChart {
         ) as u16
     }
 
+    /// Plot rectangle, value bounds and bar thickness of the vertical layout
+    /// (used by the histogram KDE overlay).
+    pub(crate) fn vertical_geometry(&self, area: Rect) -> Option<(Rect, f64, f64, u16)> {
+        let inner = match &self.block {
+            Some(b) => b.inner(area),
+            None => area,
+        };
+        let (lo, hi) = self.bounds();
+        if hi <= lo {
+            return None;
+        }
+        let marks = self.value_axis.tick_marks((lo, hi));
+        let yw = marks.iter().map(|(_, l)| text_width(l)).max().unwrap_or(0);
+        let has_labels = self.groups.iter().any(|g| !g.label.is_empty());
+        let a = layout::compute(
+            inner,
+            yw,
+            has_labels,
+            self.category_axis.title.is_some(),
+            self.value_axis.title.is_some(),
+        )?;
+        let n = if self.mode == BarMode::Stacked {
+            1
+        } else {
+            self.n_series()
+        };
+        let gg = self.group_gap.unwrap_or(1);
+        let bw = self.auto_thickness(a.plot.width, self.groups.len(), n, gg);
+        Some((a.plot, lo, hi, bw))
+    }
+
     fn render_inner(&self, area: Rect, buf: &mut Buffer) {
-        let inner = layout::render_block(&self.block, area, buf);
+        let inner = theme::begin(&self.block, &self.theme, self.style, area, buf);
         match self.orientation {
             BarOrientation::Vertical => self.render_vertical(inner, buf),
             BarOrientation::Horizontal => self.render_horizontal(inner, buf),
@@ -330,13 +491,26 @@ impl BarChart {
         let slot = (group_w + gg) as usize;
         let visible = ((plot.width as usize + gg as usize) / slot).max(1);
 
+        let zc = Self::baseline(plot.height, lo, hi);
+        let pos_cells = plot.height - zc;
+        let (plo, phi) = if zc > 0 { (0.0, hi) } else { (lo, hi) };
         let y_ticks: Vec<(u16, String)> = marks
             .iter()
-            .map(|(f, l)| (layout::frac_row(*f, plot.height, 8), l.clone()))
+            .map(|(f, l)| {
+                let df = Self::display_frac(*f, lo, hi, plot.height, zc);
+                (layout::frac_row(df, plot.height, 8), l.clone())
+            })
             .collect();
         if self.value_axis.grid {
             let rows: Vec<u16> = y_ticks.iter().map(|t| t.0).collect();
-            layout::draw_grid(buf, plot, &[], &rows, self.value_axis.grid_style);
+            layout::draw_grid(
+                buf,
+                plot,
+                &[],
+                &rows,
+                self.value_axis.grid_style,
+                self.value_axis.grid_kind,
+            );
         }
 
         let mut x_ticks = vec![];
@@ -346,7 +520,8 @@ impl BarChart {
                 break;
             }
             x_ticks.push((gx - plot.x + group_w / 2, g.label.clone()));
-            let eighths = self.eighths_for(g, lo, hi, plot.height);
+            let eighths = self.eighths_for(g, plo, phi, pos_cells);
+            let negs = self.neg_eighths(g, lo, zc);
             let bars = if self.mode == BarMode::Stacked {
                 1
             } else {
@@ -354,12 +529,13 @@ impl BarChart {
             };
             for bi in 0..bars {
                 let x = gx + bi as u16 * (bw + self.bar_gap);
+                self.draw_neg_vertical(buf, plot, g, &negs, bi, x, bw, zc);
                 let total = if self.mode == BarMode::Stacked {
                     eighths.last().copied().unwrap_or(0)
                 } else {
                     eighths[bi]
                 };
-                for r in 0..plot.height as i32 {
+                for r in 0..pos_cells as i32 {
                     let fill = (total - r * 8).clamp(0, 8) as usize;
                     if fill == 0 {
                         break;
@@ -370,11 +546,19 @@ impl BarChart {
                             .iter()
                             .position(|&c| p < c)
                             .unwrap_or(eighths.len() - 1);
-                        self.color_for(g, k)
+                        self.color_for_cell(
+                            g,
+                            k,
+                            (r * 8 + fill as i32) as f64 / (pos_cells as f64 * 8.0),
+                        )
                     } else {
-                        self.color_for(g, bi)
+                        self.color_for_cell(
+                            g,
+                            bi,
+                            (r * 8 + fill as i32) as f64 / (pos_cells as f64 * 8.0),
+                        )
                     };
-                    let y = plot.bottom() - 1 - r as u16;
+                    let y = plot.bottom() - 1 - zc - r as u16;
                     for dx in 0..bw {
                         buf.set_string(
                             x + dx,
@@ -395,7 +579,7 @@ impl BarChart {
                     let top_cells = (total + 7) / 8;
                     if self.label_position == LabelPosition::Inside {
                         if top_cells >= 1 && tw <= bw {
-                            let y = plot.bottom() - top_cells as u16;
+                            let y = plot.bottom() - zc - top_cells as u16;
                             let tx = x + (bw - tw) / 2;
                             let c = if self.mode == BarMode::Stacked {
                                 self.color_for(g, g.values.len().saturating_sub(1))
@@ -404,11 +588,11 @@ impl BarChart {
                             };
                             buf.set_string(tx, y, text, Style::default().fg(Color::Black).bg(c));
                         }
-                    } else if top_cells < plot.height as i32 && tw <= bw + 1 + self.bar_gap {
-                        let y = plot.bottom() - 1 - top_cells as u16;
+                    } else if top_cells < pos_cells as i32 && tw <= bw + 1 + self.bar_gap {
+                        let y = plot.bottom() - 1 - zc - top_cells as u16;
                         let tx = (x + bw / 2).saturating_sub(tw / 2).max(plot.x);
                         let tx = tx.min(plot.right().saturating_sub(tw));
-                        buf.set_string(tx, y, text, Style::default().fg(Color::Gray));
+                        buf.set_string(tx, y, text, Style::default().fg(self.label_color()));
                     }
                 }
             }
@@ -473,13 +657,26 @@ impl BarChart {
         let slot = (group_h + gg) as usize;
         let visible = ((plot.height as usize + gg as usize) / slot).max(1);
 
+        let zc = Self::baseline(plot.width, lo, hi);
+        let pos_cells = plot.width - zc;
+        let (plo, phi) = if zc > 0 { (0.0, hi) } else { (lo, hi) };
         let x_ticks: Vec<(u16, String)> = marks
             .iter()
-            .map(|(f, l)| (layout::frac_col(*f, plot.width, 1), l.clone()))
+            .map(|(f, l)| {
+                let df = Self::display_frac(*f, lo, hi, plot.width, zc);
+                (layout::frac_col(df, plot.width, 1), l.clone())
+            })
             .collect();
         if self.value_axis.grid {
             let cols: Vec<u16> = x_ticks.iter().map(|t| t.0).collect();
-            layout::draw_grid(buf, plot, &cols, &[], self.value_axis.grid_style);
+            layout::draw_grid(
+                buf,
+                plot,
+                &cols,
+                &[],
+                self.value_axis.grid_style,
+                self.value_axis.grid_kind,
+            );
         }
 
         let mut y_ticks = vec![];
@@ -490,7 +687,8 @@ impl BarChart {
             }
             let label: String = g.label.chars().take(yw as usize).collect();
             y_ticks.push((gy - plot.y + group_h / 2, label));
-            let eighths = self.eighths_for(g, lo, hi, plot.width);
+            let eighths = self.eighths_for(g, plo, phi, pos_cells);
+            let negs = self.neg_eighths(g, lo, zc);
             let bars = if self.mode == BarMode::Stacked {
                 1
             } else {
@@ -498,29 +696,31 @@ impl BarChart {
             };
             for bi in 0..bars {
                 let y = gy + bi as u16 * (bh + self.bar_gap);
+                self.draw_neg_horizontal(buf, plot, g, &negs, bi, y, bh, zc);
                 let total = if self.mode == BarMode::Stacked {
                     eighths.last().copied().unwrap_or(0)
                 } else {
                     eighths[bi]
                 };
-                for c in 0..plot.width as i32 {
+                for c in 0..pos_cells as i32 {
                     let fill = (total - c * 8).clamp(0, 8) as usize;
                     if fill == 0 {
                         break;
                     }
+                    let frac = (c * 8 + fill as i32) as f64 / (pos_cells as f64 * 8.0);
                     let color = if self.mode == BarMode::Stacked {
                         let p = c * 8 + fill as i32 - 1;
                         let k = eighths
                             .iter()
                             .position(|&e| p < e)
                             .unwrap_or(eighths.len() - 1);
-                        self.color_for(g, k)
+                        self.color_for_cell(g, k, frac)
                     } else {
-                        self.color_for(g, bi)
+                        self.color_for_cell(g, bi, frac)
                     };
                     for dy in 0..bh {
                         buf.set_string(
-                            plot.x + c as u16,
+                            plot.x + zc + c as u16,
                             y + dy,
                             LEFT_EIGHTHS[fill].to_string(),
                             Style::default().fg(color),
@@ -544,18 +744,18 @@ impl BarChart {
                                 self.color_for(g, bi)
                             };
                             buf.set_string(
-                                plot.x + end - tw,
+                                plot.x + zc + end - tw,
                                 y + bh / 2,
                                 text,
                                 Style::default().fg(Color::Black).bg(c),
                             );
                         }
-                    } else if end + 1 + tw <= plot.width {
+                    } else if zc + end + 1 + tw <= plot.width {
                         buf.set_string(
-                            plot.x + end + 1,
+                            plot.x + zc + end + 1,
                             y + bh / 2,
                             text,
-                            Style::default().fg(Color::Gray),
+                            Style::default().fg(self.label_color()),
                         );
                     }
                 }
@@ -579,6 +779,145 @@ impl BarChart {
                 .map(|t| (t, self.category_axis.label_style)),
         );
         self.draw_legend(buf, plot);
+    }
+
+    /// Like [`Self::color_for`] but applies the value gradient (fraction of the
+    /// positive axis) when set and no explicit color exists.
+    fn color_for_cell(&self, g: &BarGroup, i: usize, frac: f64) -> Color {
+        let explicit = g.bar_colors.get(i).copied().flatten();
+        match (&self.gradient, explicit) {
+            (_, Some(c)) => c,
+            (Some(grad), None) => grad.color_at(frac),
+            (None, None) => self.color(i),
+        }
+    }
+
+    /// Draw a bar's below-baseline part (vertical) and its value label.
+    #[allow(clippy::too_many_arguments)]
+    fn draw_neg_vertical(
+        &self,
+        buf: &mut Buffer,
+        plot: Rect,
+        g: &BarGroup,
+        negs: &[i32],
+        bi: usize,
+        x: u16,
+        bw: u16,
+        zc: u16,
+    ) {
+        if zc == 0 {
+            return;
+        }
+        let total = if self.mode == BarMode::Stacked {
+            negs.last().copied().unwrap_or(0)
+        } else {
+            negs[bi]
+        };
+        if total <= 0 {
+            return;
+        }
+        let rows = (total + 7) / 8;
+        for r in 0..rows.min(zc as i32) {
+            let rem = (total - r * 8).clamp(0, 8);
+            let sym = match rem {
+                6..=8 => '█',
+                3..=5 => '▀',
+                _ => '▔',
+            };
+            let k = if self.mode == BarMode::Stacked {
+                let p = r * 8 + rem - 1;
+                negs.iter().position(|&c| p < c).unwrap_or(negs.len() - 1)
+            } else {
+                bi
+            };
+            let color = self.color_for_cell(g, k, 0.0);
+            let y = plot.bottom() - zc + r as u16;
+            if y >= plot.bottom() {
+                break;
+            }
+            for dx in 0..bw {
+                buf.set_string(x + dx, y, sym.to_string(), Style::default().fg(color));
+            }
+        }
+        if self.show_values {
+            let value = if self.mode == BarMode::Stacked {
+                -g.values.iter().map(|&v| Self::neg(v)).sum::<f64>()
+            } else {
+                g.values[bi]
+            };
+            let text = self.format_value(value);
+            let tw = text_width(&text);
+            let y = plot.bottom() - zc + rows as u16;
+            if y < plot.bottom() && tw <= bw + 1 + self.bar_gap {
+                let tx = (x + bw / 2).saturating_sub(tw / 2).max(plot.x);
+                let tx = tx.min(plot.right().saturating_sub(tw));
+                buf.set_string(tx, y, text, Style::default().fg(self.label_color()));
+            }
+        }
+    }
+
+    /// Draw a bar's left-of-baseline part (horizontal) and its value label.
+    #[allow(clippy::too_many_arguments)]
+    fn draw_neg_horizontal(
+        &self,
+        buf: &mut Buffer,
+        plot: Rect,
+        g: &BarGroup,
+        negs: &[i32],
+        bi: usize,
+        y: u16,
+        bh: u16,
+        zc: u16,
+    ) {
+        if zc == 0 {
+            return;
+        }
+        let total = if self.mode == BarMode::Stacked {
+            negs.last().copied().unwrap_or(0)
+        } else {
+            negs[bi]
+        };
+        if total <= 0 {
+            return;
+        }
+        let cols = (total + 7) / 8;
+        for c in 0..cols.min(zc as i32) {
+            let rem = (total - c * 8).clamp(0, 8);
+            let sym = match rem {
+                6..=8 => '█',
+                3..=5 => '▐',
+                _ => '▕',
+            };
+            let k = if self.mode == BarMode::Stacked {
+                let p = c * 8 + rem - 1;
+                negs.iter().position(|&e| p < e).unwrap_or(negs.len() - 1)
+            } else {
+                bi
+            };
+            let color = self.color_for_cell(g, k, 0.0);
+            let x = plot.x + zc - 1 - c as u16;
+            for dy in 0..bh {
+                buf.set_string(x, y + dy, sym.to_string(), Style::default().fg(color));
+            }
+        }
+        if self.show_values {
+            let value = if self.mode == BarMode::Stacked {
+                -g.values.iter().map(|&v| Self::neg(v)).sum::<f64>()
+            } else {
+                g.values[bi]
+            };
+            let text = self.format_value(value);
+            let tw = text_width(&text);
+            let tip = zc as i32 - cols;
+            if tip - 1 - tw as i32 >= 0 {
+                buf.set_string(
+                    plot.x + (tip - 1) as u16 - tw,
+                    y + bh / 2,
+                    text,
+                    Style::default().fg(self.label_color()),
+                );
+            }
+        }
     }
 
     fn draw_legend(&self, buf: &mut Buffer, plot: Rect) {
@@ -605,7 +944,7 @@ impl BarChart {
                 plot.right() - w + 2,
                 y,
                 name,
-                Style::default().fg(Color::Gray),
+                Style::default().fg(self.label_color()),
             );
         }
     }
@@ -654,8 +993,10 @@ mod tests {
 
     #[test]
     fn negative_and_nan_values_clamped() {
-        let c = BarChart::new(vec![BarGroup::new("a", [-5.0, f64::NAN, 3.0])]);
+        let c = BarChart::new(vec![BarGroup::new("a", [f64::NAN, 3.0])]);
         assert_eq!(c.bounds().1, 3.0);
+        let n = BarChart::new(vec![BarGroup::new("a", [-5.0, f64::NAN, 3.0])]);
+        assert!(n.bounds().0 <= -5.0);
     }
 
     #[test]

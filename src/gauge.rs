@@ -1,15 +1,17 @@
 //! Gauge: linear / bullet / arc gauge with threshold bands and target marker.
 
 use crate::canvas::{Canvas, Marker};
+use crate::theme::{self, Theme};
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::Color,
+    style::{Color, Style},
     widgets::{Block, Widget},
 };
 
 /// Direction of a linear gauge.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum GaugeOrientation {
     /// Fills left to right.
     #[default]
@@ -20,6 +22,7 @@ pub enum GaugeOrientation {
 
 /// Visual form of a [`Gauge`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum GaugeStyle {
     /// Full-thickness bar over a dim band track.
     #[default]
@@ -41,7 +44,9 @@ pub struct Gauge<'a> {
     label: Option<String>,
     orientation: GaugeOrientation,
     style: GaugeStyle,
-    color: Color,
+    color: Option<Color>,
+    theme: Option<Theme>,
+    base: Option<Style>,
     block: Option<Block<'a>>,
 }
 
@@ -57,7 +62,9 @@ impl<'a> Gauge<'a> {
             label: None,
             orientation: GaugeOrientation::Horizontal,
             style: GaugeStyle::Linear,
-            color: Color::Green,
+            color: None,
+            theme: None,
+            base: None,
             block: None,
         }
     }
@@ -95,8 +102,29 @@ impl<'a> Gauge<'a> {
     }
     /// Bar color when no bands are set.
     pub fn color(mut self, c: Color) -> Self {
-        self.color = c;
+        self.color = Some(c);
         self
+    }
+    /// Apply a [`Theme`]: bar color (bull color), track/needle colors and
+    /// background fill. Explicit [`Gauge::color`] and band colors win.
+    pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
+        self.theme = Some(theme.into());
+        self
+    }
+    /// Base style painted over the whole area (beats the theme).
+    pub fn base_style(mut self, style: Style) -> Self {
+        self.base = Some(style);
+        self
+    }
+    fn fg(&self) -> Color {
+        self.theme.as_ref().map_or(Color::White, |t| t.foreground)
+    }
+    fn track(&self) -> Color {
+        self.theme.as_ref().map_or(Color::DarkGray, |t| t.grid)
+    }
+    fn bar_color(&self) -> Color {
+        self.color
+            .unwrap_or_else(|| self.theme.as_ref().map_or(Color::Green, |t| t.bull))
     }
     /// Wrap in a block.
     pub fn block(mut self, b: Block<'a>) -> Self {
@@ -118,7 +146,7 @@ impl<'a> Gauge<'a> {
             .iter()
             .find(|b| v <= b.0)
             .or(self.bands.last())
-            .map_or(self.color, |b| b.1)
+            .map_or(self.bar_color(), |b| b.1)
     }
 
     fn draw_label(&self, area: Rect, buf: &mut Buffer) {
@@ -128,7 +156,7 @@ impl<'a> Gauge<'a> {
         let y = area.y + area.height / 2;
         for (i, ch) in l.chars().take(n).enumerate() {
             if let Some(c) = buf.cell_mut((x0 + i as u16, y)) {
-                c.set_char(ch).set_fg(Color::White);
+                c.set_char(ch).set_fg(self.fg());
             }
         }
     }
@@ -168,7 +196,7 @@ impl<'a> Gauge<'a> {
                 let in_bar = c >= c0 && c < c1;
                 if tpos == Some(i) {
                     cell.set_char(if horiz { '┃' } else { '━' })
-                        .set_fg(Color::White);
+                        .set_fg(self.fg());
                 } else if in_bar && rem >= 8 {
                     cell.set_char('█').set_fg(bc);
                 } else if in_bar && rem > 0 {
@@ -182,7 +210,7 @@ impl<'a> Gauge<'a> {
                 } else if !self.bands.is_empty() || bullet {
                     cell.set_char(if bullet { '▒' } else { '░' }).set_fg(bc);
                 } else {
-                    cell.set_char('░').set_fg(Color::DarkGray);
+                    cell.set_char('░').set_fg(self.track());
                 }
             }
         }
@@ -208,9 +236,9 @@ impl<'a> Gauge<'a> {
             let col = if f <= vf || !self.bands.is_empty() {
                 self.band_color(f)
             } else {
-                Color::DarkGray
+                self.track()
             };
-            let col = if f > vf { Color::DarkGray } else { col };
+            let col = if f > vf { self.track() } else { col };
             for t in 0..(r as i32 / 4).max(1) {
                 let p = at(f, r - t as f64);
                 cv.set(p.0, p.1, col);
@@ -219,10 +247,10 @@ impl<'a> Gauge<'a> {
         if let Some(t) = self.target {
             let tf = self.frac(t);
             let (a, b) = (at(tf, r * 0.5), at(tf, r));
-            cv.line(a.0, a.1, b.0, b.1, Color::White);
+            cv.line(a.0, a.1, b.0, b.1, self.fg());
         }
         let tip = at(vf, r * 0.85);
-        cv.line(cx.round() as i32, cy as i32, tip.0, tip.1, Color::White);
+        cv.line(cx.round() as i32, cy as i32, tip.0, tip.1, self.fg());
         cv.render(buf, area);
         self.draw_label(area, buf);
     }
@@ -236,14 +264,7 @@ impl Widget for Gauge<'_> {
 
 impl Widget for &Gauge<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let inner = match &self.block {
-            Some(b) => {
-                let i = b.inner(area);
-                b.clone().render(area, buf);
-                i
-            }
-            None => area,
-        };
+        let inner = theme::begin(&self.block, &self.theme, self.base, area, buf);
         if inner.width == 0 || inner.height == 0 {
             return;
         }

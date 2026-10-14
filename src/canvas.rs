@@ -4,6 +4,7 @@ use ratatui::{buffer::Buffer, layout::Rect, style::Color};
 
 /// Glyph family used to draw plotted points.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Marker {
     /// Braille patterns: 2×4 dots per cell (highest resolution).
     #[default]

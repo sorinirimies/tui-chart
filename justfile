@@ -27,36 +27,80 @@ build-release:
 run:
     cargo run --example line
 
-# Run line example
-example-line:
-    cargo run --example line
+# Run bars example
+example-bars:
+    cargo run --example bars
+
+# Run boxplot example
+example-boxplot:
+    cargo run --example boxplot
 
 # Run candlestick example
 example-candlestick:
     cargo run --example candlestick
 
-# Run bars example
-example-bars:
-    cargo run --example bars
+# Run depth example
+example-depth:
+    cargo run --example depth
 
-# Run histogram example
-example-histogram:
-    cargo run --example histogram
+# Run gantt example
+example-gantt:
+    cargo run --example gantt
+
+# Run gauge example
+example-gauge:
+    cargo run --example gauge
 
 # Run heatmap example
 example-heatmap:
     cargo run --example heatmap
 
+# Run histogram example
+example-histogram:
+    cargo run --example histogram
+
+# Run line example
+example-line:
+    cargo run --example line
+
+# Run radar example
+example-radar:
+    cargo run --example radar
+
+# Run renko example
+example-renko:
+    cargo run --example renko
+
 # Run showcase example
 example-showcase:
     cargo run --example showcase
 
+# Run sparkline example
+example-sparkline:
+    cargo run --example sparkline
+
+# Run stream example
+example-stream:
+    cargo run --example stream
+
+# Run treemap example
+example-treemap:
+    cargo run --example treemap
+
+# Run waterfall example
+example-waterfall:
+    cargo run --example waterfall
+
 # Run all examples (sequentially)
-examples: example-line example-candlestick example-bars example-histogram example-heatmap example-showcase
+examples: example-themes example-bars example-boxplot example-candlestick example-depth example-gantt example-gauge example-heatmap example-histogram example-line example-radar example-renko example-showcase example-sparkline example-stream example-treemap example-waterfall
+
+# Run themes example
+example-themes:
+    cargo run --example themes
 
 # Run tests
 test:
-    cargo test
+    cargo test --all-features
 
 # Run tests with coverage
 test-coverage:
@@ -76,7 +120,7 @@ fmt-check:
 
 # Run clippy linter
 clippy:
-    cargo clippy -- -D warnings
+    cargo clippy --all-targets --all-features -- -D warnings
 
 # Run all checks (fmt, clippy, test)
 check-all: fmt-check clippy test
@@ -168,7 +212,7 @@ doc:
 
 # Watch and auto-run on file changes (requires cargo-watch)
 watch:
-    cargo watch -x "run --example horizontal"
+    cargo watch -x "run --example showcase"
 
 # Git: commit current changes
 commit message:
@@ -344,35 +388,90 @@ info:
 view-changelog:
     @cat CHANGELOG.md
 
-# Generate demo GIF for line
-vhs-line:
-    vhs examples/vhs/line.tape
-    @echo "✅ examples/vhs/output/line.gif"
+# Generate demo GIF for bars
+vhs-bars:
+    vhs examples/vhs/bars.tape
+    @echo "✅ examples/vhs/output/bars.gif"
+
+# Generate demo GIF for boxplot
+vhs-boxplot:
+    vhs examples/vhs/boxplot.tape
+    @echo "✅ examples/vhs/output/boxplot.gif"
 
 # Generate demo GIF for candlestick
 vhs-candlestick:
     vhs examples/vhs/candlestick.tape
     @echo "✅ examples/vhs/output/candlestick.gif"
 
-# Generate demo GIF for bars
-vhs-bars:
-    vhs examples/vhs/bars.tape
-    @echo "✅ examples/vhs/output/bars.gif"
+# Generate demo GIF for depth
+vhs-depth:
+    vhs examples/vhs/depth.tape
+    @echo "✅ examples/vhs/output/depth.gif"
 
-# Generate demo GIF for histogram
-vhs-histogram:
-    vhs examples/vhs/histogram.tape
-    @echo "✅ examples/vhs/output/histogram.gif"
+# Generate demo GIF for gantt
+vhs-gantt:
+    vhs examples/vhs/gantt.tape
+    @echo "✅ examples/vhs/output/gantt.gif"
+
+# Generate demo GIF for gauge
+vhs-gauge:
+    vhs examples/vhs/gauge.tape
+    @echo "✅ examples/vhs/output/gauge.gif"
 
 # Generate demo GIF for heatmap
 vhs-heatmap:
     vhs examples/vhs/heatmap.tape
     @echo "✅ examples/vhs/output/heatmap.gif"
 
+# Generate demo GIF for histogram
+vhs-histogram:
+    vhs examples/vhs/histogram.tape
+    @echo "✅ examples/vhs/output/histogram.gif"
+
+# Generate demo GIF for line
+vhs-line:
+    vhs examples/vhs/line.tape
+    @echo "✅ examples/vhs/output/line.gif"
+
+# Generate demo GIF for radar
+vhs-radar:
+    vhs examples/vhs/radar.tape
+    @echo "✅ examples/vhs/output/radar.gif"
+
+# Generate demo GIF for renko
+vhs-renko:
+    vhs examples/vhs/renko.tape
+    @echo "✅ examples/vhs/output/renko.gif"
+
 # Generate demo GIF for showcase
 vhs-showcase:
     vhs examples/vhs/showcase.tape
     @echo "✅ examples/vhs/output/showcase.gif"
+
+# Generate demo GIF for sparkline
+vhs-sparkline:
+    vhs examples/vhs/sparkline.tape
+    @echo "✅ examples/vhs/output/sparkline.gif"
+
+# Generate demo GIF for stream
+vhs-stream:
+    vhs examples/vhs/stream.tape
+    @echo "✅ examples/vhs/output/stream.gif"
+
+# Generate demo GIF for treemap
+vhs-treemap:
+    vhs examples/vhs/treemap.tape
+    @echo "✅ examples/vhs/output/treemap.gif"
+
+# Generate demo GIF for waterfall
+vhs-waterfall:
+    vhs examples/vhs/waterfall.tape
+    @echo "✅ examples/vhs/output/waterfall.gif"
+
+# Generate demo GIF for themes
+vhs-themes:
+    vhs examples/vhs/themes.tape
+    @echo "✅ examples/vhs/output/themes.gif"
 
 # Generate all demo GIFs
 vhs-all:

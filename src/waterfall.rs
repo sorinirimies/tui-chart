@@ -1,5 +1,6 @@
 //! Waterfall: delta steps with a running total.
 
+use crate::theme::{self, Theme};
 use crate::util::{format_compact, format_tick, nice_ticks};
 use ratatui::{
     buffer::Buffer,
@@ -25,9 +26,11 @@ struct Step {
 pub struct Waterfall {
     steps: Vec<Step>,
     initial: f64,
-    up: Color,
-    down: Color,
-    total: Color,
+    up: Option<Color>,
+    down: Option<Color>,
+    total: Option<Color>,
+    theme: Option<Theme>,
+    base: Option<Style>,
     connectors: bool,
     show_values: bool,
     block: Option<Block<'static>>,
@@ -45,9 +48,11 @@ impl Waterfall {
         Self {
             steps: vec![],
             initial: 0.0,
-            up: Color::Green,
-            down: Color::Red,
-            total: Color::Blue,
+            up: None,
+            down: None,
+            total: None,
+            theme: None,
+            base: None,
             connectors: true,
             show_values: true,
             block: None,
@@ -81,9 +86,22 @@ impl Waterfall {
 
     /// Colors for increases, decreases and totals.
     pub fn colors(mut self, up: Color, down: Color, total: Color) -> Self {
-        self.up = up;
-        self.down = down;
-        self.total = total;
+        self.up = Some(up);
+        self.down = Some(down);
+        self.total = Some(total);
+        self
+    }
+
+    /// Apply a [`Theme`]: bull/bear/neutral bar colors, axis/label colors and
+    /// background fill. Explicit [`Waterfall::colors`] win.
+    pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
+        self.theme = Some(theme.into());
+        self
+    }
+
+    /// Base style painted over the whole area (beats the theme).
+    pub fn base_style(mut self, style: Style) -> Self {
+        self.base = Some(style);
         self
     }
 
@@ -135,14 +153,7 @@ fn put_str(buf: &mut Buffer, x: u16, y: u16, max_x: u16, s: &str, style: Style) 
 impl Widget for &Waterfall {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let area = area.intersection(buf.area);
-        let inner = match &self.block {
-            Some(b) => {
-                let i = b.inner(area);
-                b.clone().render(area, buf);
-                i
-            }
-            None => area,
-        };
+        let inner = theme::begin(&self.block, &self.theme, self.base, area, buf);
         if inner.width < 4 || inner.height < 4 || self.steps.is_empty() {
             return;
         }
@@ -156,7 +167,11 @@ impl Widget for &Waterfall {
         if !(hi - lo).is_finite() || hi <= lo {
             hi = lo + 1.0;
         }
-        let dim = Style::default().fg(Color::DarkGray);
+        let dim = Style::default().fg(self.theme.as_ref().map_or(Color::DarkGray, |t| t.grid));
+        let text = self
+            .theme
+            .as_ref()
+            .map_or(Style::default(), |t| t.label_style());
         let ticks = nice_ticks(lo, hi, (inner.height as usize / 3).max(2));
         let tstep = if ticks.len() >= 2 {
             ticks[1] - ticks[0]
@@ -212,12 +227,16 @@ impl Widget for &Waterfall {
             }
             let slot_w = x1 - x0;
             let bw = if slot_w >= 3 { slot_w - 1 } else { slot_w };
+            let th = self.theme.as_ref();
             let color = if *is_total {
                 self.total
+                    .unwrap_or_else(|| th.map_or(Color::Blue, |t| t.neutral))
             } else if e >= s {
                 self.up
+                    .unwrap_or_else(|| th.map_or(Color::Green, |t| t.bull))
             } else {
                 self.down
+                    .unwrap_or_else(|| th.map_or(Color::Red, |t| t.bear))
             };
             let st = Style::default().fg(color);
             let (ra, rb) = (row(*s), row(*e));
@@ -258,14 +277,7 @@ impl Widget for &Waterfall {
                 }
             }
             let l: String = step.label.chars().take(slot_w as usize).collect();
-            put_str(
-                buf,
-                x0,
-                inner.bottom() - 1,
-                inner.right(),
-                &l,
-                Style::default(),
-            );
+            put_str(buf, x0, inner.bottom() - 1, inner.right(), &l, text);
         }
     }
 }
@@ -309,6 +321,25 @@ mod tests {
         let fg = |c: Color| b.content().iter().any(|x| x.symbol() == "█" && x.fg == c);
         assert!(fg(Color::Green) && fg(Color::Red) && fg(Color::Blue));
         assert!(b.content().iter().any(|x| x.symbol() == "┄"));
+    }
+
+    #[test]
+    fn theme_colors_and_override() {
+        let t = Theme::dracula();
+        let b = render(&sample().theme(&t), 40, 14);
+        let fg = |c: Color| b.content().iter().any(|x| x.symbol() == "█" && x.fg == c);
+        assert!(fg(t.bull) && fg(t.bear) && fg(t.neutral));
+        assert_eq!(b[(0, 0)].bg, t.background.unwrap());
+        let b = render(
+            &sample()
+                .theme(&t)
+                .colors(Color::Yellow, Color::Magenta, Color::White),
+            40,
+            14,
+        );
+        let fg = |c: Color| b.content().iter().any(|x| x.symbol() == "█" && x.fg == c);
+        assert!(fg(Color::Yellow) && fg(Color::Magenta) && fg(Color::White));
+        assert!(!fg(t.bull));
     }
 
     #[test]

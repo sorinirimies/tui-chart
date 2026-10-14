@@ -4,7 +4,9 @@ use crate::annotation::{draw_annotations, Annotation};
 use crate::axis::Axis;
 use crate::canvas::{Canvas, Marker};
 use crate::crosshair::{self, nearest_point, Crosshair, NearestPoint};
+use crate::heatmap::Gradient;
 use crate::layout::{self, text_width};
+use crate::theme::{self, Theme};
 use crate::util::{format_compact, format_tick, nice_bounds};
 use crate::PALETTE;
 use ratatui::{
@@ -16,6 +18,7 @@ use ratatui::{
 
 /// How a series is drawn.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum LineMode {
     /// Straight segments between points.
     #[default]
@@ -30,6 +33,7 @@ pub enum LineMode {
 
 /// Where the legend is drawn inside the plot.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum LegendPosition {
     /// No legend.
     None,
@@ -55,6 +59,7 @@ pub struct Series {
     pub(crate) band: Vec<(f64, f64)>,
     pub(crate) smooth: bool,
     pub(crate) secondary: bool,
+    pub(crate) fill_gradient: Option<Gradient>,
 }
 
 impl Series {
@@ -85,6 +90,12 @@ impl Series {
     /// Series color (default: palette by index).
     pub fn color(mut self, color: Color) -> Self {
         self.color = Some(color);
+        self
+    }
+
+    /// Color an `Area` fill by value (bottom = low, top = high) instead of one flat color.
+    pub fn fill_gradient(mut self, gradient: Gradient) -> Self {
+        self.fill_gradient = Some(gradient);
         self
     }
 
@@ -221,6 +232,9 @@ pub struct LineChart {
     marker: Marker,
     mode: LineMode,
     legend: LegendPosition,
+    legend_style: Option<Style>,
+    theme: Option<Theme>,
+    style: Option<Style>,
 }
 
 impl LineChart {
@@ -241,18 +255,27 @@ impl LineChart {
     /// X axis configuration.
     pub fn x_axis(mut self, axis: Axis) -> Self {
         self.x_axis = axis;
+        if let Some(t) = &self.theme {
+            self.x_axis.apply_theme(t);
+        }
         self
     }
 
     /// Y axis configuration.
     pub fn y_axis(mut self, axis: Axis) -> Self {
         self.y_axis = axis;
+        if let Some(t) = &self.theme {
+            self.y_axis.apply_theme(t);
+        }
         self
     }
 
     /// Secondary (right) y axis configuration, used by `secondary_axis(true)` series.
     pub fn y2_axis(mut self, axis: Axis) -> Self {
         self.y2_axis = axis;
+        if let Some(t) = &self.theme {
+            self.y2_axis.apply_theme(t);
+        }
         self
     }
 
@@ -297,6 +320,36 @@ impl LineChart {
     pub fn mode(mut self, mode: LineMode) -> Self {
         self.mode = mode;
         self
+    }
+
+    /// Apply a [`Theme`]: axis/grid/border colors, background fill and the series
+    /// palette. Explicit series colors and explicitly styled axes still win.
+    pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
+        let t = theme.into();
+        self.x_axis.apply_theme(&t);
+        self.y_axis.apply_theme(&t);
+        self.y2_axis.apply_theme(&t);
+        self.theme = Some(t);
+        self
+    }
+
+    /// Base style painted over the whole area (beats the theme).
+    pub fn base_style(mut self, style: Style) -> Self {
+        self.style = Some(style);
+        self
+    }
+
+    /// Style of legend entry text (default: theme muted color / gray).
+    pub fn legend_style(mut self, style: Style) -> Self {
+        self.legend_style = Some(style);
+        self
+    }
+
+    fn series_color(&self, i: usize, s: &Series) -> Color {
+        s.color.unwrap_or_else(|| match &self.theme {
+            Some(t) => t.color(i),
+            None => PALETTE[i % PALETTE.len()],
+        })
     }
 
     /// Legend placement.
@@ -440,8 +493,8 @@ impl LineChart {
         (k0..=k1)
             .step_by(stride)
             .map(|k| {
-                let label = match self.y_axis.formatter {
-                    Some(f) => f(10f64.powi(k)),
+                let label = match self.y_axis.format(10f64.powi(k)) {
+                    Some(l) => l,
                     None => decade_label(k),
                 };
                 (f64::from(k) - l0, label)
@@ -451,7 +504,7 @@ impl LineChart {
     }
 
     fn render_inner(&self, area: Rect, buf: &mut Buffer) {
-        let inner = layout::render_block(&self.block, area, buf);
+        let inner = theme::begin(&self.block, &self.theme, self.style, area, buf);
         let (xb, yb) = self.bounds();
         if xb.1 <= xb.0 || yb.1 <= yb.0 {
             return;
@@ -512,7 +565,14 @@ impl LineChart {
         } else {
             vec![]
         };
-        layout::draw_grid(buf, plot, &grid_cols, &grid_rows, self.x_axis.grid_style);
+        layout::draw_grid(
+            buf,
+            plot,
+            &grid_cols,
+            &grid_rows,
+            self.x_axis.grid_style,
+            self.x_axis.grid_kind,
+        );
 
         // cell mappings relative to the plot (unclamped, may be outside)
         let clampi = |v: f64| v.round().clamp(-20_000.0, 20_000.0) as i32;
@@ -538,7 +598,7 @@ impl LineChart {
             ))
         };
         for (i, s) in self.series.iter().enumerate() {
-            let color = s.color.unwrap_or(PALETTE[i % PALETTE.len()]);
+            let color = self.series_color(i, s);
             let mode = s.mode.unwrap_or(self.mode);
             let sec = s.secondary && sy2.is_some();
             let mut pts: Vec<(i32, i32)> = Vec::with_capacity(s.data.len());
@@ -567,12 +627,14 @@ impl LineChart {
             if (s.smooth || self.smooth) && matches!(mode, LineMode::Line | LineMode::Area) {
                 pts = catmull_rom(&pts);
             }
-            draw_series(&mut canvas, &pts, mode, color);
+            draw_series(&mut canvas, &pts, mode, color, s.fill_gradient.as_ref());
         }
         canvas.render(buf, plot);
 
         if let Some(ch) = &self.crosshair {
             if let (Some(c), Some(r)) = (x_cell(ch.x), y_cell(ch.y)) {
+                let themed = self.theme.as_ref().map(|t| ch.themed(t));
+                let ch = themed.as_ref().unwrap_or(ch);
                 crosshair::draw(buf, plot, ch, c, r, &self.tooltip_lines(ch));
             }
         }
@@ -641,12 +703,7 @@ impl LineChart {
             .iter()
             .enumerate()
             .filter(|(_, s)| !s.name.is_empty())
-            .map(|(i, s)| {
-                (
-                    s.name.as_str(),
-                    s.color.unwrap_or(PALETTE[i % PALETTE.len()]),
-                )
-            })
+            .map(|(i, s)| (s.name.as_str(), self.series_color(i, s)))
             .collect();
         let w = entries
             .iter()
@@ -660,6 +717,9 @@ impl LineChart {
             LegendPosition::TopLeft | LegendPosition::BottomLeft => plot.x,
             _ => plot.right() - w,
         };
+        let label = self.legend_style.unwrap_or_else(|| {
+            Style::default().fg(self.theme.as_ref().map_or(Color::Gray, |t| t.muted))
+        });
         for (i, (name, color)) in entries.iter().enumerate() {
             let row = i as u16;
             if row >= plot.height {
@@ -672,7 +732,7 @@ impl LineChart {
                 _ => plot.y + row,
             };
             buf.set_string(x, y, "●", Style::default().fg(*color));
-            buf.set_string(x + 2, y, name, Style::default().fg(Color::Gray));
+            buf.set_string(x + 2, y, name, label);
         }
     }
 }
@@ -744,7 +804,13 @@ fn fill_band(canvas: &mut Canvas, band: &[(i32, i32, i32)], color: Color) {
     }
 }
 
-fn draw_series(canvas: &mut Canvas, pts: &[(i32, i32)], mode: LineMode, color: Color) {
+fn draw_series(
+    canvas: &mut Canvas,
+    pts: &[(i32, i32)],
+    mode: LineMode,
+    color: Color,
+    grad: Option<&Gradient>,
+) {
     let bottom = canvas.px_h() - 1;
     match mode {
         LineMode::Scatter => {
@@ -755,7 +821,7 @@ fn draw_series(canvas: &mut Canvas, pts: &[(i32, i32)], mode: LineMode, color: C
         LineMode::Line | LineMode::Area | LineMode::Step => {
             if mode == LineMode::Area {
                 for w in pts.windows(2) {
-                    fill_segment(canvas, w[0], w[1], bottom, color);
+                    fill_segment(canvas, w[0], w[1], bottom, color, grad);
                 }
             }
             if pts.len() == 1 {
@@ -774,7 +840,14 @@ fn draw_series(canvas: &mut Canvas, pts: &[(i32, i32)], mode: LineMode, color: C
     }
 }
 
-fn fill_segment(canvas: &mut Canvas, a: (i32, i32), b: (i32, i32), bottom: i32, color: Color) {
+fn fill_segment(
+    canvas: &mut Canvas,
+    a: (i32, i32),
+    b: (i32, i32),
+    bottom: i32,
+    color: Color,
+    grad: Option<&Gradient>,
+) {
     let (lo, hi) = if a.0 <= b.0 { (a, b) } else { (b, a) };
     let start = lo.0.max(0);
     let end = hi.0.min(canvas.px_w() - 1);
@@ -787,7 +860,11 @@ fn fill_segment(canvas: &mut Canvas, a: (i32, i32), b: (i32, i32), bottom: i32, 
         let py = (lo.1 as f64 + t * (hi.1 - lo.1) as f64).round() as i32;
         for yy in py.max(0)..=bottom {
             if px % 2 == 0 && yy % 2 == 0 {
-                canvas.set(px, yy, color);
+                let c = match grad {
+                    Some(g) if bottom > 0 => g.color_at((bottom - yy) as f64 / bottom as f64),
+                    _ => color,
+                };
+                canvas.set(px, yy, c);
             }
         }
     }
@@ -1021,5 +1098,30 @@ mod tests {
         let t = text_of(&buf, 50, 16);
         assert!(t.contains('┼'));
         assert!(t.contains("x 1"));
+    }
+
+    #[test]
+    fn crosshair_uses_theme_colors() {
+        let th = Theme::dracula();
+        let area = Rect::new(0, 0, 50, 16);
+        let mut buf = Buffer::empty(area);
+        chart()
+            .theme(&th)
+            .crosshair(Some(Crosshair::new(1.0, 2.0)))
+            .render(area, &mut buf);
+        assert!(buf
+            .content()
+            .iter()
+            .any(|c| c.symbol() == "┼" && c.fg == th.crosshair));
+        let mut buf = Buffer::empty(area);
+        let own = Style::default().fg(Color::Red);
+        chart()
+            .theme(&th)
+            .crosshair(Some(Crosshair::new(1.0, 2.0).style(own)))
+            .render(area, &mut buf);
+        assert!(buf
+            .content()
+            .iter()
+            .any(|c| c.symbol() == "┼" && c.fg == Color::Red));
     }
 }

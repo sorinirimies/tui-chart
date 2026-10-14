@@ -1,11 +1,7 @@
 //! Shared plot-area layout and axis/label drawing.
 
-use ratatui::{
-    buffer::Buffer,
-    layout::Rect,
-    style::Style,
-    widgets::{Block, Widget},
-};
+use crate::axis::GridStyle;
+use ratatui::{buffer::Buffer, layout::Rect, style::Style};
 use unicode_width::UnicodeWidthStr;
 
 /// Rectangles produced by [`compute`].
@@ -18,18 +14,6 @@ pub(crate) struct Areas {
     pub axis_row: u16,
     pub y_title_row: Option<u16>,
     pub x_title_row: Option<u16>,
-}
-
-/// Render an optional block and return the inner area.
-pub(crate) fn render_block(block: &Option<Block<'static>>, area: Rect, buf: &mut Buffer) -> Rect {
-    match block {
-        Some(b) => {
-            let inner = b.inner(area);
-            b.clone().render(area, buf);
-            inner
-        }
-        None => area,
-    }
 }
 
 /// Split `area` into plot area, label gutters and axis lines.
@@ -144,13 +128,20 @@ pub(crate) fn draw_x_labels(buf: &mut Buffer, row: Rect, ticks: &[(u16, String)]
 }
 
 /// Dotted grid lines at the given plot-relative columns/rows (only on empty cells).
-pub(crate) fn draw_grid(buf: &mut Buffer, plot: Rect, cols: &[u16], rows: &[u16], style: Style) {
+pub(crate) fn draw_grid(
+    buf: &mut Buffer,
+    plot: Rect,
+    cols: &[u16],
+    rows: &[u16],
+    style: Style,
+    kind: GridStyle,
+) {
     for r in rows {
         if *r >= plot.height {
             continue;
         }
         for x in plot.x..plot.right() {
-            put_grid(buf, x, plot.y + r, style);
+            put_grid(buf, x, plot.y + r, style, kind.glyph(true));
         }
     }
     for c in cols {
@@ -158,15 +149,15 @@ pub(crate) fn draw_grid(buf: &mut Buffer, plot: Rect, cols: &[u16], rows: &[u16]
             continue;
         }
         for y in plot.y..plot.bottom() {
-            put_grid(buf, plot.x + c, y, style);
+            put_grid(buf, plot.x + c, y, style, kind.glyph(false));
         }
     }
 }
 
-fn put_grid(buf: &mut Buffer, x: u16, y: u16, style: Style) {
+fn put_grid(buf: &mut Buffer, x: u16, y: u16, style: Style, ch: char) {
     if let Some(cell) = buf.cell_mut((x, y)) {
         if cell.symbol() == " " {
-            cell.set_char('·').set_style(style);
+            cell.set_char(ch).set_style(style);
         }
     }
 }
@@ -251,7 +242,14 @@ mod tests {
     fn grid_only_on_empty() {
         let mut buf = Buffer::empty(Rect::new(0, 0, 4, 3));
         buf.set_string(1, 1, "x", Style::default());
-        draw_grid(&mut buf, Rect::new(0, 0, 4, 3), &[], &[1], Style::default());
+        draw_grid(
+            &mut buf,
+            Rect::new(0, 0, 4, 3),
+            &[],
+            &[1],
+            Style::default(),
+            GridStyle::Dotted,
+        );
         assert_eq!(buf[(0, 1)].symbol(), "·");
         assert_eq!(buf[(1, 1)].symbol(), "x");
     }

@@ -2,16 +2,20 @@
 
 use crate::axis::Axis;
 use crate::bar::{BarChart, BarGroup, BarOrientation};
+use crate::canvas::{Canvas, Marker};
+use crate::heatmap::Gradient;
+use crate::theme::Theme;
 use crate::util::{format_tick, nice_step};
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::Color,
+    style::{Color, Style},
     widgets::{Block, Widget},
 };
 
 /// One histogram bin `[start, end)` (last bin includes `end`).
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Bin {
     /// Inclusive lower edge.
     pub start: f64,
@@ -27,7 +31,12 @@ pub struct Histogram {
     data: Vec<f64>,
     bins: Option<usize>,
     range: Option<(f64, f64)>,
-    color: Color,
+    color: Option<Color>,
+    kde: bool,
+    kde_bandwidth: Option<f64>,
+    gradient: Option<Gradient>,
+    theme: Option<Theme>,
+    style: Option<Style>,
     orientation: BarOrientation,
     show_values: bool,
     cumulative: bool,
@@ -43,7 +52,12 @@ impl Histogram {
             data: data.into_iter().filter(|v| v.is_finite()).collect(),
             bins: None,
             range: None,
-            color: Color::Cyan,
+            color: None,
+            kde: false,
+            kde_bandwidth: None,
+            gradient: None,
+            theme: None,
+            style: None,
             orientation: BarOrientation::Vertical,
             show_values: false,
             cumulative: false,
@@ -67,7 +81,43 @@ impl Histogram {
 
     /// Bar color.
     pub fn color(mut self, c: Color) -> Self {
-        self.color = c;
+        self.color = Some(c);
+        self
+    }
+
+    /// Overlay a Gaussian kernel density estimate curve on the bars
+    /// (vertical, non-cumulative histograms only; ignored otherwise).
+    /// The curve is scaled to the bar units (counts, or density when normalized).
+    pub fn kde(mut self, on: bool) -> Self {
+        self.kde = on;
+        self
+    }
+
+    /// KDE bandwidth (default: Silverman's rule). Implies nothing unless
+    /// [`Histogram::kde`] is on.
+    pub fn kde_bandwidth(mut self, h: f64) -> Self {
+        self.kde_bandwidth = Some(h);
+        self
+    }
+
+    /// Color bars by height using a gradient (instead of one flat color).
+    pub fn gradient(mut self, g: Gradient) -> Self {
+        self.gradient = Some(g);
+        self
+    }
+
+    /// Apply a [`Theme`] (accent bar color, axes, background). An explicit
+    /// [`Histogram::color`] wins.
+    pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
+        let t = theme.into();
+        self.value_axis.apply_theme(&t);
+        self.theme = Some(t);
+        self
+    }
+
+    /// Base style painted over the whole area (beats the theme).
+    pub fn base_style(mut self, style: Style) -> Self {
+        self.style = Some(style);
         self
     }
 
@@ -105,6 +155,9 @@ impl Histogram {
     /// Count axis.
     pub fn value_axis(mut self, a: Axis) -> Self {
         self.value_axis = a;
+        if let Some(t) = &self.theme {
+            self.value_axis.apply_theme(t);
+        }
         self
     }
 
@@ -172,7 +225,7 @@ impl Histogram {
     /// values across the bin range, as `(x, density)` pairs ready for a
     /// [`Series`](crate::Series). `bandwidth` of `None` uses Silverman's rule.
     /// Scale by `n * bin_width` to overlay on a count histogram.
-    pub fn kde(&self, points: usize, bandwidth: Option<f64>) -> Vec<(f64, f64)> {
+    pub fn kde_curve(&self, points: usize, bandwidth: Option<f64>) -> Vec<(f64, f64)> {
         let bins = self.compute_bins();
         let (Some(first), Some(last)) = (bins.first(), bins.last()) else {
             return vec![];
@@ -219,7 +272,7 @@ impl Histogram {
             .map(|(b, h)| BarGroup::new(format_tick(b.start, step.min(b.end - b.start)), [h]))
             .collect();
         let mut chart = BarChart::new(groups)
-            .colors(vec![self.color])
+            .colors(vec![self.bar_color()])
             .orientation(self.orientation)
             .show_values(self.show_values)
             .group_gap(0)
@@ -227,13 +280,65 @@ impl Histogram {
         if let Some(b) = self.block.clone() {
             chart = chart.block(b);
         }
+        if let Some(t) = &self.theme {
+            chart = chart.theme(t);
+        }
+        if let Some(s) = self.style {
+            chart = chart.base_style(s);
+        }
+        if let Some(g) = &self.gradient {
+            chart = chart.gradient(g.clone());
+        }
         chart
+    }
+
+    fn bar_color(&self) -> Color {
+        self.color
+            .unwrap_or_else(|| self.theme.as_ref().map_or(Color::Cyan, |t| t.accent))
+    }
+
+    fn draw_kde(&self, chart: &BarChart, area: Rect, buf: &mut Buffer) {
+        let bins = self.compute_bins();
+        let Some(first) = bins.first() else { return };
+        let Some((plot, lo, hi, bw)) = chart.vertical_geometry(area) else {
+            return;
+        };
+        let span = bins.len() as u16 * bw;
+        if span == 0 || span > plot.width || hi <= lo {
+            return;
+        }
+        let bin_w = (first.end - first.start).abs();
+        let n = self.data.len() as f64;
+        let scale = if self.normalized { 1.0 } else { n * bin_w };
+        let curve = self.kde_curve((span as usize * 2).max(8), self.kde_bandwidth);
+        let (x0, x1) = (first.start, bins[bins.len() - 1].end);
+        let mut canvas = Canvas::new(span, plot.height, Marker::Braille);
+        let (pw, ph) = (f64::from(canvas.px_w()), f64::from(canvas.px_h()));
+        let color = self.theme.as_ref().map_or(Color::Yellow, |t| t.color(1));
+        let mut prev: Option<(i32, i32)> = None;
+        for (x, d) in curve {
+            let fx = ((x - x0) / (x1 - x0)).clamp(0.0, 1.0);
+            let fy = ((d * scale - lo) / (hi - lo)).clamp(0.0, 1.0);
+            let p = (
+                (fx * (pw - 1.0)).round() as i32,
+                ((1.0 - fy) * (ph - 1.0)).round() as i32,
+            );
+            if let Some(q) = prev {
+                canvas.line(q.0, q.1, p.0, p.1, color);
+            }
+            prev = Some(p);
+        }
+        canvas.render(buf, Rect::new(plot.x, plot.y, span, plot.height));
     }
 }
 
 impl Widget for &Histogram {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        self.to_bar_chart().render(area, buf);
+        let chart = self.to_bar_chart();
+        (&chart).render(area, buf);
+        if self.kde && !self.cumulative && self.orientation == BarOrientation::Vertical {
+            self.draw_kde(&chart, area, buf);
+        }
     }
 }
 
@@ -340,12 +445,14 @@ mod tests {
     #[test]
     fn kde_shape_and_degenerate() {
         let h = Histogram::new((0..200).map(|i| ((i * 7) % 50) as f64));
-        let k = h.kde(30, None);
+        let k = h.kde_curve(30, None);
         assert_eq!(k.len(), 30);
         assert!(k.iter().all(|p| p.1.is_finite() && p.1 >= 0.0));
-        assert!(Histogram::new(Vec::<f64>::new()).kde(10, None).is_empty());
+        assert!(Histogram::new(Vec::<f64>::new())
+            .kde_curve(10, None)
+            .is_empty());
         assert!(Histogram::new([3.0; 5])
-            .kde(5, None)
+            .kde_curve(5, None)
             .iter()
             .all(|p| p.1.is_finite()));
     }

@@ -1,10 +1,11 @@
 //! Inline sparkline using block characters `▁▂▃▄▅▆▇█`.
 
 use crate::canvas::{Canvas, Marker};
+use crate::theme::{self, Theme};
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::Color,
+    style::{Color, Style},
     widgets::{Block, Widget},
 };
 
@@ -12,6 +13,7 @@ const GLYPHS: [char; 8] = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '█
 
 /// Rendering style of a [`Sparkline`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum SparklineStyle {
     /// Filled columns made of block characters.
     #[default]
@@ -28,7 +30,10 @@ pub struct Sparkline<'a> {
     max: Option<f64>,
     baseline: Option<f64>,
     style: SparklineStyle,
-    color: Color,
+    color: Option<Color>,
+    theme: Option<Theme>,
+    theme_gradient: bool,
+    base: Option<Style>,
     gradient: Vec<Color>,
     last_color: Option<Color>,
     min_color: Option<Color>,
@@ -45,7 +50,10 @@ impl<'a> Sparkline<'a> {
             max: None,
             baseline: None,
             style: SparklineStyle::Bar,
-            color: Color::Cyan,
+            color: None,
+            theme: None,
+            theme_gradient: false,
+            base: None,
             gradient: Vec::new(),
             last_color: None,
             min_color: None,
@@ -75,7 +83,24 @@ impl<'a> Sparkline<'a> {
     }
     /// Base color.
     pub fn color(mut self, c: Color) -> Self {
-        self.color = c;
+        self.color = Some(c);
+        self
+    }
+    /// Apply a [`Theme`]: base color = accent, background fill. An explicit
+    /// [`Sparkline::color`] wins.
+    pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
+        self.theme = Some(theme.into());
+        self
+    }
+    /// Color by value along the theme gradient (needs a theme; an explicit
+    /// [`Sparkline::gradient`] wins).
+    pub fn theme_gradient(mut self, on: bool) -> Self {
+        self.theme_gradient = on;
+        self
+    }
+    /// Base style painted over the whole area (beats the theme).
+    pub fn base_style(mut self, style: Style) -> Self {
+        self.base = Some(style);
         self
     }
     /// Color gradient by value, from low to high (overrides base color).
@@ -127,11 +152,26 @@ impl<'a> Sparkline<'a> {
         }
         let norm = |v: f64| ((v - lo) / (hi - lo)).clamp(0.0, 1.0);
         let n_last = pts.last().map(|p| p.0);
+        let base = self
+            .color
+            .unwrap_or_else(|| self.theme.as_ref().map_or(Color::Cyan, |t| t.accent));
+        let themed: Vec<Color> = match (&self.theme, self.theme_gradient) {
+            (Some(t), true) if self.gradient.is_empty() => {
+                let g = t.gradient();
+                (0..5).map(|i| g.color_at(i as f64 / 4.0)).collect()
+            }
+            _ => Vec::new(),
+        };
+        let grad = if self.gradient.is_empty() {
+            &themed
+        } else {
+            &self.gradient
+        };
         let color_of = |i: usize, v: f64| {
-            let mut c = self.color;
-            if !self.gradient.is_empty() {
-                let k = (norm(v) * (self.gradient.len() - 1) as f64).round() as usize;
-                c = self.gradient[k.min(self.gradient.len() - 1)];
+            let mut c = base;
+            if !grad.is_empty() {
+                let k = (norm(v) * (grad.len() - 1) as f64).round() as usize;
+                c = grad[k.min(grad.len() - 1)];
             }
             if v == dmax {
                 c = self.max_color.unwrap_or(c);
@@ -213,14 +253,7 @@ impl Widget for Sparkline<'_> {
 
 impl Widget for &Sparkline<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let inner = match &self.block {
-            Some(b) => {
-                let i = b.inner(area);
-                b.clone().render(area, buf);
-                i
-            }
-            None => area,
-        };
+        let inner = theme::begin(&self.block, &self.theme, self.base, area, buf);
         self.draw(inner, buf);
     }
 }

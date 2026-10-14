@@ -1,5 +1,5 @@
 //! Histogram demo.
-//! Keys: +/- bins · o orientation · r resample · q quit
+//! Keys: +/- bins · o orientation · r resample · t/T theme · q quit
 
 #[path = "common/mod.rs"]
 mod common;
@@ -12,9 +12,10 @@ use ratatui::{
     widgets::Block,
 };
 use std::time::Duration;
-use tui_chart::{BarOrientation, Histogram};
+use tui_chart::{BarOrientation, Histogram, Theme};
 
 struct State {
+    theme: Theme,
     rng: Rng,
     data: Vec<f64>,
     bins: usize,
@@ -30,6 +31,7 @@ fn main() -> anyhow::Result<()> {
     let data = sample(&mut rng);
     run(
         State {
+            theme: Theme::default(),
             rng,
             data,
             bins: 12,
@@ -44,16 +46,23 @@ fn main() -> anyhow::Result<()> {
                 .color(Color::LightBlue)
                 .orientation(s.orientation)
                 .show_values(true)
+                .theme(s.theme.clone())
                 .block(Block::bordered().title(format!(
                     " Histogram · {} bins · n={} ",
                     s.bins,
                     s.data.len()
                 )));
             f.render_widget(&h, main);
-            help(f, bar, " +/- bins · o orientation · r resample · q quit");
+            help(
+                f,
+                bar,
+                " +/- bins · o orientation · r resample · t/T theme · q quit",
+            );
         },
         |s, key| {
             match key {
+                KeyCode::Char('t') => s.theme = s.theme.next(),
+                KeyCode::Char('T') => s.theme = s.theme.prev(),
                 KeyCode::Char('q') | KeyCode::Esc => return true,
                 KeyCode::Char('+') | KeyCode::Char('=') => s.bins = (s.bins + 1).min(60),
                 KeyCode::Char('-') => s.bins = s.bins.saturating_sub(1).max(2),

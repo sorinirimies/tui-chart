@@ -1,5 +1,5 @@
 //! Renko / point-and-figure demo.
-//! Keys: p toggle renko ↔ point-and-figure · + / - brick size · space pause · q quit
+//! Keys: p toggle renko ↔ point-and-figure · + / - brick size · space pause · t/T theme · q quit
 
 #[path = "common/mod.rs"]
 mod common;
@@ -11,9 +11,10 @@ use ratatui::{
     widgets::Block,
 };
 use std::time::Duration;
-use tui_chart::{RenkoChart, RenkoStyle};
+use tui_chart::{RenkoChart, RenkoStyle, Theme};
 
 struct State {
+    theme: Theme,
     prices: Vec<f64>,
     rng: Rng,
     size: f64,
@@ -29,6 +30,7 @@ fn main() -> anyhow::Result<()> {
         prices.push(l + rng.gauss() * 0.8);
     }
     let state = State {
+        theme: Theme::default(),
         prices,
         rng,
         size: 1.0,
@@ -46,14 +48,23 @@ fn main() -> anyhow::Result<()> {
             } else {
                 RenkoStyle::Bricks
             };
-            let chart = RenkoChart::new(&s.prices, s.size).style(style).block(
-                Block::bordered().title(format!(" Renko · brick {:.1} · {:?} ", s.size, style)),
-            );
+            let chart = RenkoChart::new(&s.prices, s.size)
+                .style(style)
+                .theme(s.theme.clone())
+                .block(
+                    Block::bordered().title(format!(" Renko · brick {:.1} · {:?} ", s.size, style)),
+                );
             f.render_widget(&chart, main);
-            help(f, bar, " p style · +/- brick size · space pause · q quit");
+            help(
+                f,
+                bar,
+                " p style · +/- brick size · space pause · t/T theme · q quit",
+            );
         },
         |s, key| {
             match key {
+                KeyCode::Char('t') => s.theme = s.theme.next(),
+                KeyCode::Char('T') => s.theme = s.theme.prev(),
                 KeyCode::Char('q') | KeyCode::Esc => return true,
                 KeyCode::Char('p') => s.pf = !s.pf,
                 KeyCode::Char('+') | KeyCode::Char('=') => s.size += 0.5,

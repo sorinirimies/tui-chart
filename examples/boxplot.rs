@@ -1,5 +1,5 @@
 //! BoxPlot demo.
-//! Keys: o orientation · r resample · w toggle outliers · q quit
+//! Keys: o orientation · r resample · w toggle outliers · t/T theme · q quit
 
 #[path = "common/mod.rs"]
 mod common;
@@ -11,9 +11,10 @@ use ratatui::{
     widgets::Block,
 };
 use std::time::Duration;
-use tui_chart::{BoxOrientation, BoxPlot};
+use tui_chart::{BoxOrientation, BoxPlot, Theme};
 
 struct State {
+    theme: Theme,
     rng: Rng,
     data: Vec<Vec<f64>>,
     orientation: BoxOrientation,
@@ -35,6 +36,7 @@ fn main() -> anyhow::Result<()> {
     let data = sample(&mut rng);
     run(
         State {
+            theme: Theme::default(),
             rng,
             data,
             orientation: BoxOrientation::Vertical,
@@ -47,15 +49,22 @@ fn main() -> anyhow::Result<()> {
             let mut p = BoxPlot::new()
                 .orientation(s.orientation)
                 .show_outliers(s.outliers)
+                .theme(s.theme.clone())
                 .block(Block::bordered().title(" BoxPlot "));
             for (i, d) in s.data.iter().enumerate() {
                 p = p.group(format!("G{}", i + 1), d.iter().copied());
             }
             f.render_widget(&p, main);
-            help(f, bar, " o orientation · r resample · w outliers · q quit");
+            help(
+                f,
+                bar,
+                " o orientation · r resample · w outliers · t/T theme · q quit",
+            );
         },
         |s, key| {
             match key {
+                KeyCode::Char('t') => s.theme = s.theme.next(),
+                KeyCode::Char('T') => s.theme = s.theme.prev(),
                 KeyCode::Char('q') | KeyCode::Esc => return true,
                 KeyCode::Char('o') => {
                     s.orientation = match s.orientation {

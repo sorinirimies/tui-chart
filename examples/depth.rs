@@ -1,5 +1,5 @@
 //! Order-book depth chart demo.
-//! Keys: m mid marker · s spread · space pause · q quit
+//! Keys: m mid marker · s spread · space pause · t/T theme · q quit
 
 #[path = "common/mod.rs"]
 mod common;
@@ -11,9 +11,10 @@ use ratatui::{
     widgets::Block,
 };
 use std::time::Duration;
-use tui_chart::DepthChart;
+use tui_chart::{DepthChart, Theme};
 
 struct State {
+    theme: Theme,
     mid: f64,
     rng: Rng,
     show_mid: bool,
@@ -23,6 +24,7 @@ struct State {
 
 fn main() -> anyhow::Result<()> {
     let state = State {
+        theme: Theme::default(),
         mid: 100.0,
         rng: Rng::new(7),
         show_mid: true,
@@ -50,12 +52,19 @@ fn main() -> anyhow::Result<()> {
             let chart = DepthChart::new(bids, asks)
                 .show_mid(s.show_mid)
                 .show_spread(s.show_spread)
+                .theme(s.theme.clone())
                 .block(Block::bordered().title(" Depth chart "));
             f.render_widget(&chart, main);
-            help(f, bar, " m mid marker · s spread · space pause · q quit");
+            help(
+                f,
+                bar,
+                " m mid marker · s spread · space pause · t/T theme · q quit",
+            );
         },
         |s, key| {
             match key {
+                KeyCode::Char('t') => s.theme = s.theme.next(),
+                KeyCode::Char('T') => s.theme = s.theme.prev(),
                 KeyCode::Char('q') | KeyCode::Esc => return true,
                 KeyCode::Char('m') => s.show_mid = !s.show_mid,
                 KeyCode::Char('s') => s.show_spread = !s.show_spread,

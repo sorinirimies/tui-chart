@@ -1,5 +1,6 @@
 //! BoxPlot: box-and-whisker chart from raw samples or precomputed statistics.
 
+use crate::theme::{self, Theme};
 use crate::util::nice_ticks;
 use ratatui::{
     buffer::Buffer,
@@ -10,6 +11,7 @@ use ratatui::{
 
 /// Direction of the value axis.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum BoxOrientation {
     /// Values run bottom to top, groups left to right.
     #[default]
@@ -20,6 +22,7 @@ pub enum BoxOrientation {
 
 /// Five-number summary plus outliers.
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BoxStats {
     /// Lower whisker end.
     pub min: f64,
@@ -106,7 +109,9 @@ struct Group {
 #[derive(Debug, Clone)]
 pub struct BoxPlot {
     groups: Vec<Group>,
-    colors: Vec<Color>,
+    colors: Option<Vec<Color>>,
+    theme: Option<Theme>,
+    base: Option<Style>,
     orientation: BoxOrientation,
     whisker_iqr: f64,
     show_outliers: bool,
@@ -125,14 +130,9 @@ impl BoxPlot {
     pub fn new() -> Self {
         Self {
             groups: vec![],
-            colors: vec![
-                Color::Cyan,
-                Color::Magenta,
-                Color::Yellow,
-                Color::Green,
-                Color::LightRed,
-                Color::LightBlue,
-            ],
+            colors: None,
+            theme: None,
+            base: None,
             orientation: BoxOrientation::Vertical,
             whisker_iqr: 1.5,
             show_outliers: true,
@@ -174,9 +174,39 @@ impl BoxPlot {
     /// Per-group colors (cycled).
     pub fn colors(mut self, c: Vec<Color>) -> Self {
         if !c.is_empty() {
-            self.colors = c;
+            self.colors = Some(c);
         }
         self
+    }
+
+    /// Apply a [`Theme`]: palette group colors, outlier (bear) color, axis
+    /// colors and background fill. Explicit [`BoxPlot::colors`] win.
+    pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
+        self.theme = Some(theme.into());
+        self
+    }
+
+    /// Base style painted over the whole area (beats the theme).
+    pub fn base_style(mut self, style: Style) -> Self {
+        self.base = Some(style);
+        self
+    }
+
+    fn group_color(&self, i: usize) -> Color {
+        if let Some(c) = &self.colors {
+            return c[i % c.len()];
+        }
+        match &self.theme {
+            Some(t) => t.color(i),
+            None => [
+                Color::Cyan,
+                Color::Magenta,
+                Color::Yellow,
+                Color::Green,
+                Color::LightRed,
+                Color::LightBlue,
+            ][i % 6],
+        }
     }
 
     /// Orientation.
@@ -254,20 +284,17 @@ fn trunc(s: &str, n: usize) -> String {
 impl Widget for &BoxPlot {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let area = area.intersection(buf.area);
-        let inner = match &self.block {
-            Some(b) => {
-                let i = b.inner(area);
-                b.clone().render(area, buf);
-                i
-            }
-            None => area,
-        };
+        let inner = theme::begin(&self.block, &self.theme, self.base, area, buf);
         if inner.width < 4 || inner.height < 3 || self.groups.is_empty() {
             return;
         }
         let vert = self.orientation == BoxOrientation::Vertical;
         let (lo, hi) = self.value_range();
-        let dim = Style::default().fg(Color::DarkGray);
+        let dim = Style::default().fg(self.theme.as_ref().map_or(Color::DarkGray, |t| t.grid));
+        let text = self
+            .theme
+            .as_ref()
+            .map_or(Style::default(), |t| t.label_style());
         let ticks = |len: u16| nice_ticks(lo, hi, (len as usize / 4).max(2));
         let step = |t: &[f64]| if t.len() >= 2 { t[1] - t[0] } else { 1.0 };
 
@@ -371,7 +398,7 @@ impl Widget for &BoxPlot {
             let bw = if vert { bw.min(15) } else { bw.min(5) };
             let left = c0 + (span - bw) / 2;
             let mid = left + bw / 2;
-            let color = self.colors[i % self.colors.len()];
+            let color = self.group_color(i);
             let s = Style::default().fg(color);
 
             // label
@@ -385,7 +412,7 @@ impl Widget for &BoxPlot {
                     inner.bottom() - 1,
                     inner.right(),
                     &l,
-                    Style::default(),
+                    text,
                 );
             } else if let Some((_, y)) = cell(0, mid) {
                 put_str(
@@ -394,7 +421,7 @@ impl Widget for &BoxPlot {
                     y,
                     plot.x,
                     &trunc(&g.label, gutter.saturating_sub(1) as usize),
-                    Style::default(),
+                    text,
                 );
             }
 
@@ -429,13 +456,19 @@ impl Widget for &BoxPlot {
                     put(buf, a, c, '█', s);
                 }
             }
-            let ms = Style::default().fg(Color::White).bg(color);
+            let ms = Style::default()
+                .fg(self.theme.as_ref().map_or(Color::White, |t| t.foreground))
+                .bg(color);
             for c in left..left + bw {
                 put(buf, amed, c, ml, ms);
             }
             if self.show_outliers {
                 for &o in &st.outliers {
-                    put(buf, to_a(o), mid, '○', s);
+                    let os = match (&self.colors, &self.theme) {
+                        (None, Some(t)) => Style::default().fg(t.bear),
+                        _ => s,
+                    };
+                    put(buf, to_a(o), mid, '○', os);
                 }
             }
         }
@@ -499,6 +532,27 @@ mod tests {
             .orientation(BoxOrientation::Horizontal);
         let b = render(&p, 40, 12);
         assert!(count(&b, "┃") > 0);
+    }
+
+    #[test]
+    fn theme_colors_and_override() {
+        let t = Theme::nord();
+        let p = BoxPlot::new().stats("a", BoxStats::new(0.0, 2.0, 5.0, 8.0, 10.0));
+        let b = render(&p.clone().theme(&t), 30, 15);
+        assert!(b
+            .content()
+            .iter()
+            .any(|c| c.symbol() == "█" && c.fg == t.color(0)));
+        assert_eq!(b[(0, 0)].bg, t.background.unwrap());
+        let b = render(&p.theme(&t).colors(vec![Color::Red]), 30, 15);
+        assert!(b
+            .content()
+            .iter()
+            .any(|c| c.symbol() == "█" && c.fg == Color::Red));
+        assert!(!b
+            .content()
+            .iter()
+            .any(|c| c.symbol() == "█" && c.fg == t.color(0)));
     }
 
     #[test]

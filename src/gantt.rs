@@ -1,5 +1,6 @@
 //! Gantt: timeline of tasks with progress fill and optional "today" marker.
 
+use crate::theme::{self, Theme};
 use crate::util::{format_tick, nice_ticks};
 use ratatui::{
     buffer::Buffer,
@@ -10,6 +11,7 @@ use ratatui::{
 
 /// One Gantt task.
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Task {
     /// Row label.
     pub label: String,
@@ -56,7 +58,9 @@ impl Task {
 #[derive(Debug, Clone)]
 pub struct Gantt {
     tasks: Vec<Task>,
-    palette: Vec<Color>,
+    palette: Option<Vec<Color>>,
+    theme: Option<Theme>,
+    base: Option<Style>,
     today: Option<f64>,
     range: Option<(f64, f64)>,
     block: Option<Block<'static>>,
@@ -67,13 +71,9 @@ impl Gantt {
     pub fn new(tasks: impl IntoIterator<Item = Task>) -> Self {
         Self {
             tasks: tasks.into_iter().collect(),
-            palette: vec![
-                Color::Cyan,
-                Color::Green,
-                Color::Yellow,
-                Color::Magenta,
-                Color::LightBlue,
-            ],
+            palette: None,
+            theme: None,
+            base: None,
             today: None,
             range: None,
             block: None,
@@ -95,9 +95,39 @@ impl Gantt {
     /// Palette cycled over tasks without an explicit color.
     pub fn palette(mut self, p: Vec<Color>) -> Self {
         if !p.is_empty() {
-            self.palette = p;
+            self.palette = Some(p);
         }
         self
+    }
+
+    /// Apply a [`Theme`]: palette task colors, bear-colored today marker,
+    /// axis colors and background fill. Explicit task colors and
+    /// [`Gantt::palette`] win.
+    pub fn theme(mut self, theme: impl Into<Theme>) -> Self {
+        self.theme = Some(theme.into());
+        self
+    }
+
+    /// Base style painted over the whole area (beats the theme).
+    pub fn base_style(mut self, style: Style) -> Self {
+        self.base = Some(style);
+        self
+    }
+
+    fn task_color(&self, i: usize) -> Color {
+        if let Some(p) = &self.palette {
+            return p[i % p.len()];
+        }
+        match &self.theme {
+            Some(t) => t.color(i),
+            None => [
+                Color::Cyan,
+                Color::Green,
+                Color::Yellow,
+                Color::Magenta,
+                Color::LightBlue,
+            ][i % 5],
+        }
     }
 
     /// Wrap in a block.
@@ -145,14 +175,7 @@ fn put_str(buf: &mut Buffer, x: u16, y: u16, max_x: u16, s: &str, style: Style) 
 impl Widget for &Gantt {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let area = area.intersection(buf.area);
-        let inner = match &self.block {
-            Some(b) => {
-                let i = b.inner(area);
-                b.clone().render(area, buf);
-                i
-            }
-            None => area,
-        };
+        let inner = theme::begin(&self.block, &self.theme, self.base, area, buf);
         if inner.width < 4 || inner.height < 2 || self.tasks.is_empty() {
             return;
         }
@@ -177,7 +200,11 @@ impl Widget for &Gantt {
             let f = ((t - lo) / (hi - lo)).clamp(0.0, 1.0);
             plot.x + (f * (plot.width - 1) as f64).round() as u16
         };
-        let dim = Style::default().fg(Color::DarkGray);
+        let dim = Style::default().fg(self.theme.as_ref().map_or(Color::DarkGray, |t| t.grid));
+        let text = self
+            .theme
+            .as_ref()
+            .map_or(Style::default(), |t| t.label_style());
 
         // Time axis
         let ticks = nice_ticks(lo, hi, (plot.width as usize / 10).max(2));
@@ -202,11 +229,11 @@ impl Widget for &Gantt {
                 .chars()
                 .take(gutter.saturating_sub(1) as usize)
                 .collect();
-            put_str(buf, inner.x, y, plot.x, &l, Style::default());
+            put_str(buf, inner.x, y, plot.x, &l, text);
             if !t.start.is_finite() || !t.end.is_finite() {
                 continue;
             }
-            let color = t.color.unwrap_or(self.palette[i % self.palette.len()]);
+            let color = t.color.unwrap_or_else(|| self.task_color(i));
             let (a, b) = (col(t.start.min(t.end)), col(t.start.max(t.end)));
             let len = (b - a + 1) as f64;
             let done = (t.progress.clamp(0.0, 1.0) * len).round() as u16;
@@ -222,7 +249,7 @@ impl Widget for &Gantt {
 
         if let Some(t) = self.today.filter(|t| t.is_finite() && *t >= lo && *t <= hi) {
             let x = col(t);
-            let st = Style::default().fg(Color::Red);
+            let st = Style::default().fg(self.theme.as_ref().map_or(Color::Red, |t| t.bear));
             for y in plot.y..plot.bottom() {
                 buf[(x, y)].set_char('┃').set_style(st);
             }
@@ -273,6 +300,27 @@ mod tests {
         assert!(count(&b, "┃") >= 2);
         let row0: String = (0..40).map(|x| b[(x, 0)].symbol().to_string()).collect();
         assert!(row0.starts_with("design"));
+    }
+
+    #[test]
+    fn theme_colors_and_override() {
+        let t = Theme::gruvbox();
+        let g = Gantt::new([
+            Task::new("a", 0.0, 5.0),
+            Task::new("b", 5.0, 10.0).color(Color::Red),
+        ])
+        .today(5.0)
+        .theme(&t);
+        let b = render(&g, 40, 5);
+        let fg = |c: Color| b.content().iter().any(|x| x.symbol() == "░" && x.fg == c);
+        assert!(fg(t.color(0)));
+        assert!(fg(Color::Red));
+        assert!(!fg(t.color(1)));
+        assert!(b
+            .content()
+            .iter()
+            .any(|x| x.symbol() == "┃" && x.fg == t.bear));
+        assert_eq!(b[(39, 0)].bg, t.background.unwrap());
     }
 
     #[test]

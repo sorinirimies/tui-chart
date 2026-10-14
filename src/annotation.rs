@@ -12,6 +12,7 @@ use ratatui::{
 
 /// Geometry of an [`Annotation`] in data coordinates.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum AnnotationKind {
     /// Horizontal reference line at `y`.
     HLine(f64),
@@ -27,6 +28,7 @@ pub enum AnnotationKind {
 
 /// A reference line, shaded band or text label drawn over a plot.
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Annotation {
     /// Geometry in data coordinates.
     pub kind: AnnotationKind,

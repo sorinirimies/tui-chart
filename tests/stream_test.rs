@@ -68,7 +68,7 @@ fn histogram_modes() {
     let h = Histogram::new(d).bins(8);
     let c = h.clone().cumulative(true).heights();
     assert_eq!(*c.last().unwrap(), 300.0);
-    assert!(!h.kde(40, None).is_empty());
+    assert!(!h.kde_curve(40, None).is_empty());
     let a = Rect::new(0, 0, 40, 12);
     let mut buf = Buffer::empty(a);
     h.normalized(true).cumulative(true).render(a, &mut buf);

@@ -34,6 +34,20 @@ impl Crosshair {
         }
     }
 
+    /// Copy with theme crosshair/tooltip colors for styles still at their
+    /// defaults (explicitly set styles are kept).
+    pub(crate) fn themed(&self, t: &crate::theme::Theme) -> Self {
+        let d = Crosshair::new(self.x, self.y);
+        let mut c = *self;
+        if c.style == d.style {
+            c.style = Style::default().fg(t.crosshair);
+        }
+        if c.tooltip_style == d.tooltip_style {
+            c.tooltip_style = Style::default().fg(t.tooltip_fg).bg(t.tooltip_bg);
+        }
+        c
+    }
+
     /// Guide line style.
     pub fn style(mut self, style: Style) -> Self {
         self.style = style;

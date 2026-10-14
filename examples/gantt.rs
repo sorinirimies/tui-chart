@@ -1,5 +1,5 @@
 //! Gantt demo.
-//! Keys: ←/→ move today marker · t toggle today · q quit
+//! Keys: ←/→ move today marker · d toggle today · t/T theme · q quit
 
 #[path = "common/mod.rs"]
 mod common;
@@ -11,9 +11,10 @@ use ratatui::{
     widgets::Block,
 };
 use std::time::Duration;
-use tui_chart::{Gantt, Task};
+use tui_chart::{Gantt, Task, Theme};
 
 struct State {
+    theme: Theme,
     today: f64,
     show_today: bool,
 }
@@ -21,6 +22,7 @@ struct State {
 fn main() -> anyhow::Result<()> {
     run(
         State {
+            theme: Theme::default(),
             today: 12.0,
             show_today: true,
         },
@@ -42,19 +44,22 @@ fn main() -> anyhow::Result<()> {
                 spec.iter()
                     .map(|(n, a, b)| Task::new(*n, *a, *b).progress(progress(*a, *b))),
             )
+            .theme(s.theme.clone())
             .block(Block::bordered().title(" Gantt "));
             if s.show_today {
                 g = g.today(s.today);
             }
             f.render_widget(&g, main);
-            help(f, bar, " ←/→ today · t toggle today · q quit");
+            help(f, bar, " ←/→ today · d toggle today · t/T theme · q quit");
         },
         |s, key| {
             match key {
+                KeyCode::Char('t') => s.theme = s.theme.next(),
+                KeyCode::Char('T') => s.theme = s.theme.prev(),
                 KeyCode::Char('q') | KeyCode::Esc => return true,
                 KeyCode::Left => s.today = (s.today - 1.0).max(0.0),
                 KeyCode::Right => s.today = (s.today + 1.0).min(40.0),
-                KeyCode::Char('t') => s.show_today = !s.show_today,
+                KeyCode::Char('d') => s.show_today = !s.show_today,
                 _ => {}
             }
             false
