@@ -47,19 +47,6 @@
 //! let mut buf = Buffer::empty(area);
 //! chart.render(area, &mut buf);
 //! ```
-//! use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
-//! use tui_chart::{Axis, LineChart, Series};
-//!
-//! let chart = LineChart::new(vec![Series::new("sin").data(
-//!     (0..50).map(|i| (i as f64, (i as f64 / 5.0).sin())),
-//! )])
-//! .x_axis(Axis::new().title("t"))
-//! .y_axis(Axis::new().grid(true));
-//!
-//! let area = Rect::new(0, 0, 60, 15);
-//! let mut buf = Buffer::empty(area);
-//! chart.render(area, &mut buf);
-//! ```
 //!
 //! ```
 //! use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
