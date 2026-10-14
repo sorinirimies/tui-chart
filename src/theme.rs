@@ -83,6 +83,84 @@ impl Default for Theme {
     }
 }
 
+impl Theme {
+    /// Build a theme from the handful of colors an application already has.
+    ///
+    /// Everything else (muted text, axis, grid, border, tooltip, series
+    /// palette) is derived: RGB colors are blended between `bg` and `fg`,
+    /// other color kinds fall back to sensible terminal colors. Use the
+    /// builder setters afterwards to fine-tune.
+    ///
+    /// To make your own theme type usable directly in `.theme(..)`, implement
+    /// `From<&AppTheme> for tui_chart::Theme` in your app:
+    ///
+    /// ```
+    /// use ratatui::style::Color;
+    /// use tui_chart::Theme;
+    ///
+    /// struct AppTheme { bg: Color, text: Color, brand: Color, ok: Color, err: Color }
+    ///
+    /// impl From<&AppTheme> for Theme {
+    ///     fn from(a: &AppTheme) -> Theme {
+    ///         Theme::from_base("app", Some(a.bg), a.text, a.brand, a.ok, a.err)
+    ///     }
+    /// }
+    ///
+    /// let app = AppTheme {
+    ///     bg: Color::Rgb(16, 16, 24), text: Color::Rgb(230, 230, 240),
+    ///     brand: Color::Rgb(213, 0, 28), ok: Color::Green, err: Color::Red,
+    /// };
+    /// let _chart = tui_chart::Sparkline::new(vec![1.0, 3.0, 2.0]).theme(&app);
+    /// ```
+    pub fn from_base(
+        name: &str,
+        background: Option<Color>,
+        foreground: Color,
+        accent: Color,
+        bull: Color,
+        bear: Color,
+    ) -> Self {
+        let mix = |t: f64, fallback: Color| match (background, foreground) {
+            (Some(Color::Rgb(br, bg, bb)), Color::Rgb(fr, fg, fb)) => {
+                let (r, g, b) = crate::scale::mix_rgb((br, bg, bb), (fr, fg, fb), t);
+                Color::Rgb(r, g, b)
+            }
+            (None, Color::Rgb(fr, fg, fb)) => {
+                let (r, g, b) = crate::scale::mix_rgb((0, 0, 0), (fr, fg, fb), t);
+                Color::Rgb(r, g, b)
+            }
+            _ => fallback,
+        };
+        let muted = mix(0.6, Color::Gray);
+        let grid = mix(0.25, Color::DarkGray);
+        let mut palette = vec![accent, bull, bear];
+        palette.extend(
+            crate::PALETTE
+                .iter()
+                .copied()
+                .filter(|c| ![accent, bull, bear].contains(c)),
+        );
+        Self {
+            name: name.into(),
+            background,
+            foreground,
+            muted,
+            axis: grid,
+            grid,
+            border: muted,
+            title: foreground,
+            palette,
+            bull,
+            bear,
+            neutral: accent,
+            accent,
+            crosshair: muted,
+            tooltip_fg: foreground,
+            tooltip_bg: background.unwrap_or(grid),
+        }
+    }
+}
+
 impl From<&Theme> for Theme {
     fn from(t: &Theme) -> Self {
         t.clone()
@@ -524,6 +602,33 @@ pub(crate) fn begin(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn from_base_derives_full_theme() {
+        use super::*;
+        let t = Theme::from_base(
+            "x",
+            Some(Color::Rgb(0, 0, 0)),
+            Color::Rgb(200, 200, 200),
+            Color::Red,
+            Color::Green,
+            Color::Magenta,
+        );
+        assert!(t.palette.len() >= 8);
+        assert_eq!(t.palette[0], Color::Red);
+        assert_eq!(t.accent, Color::Red);
+        assert_eq!(t.muted, Color::Rgb(120, 120, 120));
+        let t2 = Theme::from_base(
+            "y",
+            None,
+            Color::White,
+            Color::Cyan,
+            Color::Green,
+            Color::Red,
+        );
+        assert_eq!(t2.muted, Color::Gray);
+        assert!(t2.background.is_none());
+    }
+
     use super::*;
 
     #[test]

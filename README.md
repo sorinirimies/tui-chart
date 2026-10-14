@@ -74,6 +74,23 @@ let next = theme.next(); // cycle with next()/prev()
 Built-in themes (`Theme::all()`): `default`, `catppuccin_mocha`, `catppuccin_latte`,
 `dracula`, `nord`, `gruvbox`, `tokyo_night`, `solarized_dark`, `porsche`, `colorblind`.
 
+### Using your app's theme
+
+`Theme` has public fields, and `Theme::from_base(name, bg, fg, accent, bull, bear)` derives
+the rest (muted, grid, palette, tooltip). Implement `From<&AppTheme> for Theme` once in your
+app and pass your own theme straight in:
+
+```rust
+impl From<&AppTheme> for tui_chart::Theme {
+    fn from(a: &AppTheme) -> Self {
+        tui_chart::Theme::from_base("app", Some(a.bg), a.text, a.brand, a.ok, a.err)
+    }
+}
+let chart = LineChart::new(series).theme(&app_theme);
+```
+
+Explicit per-series colors and `.base_style(..)` always override the theme.
+
 ## Cargo features
 
 | Feature | Description |
