@@ -265,11 +265,20 @@ pull-gitea-starscream:
 
 # Git: pull from all remotes (Gitea first, then GitHub)
 pull-all:
-    git pull gitea-microlab main
-    git pull gitea-starscream main
-    git pull gitea-nexus-lab main
-    git pull origin main
-    @echo "✅ Pulled from Gitea Microlab, Gitea Starscream, Gitea (nexus-lab), and GitHub!"
+    #!/usr/bin/env sh
+    failed=""; ok_=""; skipped=""
+    for r in gitea-microlab gitea-starscream gitea-nexus-lab origin; do
+        if ! git remote get-url "$r" >/dev/null 2>&1; then
+            echo "↷ skipping $r (not configured here; add with: git remote add $r <url>)"
+            skipped="$skipped $r"; continue
+        fi
+        echo "→ pulling from $r"
+        if git pull "$r" main; then ok_="$ok_ $r"; else failed="$failed $r"; fi
+    done
+    echo ""
+    [ -n "$ok_" ] && echo "✅ Pulled from:$ok_"
+    [ -n "$skipped" ] && echo "ℹ️  Skipped (not configured):$skipped"
+    if [ -n "$failed" ]; then echo "⚠️  Failed:$failed"; exit 1; fi
 
 # Git: push to GitHub (origin)
 push:
@@ -289,11 +298,20 @@ push-gitea-starscream:
 
 # Git: push to GitHub, Gitea, and Gitea (nexus-lab)
 push-all:
-    git push origin main
-    git push gitea-microlab main
-    git push gitea-starscream main
-    git push gitea-nexus-lab main
-    @echo "✅ Pushed to GitHub, Gitea Microlab, Gitea Starscream, and Gitea (nexus-lab)!"
+    #!/usr/bin/env sh
+    failed=""; ok_=""; skipped=""
+    for r in origin gitea-microlab gitea-starscream gitea-nexus-lab; do
+        if ! git remote get-url "$r" >/dev/null 2>&1; then
+            echo "↷ skipping $r (not configured here; add with: git remote add $r <url>)"
+            skipped="$skipped $r"; continue
+        fi
+        echo "→ pushing to $r"
+        if git push "$r" main; then ok_="$ok_ $r"; else failed="$failed $r"; fi
+    done
+    echo ""
+    [ -n "$ok_" ] && echo "✅ Pushed to:$ok_"
+    [ -n "$skipped" ] && echo "ℹ️  Skipped (not configured):$skipped"
+    if [ -n "$failed" ]; then echo "⚠️  Failed:$failed"; exit 1; fi
 
 # Git: push tags to GitHub
 push-tags:
@@ -301,11 +319,20 @@ push-tags:
 
 # Git: push tags to all remotes
 push-tags-all:
-    git push origin --tags
-    git push gitea-microlab --tags
-    git push gitea-starscream --tags
-    git push gitea-nexus-lab --tags
-    @echo "✅ Tags pushed to GitHub, Gitea Microlab, Gitea Starscream, and Gitea (nexus-lab)!"
+    #!/usr/bin/env sh
+    failed=""; ok_=""; skipped=""
+    for r in origin gitea-microlab gitea-starscream gitea-nexus-lab; do
+        if ! git remote get-url "$r" >/dev/null 2>&1; then
+            echo "↷ skipping $r (not configured here; add with: git remote add $r <url>)"
+            skipped="$skipped $r"; continue
+        fi
+        echo "→ pushing tags to $r"
+        if git push "$r" --tags; then ok_="$ok_ $r"; else failed="$failed $r"; fi
+    done
+    echo ""
+    [ -n "$ok_" ] && echo "✅ Tags pushed to:$ok_"
+    [ -n "$skipped" ] && echo "ℹ️  Skipped (not configured):$skipped"
+    if [ -n "$failed" ]; then echo "⚠️  Failed:$failed"; exit 1; fi
 
 # Full release workflow: bump version and push to GitHub
 release version: (bump version)
@@ -337,29 +364,37 @@ release-gitea-starscream version: (bump version)
 
 # Full release workflow: bump version and push to GitHub, Gitea, and Gitea (nexus-lab)
 release-all version: (bump version)
-    @echo "Pushing to all remotes..."
-    git push origin main
-    git push gitea-microlab main
-    git push gitea-starscream main
-    git push gitea-nexus-lab main
-    git push origin v{{version}}
-    git push gitea-microlab v{{version}}
-    git push gitea-starscream v{{version}}
-    git push gitea-nexus-lab v{{version}}
-    @echo "✅ Release v{{version}} complete on all remotes!"
+    #!/usr/bin/env sh
+    failed=""; ok_=""; skipped=""
+    for r in origin gitea-microlab gitea-starscream gitea-nexus-lab; do
+        if ! git remote get-url "$r" >/dev/null 2>&1; then
+            echo "↷ skipping $r (not configured here; add with: git remote add $r <url>)"
+            skipped="$skipped $r"; continue
+        fi
+        echo "→ releasing to $r"
+        if git push "$r" main && git push "$r" v{{version}}; then ok_="$ok_ $r"; else failed="$failed $r"; fi
+    done
+    echo ""
+    [ -n "$ok_" ] && echo "✅ Release done on:$ok_"
+    [ -n "$skipped" ] && echo "ℹ️  Skipped (not configured):$skipped"
+    if [ -n "$failed" ]; then echo "⚠️  Failed:$failed"; exit 1; fi
 
 # Push release to all remotes (without bumping)
 push-release-all:
-    @echo "Pushing release to all remotes..."
-    git push origin main
-    git push gitea-microlab main
-    git push gitea-starscream main
-    git push gitea-nexus-lab main
-    git push origin --tags
-    git push gitea-microlab --tags
-    git push gitea-starscream --tags
-    git push gitea-nexus-lab --tags
-    @echo "✅ Release pushed to all remotes!"
+    #!/usr/bin/env sh
+    failed=""; ok_=""; skipped=""
+    for r in origin gitea-microlab gitea-starscream gitea-nexus-lab; do
+        if ! git remote get-url "$r" >/dev/null 2>&1; then
+            echo "↷ skipping $r (not configured here; add with: git remote add $r <url>)"
+            skipped="$skipped $r"; continue
+        fi
+        echo "→ releasing to $r"
+        if git push "$r" main && git push "$r" --tags; then ok_="$ok_ $r"; else failed="$failed $r"; fi
+    done
+    echo ""
+    [ -n "$ok_" ] && echo "✅ Release done on:$ok_"
+    [ -n "$skipped" ] && echo "ℹ️  Skipped (not configured):$skipped"
+    if [ -n "$failed" ]; then echo "⚠️  Failed:$failed"; exit 1; fi
 
 # Sync Gitea Microlab with GitHub (force)
 sync-gitea-microlab:
