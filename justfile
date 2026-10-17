@@ -557,8 +557,8 @@ vhs-renko:
 
 # Generate demo GIF for showcase
 vhs-showcase:
-    vhs examples/vhs/showcase.tape
-    @echo "✅ examples/vhs/output/showcase.gif"
+    vhs examples/vhs/tui_chart.tape
+    @echo "✅ examples/vhs/output/tui_chart.gif"
 
 # Generate demo GIF for sparkline
 vhs-sparkline:
