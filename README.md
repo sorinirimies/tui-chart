@@ -1,12 +1,14 @@
 # tui-chart
 
-![tui-chart demo](examples/vhs/output/tui_chart.gif)
-
 [![CI](https://github.com/sorinirimies/tui-chart/actions/workflows/ci.yml/badge.svg)](https://github.com/sorinirimies/tui-chart/actions)
 [![Security](https://github.com/sorinirimies/tui-chart/actions/workflows/security.yml/badge.svg)](https://github.com/sorinirimies/tui-chart/actions/workflows/security.yml)
 [![Fuzz](https://github.com/sorinirimies/tui-chart/actions/workflows/fuzz.yml/badge.svg)](https://github.com/sorinirimies/tui-chart/actions/workflows/fuzz.yml)
-[![Crates.io](https://img.shields.io/crates/v/tui-chart.svg)](https://crates.io/crates/tui-chart)
+[![Crates.io](https://img.shields.io/crates/v/tui-chart?style=flat-square&logo=rust&color=orange)](https://crates.io/crates/tui-chart)
+[![Downloads](https://img.shields.io/crates/d/tui-chart)](https://crates.io/crates/tui-chart)
+[![Documentation](https://docs.rs/tui-chart/badge.svg)](https://docs.rs/tui-chart)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+![tui-chart demo](examples/vhs/output/tui_chart.gif)
 
 Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 [tui-piechart](https://github.com/sorinirimies/tui-piechart).
@@ -30,6 +32,76 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 | `RenkoChart` | fixed-size price bricks |
 | `Treemap` | nested weighted rectangles |
 | `ChartStack` | vertical/horizontal stack with shared gutter |
+
+## Gallery
+
+### LineChart
+
+![LineChart](examples/vhs/output/line.gif)
+
+### CandlestickChart
+
+![CandlestickChart](examples/vhs/output/candlestick.gif)
+
+### BarChart
+
+![BarChart](examples/vhs/output/bars.gif)
+
+### Histogram
+
+![Histogram](examples/vhs/output/histogram.gif)
+
+### Heatmap
+
+![Heatmap](examples/vhs/output/heatmap.gif)
+
+### Sparkline
+
+![Sparkline](examples/vhs/output/sparkline.gif)
+
+### Gauge
+
+![Gauge](examples/vhs/output/gauge.gif)
+
+### RadarChart
+
+![RadarChart](examples/vhs/output/radar.gif)
+
+### BoxPlot
+
+![BoxPlot](examples/vhs/output/boxplot.gif)
+
+### Waterfall
+
+![Waterfall](examples/vhs/output/waterfall.gif)
+
+### Gantt
+
+![Gantt](examples/vhs/output/gantt.gif)
+
+### DepthChart
+
+![DepthChart](examples/vhs/output/depth.gif)
+
+### RenkoChart
+
+![RenkoChart](examples/vhs/output/renko.gif)
+
+### Treemap
+
+![Treemap](examples/vhs/output/treemap.gif)
+
+### ChartStack (+ live streaming)
+
+![ChartStack (+ live streaming)](examples/vhs/output/stream.gif)
+
+### Themes
+
+![themes](examples/vhs/output/themes.gif)
+
+### Showcase
+
+![showcase](examples/vhs/output/showcase.gif)
 
 ## High resolution (braille)
 
