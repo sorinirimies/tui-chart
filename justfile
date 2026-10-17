@@ -79,6 +79,10 @@ example-showcase:
 example-sparkline:
     cargo run --features theme --example sparkline
 
+# Run chartstack example
+example-chartstack:
+    cargo run --features theme --example chartstack
+
 # Run stream example
 example-stream:
     cargo run --features theme --example stream
@@ -92,7 +96,7 @@ example-waterfall:
     cargo run --features theme --example waterfall
 
 # Run all examples (sequentially)
-examples: example-themes example-bars example-boxplot example-candlestick example-depth example-gantt example-gauge example-heatmap example-histogram example-line example-radar example-renko example-showcase example-sparkline example-stream example-treemap example-waterfall
+examples: example-themes example-bars example-boxplot example-candlestick example-chartstack example-depth example-gantt example-gauge example-heatmap example-histogram example-line example-radar example-renko example-showcase example-sparkline example-stream example-treemap example-waterfall
 
 # Run themes example
 example-themes:
@@ -515,6 +519,11 @@ vhs-showcase:
 vhs-sparkline:
     vhs examples/vhs/sparkline.tape
     @echo "✅ examples/vhs/output/sparkline.gif"
+
+# Generate demo GIF for chartstack
+vhs-chartstack:
+    vhs examples/vhs/chartstack.tape
+    @echo "✅ examples/vhs/output/chartstack.gif"
 
 # Generate demo GIF for stream
 vhs-stream:

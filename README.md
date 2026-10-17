@@ -91,9 +91,13 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 
 ![Treemap](examples/vhs/output/treemap.gif)
 
-### ChartStack (+ live streaming)
+### ChartStack
 
-![ChartStack (+ live streaming)](examples/vhs/output/stream.gif)
+![ChartStack](examples/vhs/output/chartstack.gif)
+
+### Live streaming
+
+![Live streaming](examples/vhs/output/stream.gif)
 
 ### Themes
 
@@ -211,6 +215,7 @@ frame.render_widget(chart, area);
 cargo run --features theme --example bars
 cargo run --features theme --example boxplot
 cargo run --features theme --example candlestick
+cargo run --features theme --example chartstack
 cargo run --features theme --example depth
 cargo run --features theme --example gantt
 cargo run --features theme --example gauge

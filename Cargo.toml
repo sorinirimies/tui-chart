@@ -120,6 +120,11 @@ path = "examples/treemap.rs"
 required-features = ["theme"]
 
 [[example]]
+name = "chartstack"
+path = "examples/chartstack.rs"
+required-features = ["theme"]
+
+[[example]]
 name = "stream"
 path = "examples/stream.rs"
 required-features = ["theme"]
