@@ -118,10 +118,6 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 
 ![themes](examples/vhs/output/themes.gif)
 
-### Showcase
-
-![showcase](examples/vhs/output/showcase.gif)
-
 ## High resolution (braille)
 
 Dot-based drawing is selected with `Marker`; braille (2×4 dots per cell) is the default.
