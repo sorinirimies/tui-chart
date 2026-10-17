@@ -346,6 +346,9 @@ push-force-gitea-starscream:
     git push --force-with-lease gitea-starscream "$(git branch --show-current)"
 
 # Git: force push (with lease) to every configured remote
+alias push-all-force := push-force-all
+
+# Git: force push (with lease) to every configured remote
 push-force-all:
     #!/usr/bin/env sh
     failed=""; ok_=""; skipped=""
