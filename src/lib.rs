@@ -9,6 +9,7 @@
 //! - [`BarChart`] – vertical/horizontal, grouped/stacked
 //! - [`Histogram`], [`Heatmap`], [`Sparkline`], [`Gauge`], [`RadarChart`]
 //! - [`BoxPlot`], [`Waterfall`], [`Gantt`], [`DepthChart`], [`RenkoChart`], [`Treemap`]
+//! - [`Funnel`], [`Bullet`], [`BubbleChart`]
 //! - [`ChartStack`] – stack charts with a shared gutter
 //!
 //! ## Features
@@ -75,10 +76,13 @@ mod annotation;
 mod axis;
 mod bar;
 mod boxplot;
+mod bubble;
+mod bullet;
 mod candle;
 mod canvas;
 mod crosshair;
 mod depth;
+mod funnel;
 mod gantt;
 mod gauge;
 mod heatmap;
@@ -104,6 +108,8 @@ pub use annotation::{draw_annotations, Annotation, AnnotationKind};
 pub use axis::{Axis, GridStyle};
 pub use bar::{BarChart, BarGroup, BarMode, BarOrientation, LabelPosition};
 pub use boxplot::{BoxOrientation, BoxPlot, BoxStats};
+pub use bubble::{BubbleChart, BubbleSeries};
+pub use bullet::{Bullet, BulletItem};
 pub use candle::{
     ema, heikin_ashi, sma, BandOverlay, Candle, CandleStyle, CandlestickChart, HLine,
     IndicatorPane, Overlay, TradeMarker, TradeSide,
@@ -111,6 +117,7 @@ pub use candle::{
 pub use canvas::{Canvas, Marker, OverlapPolicy};
 pub use crosshair::{nearest_point, Crosshair, NearestPoint};
 pub use depth::DepthChart;
+pub use funnel::{Funnel, FunnelStage};
 pub use gantt::{Gantt, Task};
 pub use gauge::{Gauge, GaugeOrientation, GaugeStyle};
 pub use heatmap::{Gradient, Heatmap};

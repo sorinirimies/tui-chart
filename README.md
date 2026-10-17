@@ -31,6 +31,9 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 | `DepthChart` | order book bids/asks |
 | `RenkoChart` | fixed-size price bricks |
 | `Treemap` | nested weighted rectangles |
+| `Funnel` | stage conversion funnel with percentages |
+| `Bullet` | value vs target over qualitative ranges |
+| `BubbleChart` | scatter with area-scaled bubble sizes |
 | `ChartStack` | vertical/horizontal stack with shared gutter |
 
 ## Gallery
@@ -94,6 +97,18 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 ### ChartStack
 
 ![ChartStack](examples/vhs/output/chartstack.gif)
+
+### Funnel
+
+![Funnel](examples/vhs/output/funnel.gif)
+
+### Bullet
+
+![Bullet](examples/vhs/output/bullet.gif)
+
+### Bubble
+
+![Bubble](examples/vhs/output/bubble.gif)
 
 ### Live streaming
 
@@ -215,6 +230,9 @@ frame.render_widget(chart, area);
 cargo run --features theme --example bars
 cargo run --features theme --example boxplot
 cargo run --features theme --example candlestick
+cargo run --features theme --example bubble
+cargo run --features theme --example bullet
+cargo run --features theme --example funnel
 cargo run --features theme --example chartstack
 cargo run --features theme --example depth
 cargo run --features theme --example gantt
@@ -232,7 +250,7 @@ cargo run --features theme --example treemap
 cargo run --features theme --example waterfall
 ```
 
-Or `just example-<name>` / `just examples`. Demo GIFs: `just vhs-all` (or `just vhs-<name>`) (needs [vhs](https://github.com/charmbracelet/vhs) and nushell).
+Render timing: `cargo run --release --example bench`. Or `just example-<name>` / `just examples`. Demo GIFs: `just vhs-all` (or `just vhs-<name>`) (needs [vhs](https://github.com/charmbracelet/vhs) and nushell).
 
 ## Development
 

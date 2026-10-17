@@ -125,6 +125,21 @@ path = "examples/chartstack.rs"
 required-features = ["theme"]
 
 [[example]]
+name = "funnel"
+path = "examples/funnel.rs"
+required-features = ["theme"]
+
+[[example]]
+name = "bullet"
+path = "examples/bullet.rs"
+required-features = ["theme"]
+
+[[example]]
+name = "bubble"
+path = "examples/bubble.rs"
+required-features = ["theme"]
+
+[[example]]
 name = "stream"
 path = "examples/stream.rs"
 required-features = ["theme"]

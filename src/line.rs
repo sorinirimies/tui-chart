@@ -607,6 +607,9 @@ impl LineChart {
             if (s.smooth || self.smooth) && matches!(mode, LineMode::Line | LineMode::Area) {
                 pts = catmull_rom(&pts);
             }
+            if mode != LineMode::Scatter && pts.len() > canvas.px_w() as usize * 4 {
+                pts = decimate(&pts);
+            }
             draw_series(&mut canvas, &pts, mode, color, s.fill_gradient.as_ref());
         }
         canvas.render(buf, plot);
@@ -782,6 +785,42 @@ fn fill_band(canvas: &mut Canvas, band: &[(i32, i32, i32)], color: Color) {
             column(px, lerp(l.1, r.1), lerp(l.2, r.2), canvas);
         }
     }
+}
+
+/// Collapse x-sorted points to at most 4 per pixel column (first, min, max,
+/// last, in original order), which draws the same pixels as the full series
+/// but with far fewer segments/fills. Unsorted input is returned unchanged.
+fn decimate(pts: &[(i32, i32)]) -> Vec<(i32, i32)> {
+    if pts.windows(2).any(|w| w[1].0 < w[0].0) {
+        return pts.to_vec();
+    }
+    let mut out = Vec::with_capacity(pts.len() / 8 + 8);
+    let mut i = 0;
+    while i < pts.len() {
+        let x = pts[i].0;
+        let mut j = i;
+        let (mut lo, mut hi) = (i, i);
+        while j < pts.len() && pts[j].0 == x {
+            if pts[j].1 < pts[lo].1 {
+                lo = j;
+            }
+            if pts[j].1 > pts[hi].1 {
+                hi = j;
+            }
+            j += 1;
+        }
+        let mut keep = [i, lo, hi, j - 1];
+        keep.sort_unstable();
+        let mut last = usize::MAX;
+        for k in keep {
+            if k != last {
+                out.push(pts[k]);
+                last = k;
+            }
+        }
+        i = j;
+    }
+    out
 }
 
 fn draw_series(
@@ -1111,5 +1150,14 @@ mod tests {
             .content()
             .iter()
             .any(|c| c.symbol() == "┼" && c.fg == Color::Red));
+    }
+
+    #[test]
+    fn decimate_keeps_extremes_and_order() {
+        let pts = vec![(0, 5), (0, 1), (0, 9), (0, 4), (1, 2), (2, 3)];
+        let d = decimate(&pts);
+        assert_eq!(d, vec![(0, 5), (0, 1), (0, 9), (0, 4), (1, 2), (2, 3)]);
+        let unsorted = vec![(3, 1), (1, 1)];
+        assert_eq!(decimate(&unsorted), unsorted);
     }
 }

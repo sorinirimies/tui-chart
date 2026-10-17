@@ -196,6 +196,42 @@ pub fn all_widgets(d: Data, theme: Option<Th>) -> Vec<(&'static str, Draw)> {
     ));
     let c = t();
     v.push((
+        "Funnel",
+        mk(move || {
+            let st: Vec<FunnelStage> = vals(d)
+                .into_iter()
+                .enumerate()
+                .map(|(i, x)| FunnelStage::new(format!("s{i}"), x))
+                .collect();
+            th!(Funnel::new(st), c.clone())
+        }),
+    ));
+    let c = t();
+    v.push((
+        "Bullet",
+        mk(move || {
+            let it: Vec<BulletItem> = vals(d)
+                .into_iter()
+                .enumerate()
+                .map(|(i, x)| {
+                    BulletItem::new(format!("b{i}"), x)
+                        .target(x * 1.1)
+                        .ranges([x, x * 2.0])
+                })
+                .collect();
+            th!(Bullet::new(it), c.clone())
+        }),
+    ));
+    let c = t();
+    v.push((
+        "BubbleChart",
+        mk(move || {
+            let pts: Vec<(f64, f64, f64)> = vals(d).into_iter().map(|x| (x, x, x)).collect();
+            th!(BubbleChart::new([BubbleSeries::new("a", pts)]), c.clone())
+        }),
+    ));
+    let c = t();
+    v.push((
         "Treemap",
         mk(move || {
             let items: Vec<TreemapItem> = vals(d)

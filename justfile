@@ -83,6 +83,18 @@ example-sparkline:
 example-chartstack:
     cargo run --features theme --example chartstack
 
+# Run funnel example
+example-funnel:
+    cargo run --features theme --example funnel
+
+# Run bullet example
+example-bullet:
+    cargo run --features theme --example bullet
+
+# Run bubble example
+example-bubble:
+    cargo run --features theme --example bubble
+
 # Run stream example
 example-stream:
     cargo run --features theme --example stream
@@ -96,7 +108,7 @@ example-waterfall:
     cargo run --features theme --example waterfall
 
 # Run all examples (sequentially)
-examples: example-themes example-bars example-boxplot example-candlestick example-chartstack example-depth example-gantt example-gauge example-heatmap example-histogram example-line example-radar example-renko example-showcase example-sparkline example-stream example-treemap example-waterfall
+examples: example-themes example-bars example-boxplot example-candlestick example-chartstack example-bubble example-bullet example-funnel example-depth example-gantt example-gauge example-heatmap example-histogram example-line example-radar example-renko example-showcase example-sparkline example-stream example-treemap example-waterfall
 
 # Run themes example
 example-themes:
@@ -317,6 +329,39 @@ push-all:
     [ -n "$skipped" ] && echo "ℹ️  Skipped (not configured):$skipped"
     if [ -n "$failed" ]; then echo "⚠️  Failed:$failed"; exit 1; fi
 
+# Git: force push (with lease) to GitHub (origin)
+push-force:
+    git push --force-with-lease origin "$(git branch --show-current)"
+
+# Git: force push (with lease) to Gitea Microlab
+push-force-gitea-microlab:
+    git push --force-with-lease gitea-microlab "$(git branch --show-current)"
+
+# Git: force push (with lease) to Gitea (nexus-lab instance)
+push-force-gitea-nexus-lab:
+    git push --force-with-lease gitea-nexus-lab "$(git branch --show-current)"
+
+# Git: force push (with lease) to Gitea Starscream
+push-force-gitea-starscream:
+    git push --force-with-lease gitea-starscream "$(git branch --show-current)"
+
+# Git: force push (with lease) to every configured remote
+push-force-all:
+    #!/usr/bin/env sh
+    failed=""; ok_=""; skipped=""
+    for r in origin gitea-microlab gitea-starscream gitea-nexus-lab; do
+        if ! git remote get-url "$r" >/dev/null 2>&1; then
+            echo "↷ skipping $r (not configured here; add with: git remote add $r <url>)"
+            skipped="$skipped $r"; continue
+        fi
+        echo "→ force pushing to $r"
+        if git push --force-with-lease "$r" "$(git branch --show-current)"; then ok_="$ok_ $r"; else failed="$failed $r"; fi
+    done
+    echo ""
+    [ -n "$ok_" ] && echo "✅ Force pushed to:$ok_"
+    [ -n "$skipped" ] && echo "ℹ️  Skipped (not configured):$skipped"
+    if [ -n "$failed" ]; then echo "⚠️  Failed:$failed"; exit 1; fi
+
 # Git: push tags to GitHub
 push-tags:
     git push origin --tags
@@ -524,6 +569,21 @@ vhs-sparkline:
 vhs-chartstack:
     vhs examples/vhs/chartstack.tape
     @echo "✅ examples/vhs/output/chartstack.gif"
+
+# Generate demo GIF for funnel
+vhs-funnel:
+    vhs examples/vhs/funnel.tape
+    @echo "✅ examples/vhs/output/funnel.gif"
+
+# Generate demo GIF for bullet
+vhs-bullet:
+    vhs examples/vhs/bullet.tape
+    @echo "✅ examples/vhs/output/bullet.gif"
+
+# Generate demo GIF for bubble
+vhs-bubble:
+    vhs examples/vhs/bubble.tape
+    @echo "✅ examples/vhs/output/bubble.gif"
 
 # Generate demo GIF for stream
 vhs-stream:

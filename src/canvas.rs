@@ -179,10 +179,35 @@ impl Canvas {
         }
     }
 
-    /// Bresenham line between two dots.
+    /// Bresenham line between two dots. Segments leaving the canvas are
+    /// clipped first, so cost is bounded by the canvas size, not by the
+    /// (possibly huge) coordinates.
     pub fn line(&mut self, x0: i32, y0: i32, x1: i32, y1: i32, color: Color) {
-        let (mut x0, mut y0) = (x0 as i64, y0 as i64);
-        let (x1, y1) = (x1 as i64, y1 as i64);
+        let (w, h) = (self.px_w(), self.px_h());
+        if w == 0 || h == 0 {
+            return;
+        }
+        let inside = |x: i32, y: i32| x >= 0 && y >= 0 && x < w && y < h;
+        let (mut x0, mut y0, mut x1, mut y1) = (x0 as i64, y0 as i64, x1 as i64, y1 as i64);
+        if !(inside(x0 as i32, y0 as i32) && inside(x1 as i32, y1 as i32)) {
+            match clip_segment(x0, y0, x1, y1, w as i64 - 1, h as i64 - 1) {
+                Some((a, b, c, d)) => (x0, y0, x1, y1) = (a, b, c, d),
+                None => return,
+            }
+        }
+        // Fast paths: horizontal / vertical runs.
+        if y0 == y1 {
+            for x in x0.min(x1)..=x0.max(x1) {
+                self.set(x as i32, y0 as i32, color);
+            }
+            return;
+        }
+        if x0 == x1 {
+            for y in y0.min(y1)..=y0.max(y1) {
+                self.set(x0 as i32, y as i32, color);
+            }
+            return;
+        }
         let dx = (x1 - x0).abs();
         let dy = -(y1 - y0).abs();
         let sx = if x0 < x1 { 1 } else { -1 };
@@ -220,6 +245,51 @@ impl Canvas {
             }
         }
     }
+}
+
+/// Liang-Barsky clip of a segment to `[0, xmax] x [0, ymax]`; endpoints are
+/// rounded back to dots.
+fn clip_segment(
+    x0: i64,
+    y0: i64,
+    x1: i64,
+    y1: i64,
+    xmax: i64,
+    ymax: i64,
+) -> Option<(i64, i64, i64, i64)> {
+    let (dx, dy) = ((x1 - x0) as f64, (y1 - y0) as f64);
+    let (mut t0, mut t1) = (0f64, 1f64);
+    for (p, q) in [
+        (-dx, x0 as f64),
+        (dx, (xmax - x0) as f64),
+        (-dy, y0 as f64),
+        (dy, (ymax - y0) as f64),
+    ] {
+        if p == 0.0 {
+            if q < 0.0 {
+                return None;
+            }
+        } else {
+            let r = q / p;
+            if p < 0.0 {
+                t0 = t0.max(r);
+            } else {
+                t1 = t1.min(r);
+            }
+            if t0 > t1 {
+                return None;
+            }
+        }
+    }
+    let pt = |t: f64| {
+        (
+            (x0 as f64 + t * dx).round().clamp(0.0, xmax as f64) as i64,
+            (y0 as f64 + t * dy).round().clamp(0.0, ymax as f64) as i64,
+        )
+    };
+    let (a, b) = pt(t0);
+    let (c, d) = pt(t1);
+    Some((a, b, c, d))
 }
 
 #[cfg(test)]
@@ -316,6 +386,24 @@ mod tests {
         c.set(0, 1, Color::Red);
         c.render(&mut buf, Rect::new(0, 0, 1, 1));
         assert_eq!(buf[(0, 0)].symbol(), "█");
+    }
+
+    #[test]
+    fn huge_offscreen_line_is_fast_and_clipped() {
+        let mut c = Canvas::new(10, 5, Marker::Braille);
+        c.line(-2_000_000_000, 10, 2_000_000_000, 10, Color::Red);
+        assert!(c.is_set(0, 10) && c.is_set(19, 10));
+        c.line(
+            -2_000_000_000,
+            -2_000_000_000,
+            2_000_000_000,
+            2_000_000_000,
+            Color::Red,
+        );
+        assert!(c.is_set(0, 0) && c.is_set(19, 19));
+        let mut d = Canvas::new(10, 5, Marker::Braille);
+        d.line(-100, -100, -50, 200, Color::Red); // fully outside
+        assert!((0..20).all(|y| (0..20).all(|x| !d.is_set(x, y))));
     }
 
     #[test]
