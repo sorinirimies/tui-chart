@@ -52,7 +52,8 @@ def main [
 
     for f in $files {
         let name = ($f | path basename)
-        let res = (do { nu $f } | complete)
+        # empty piped stdin: tests must never wait on the terminal
+        let res = ("" | do { nu $f } | complete)
 
         if $res.exit_code == 0 {
             $passed = $passed + 1

@@ -6,8 +6,12 @@ use runner.nu *
 use helpers.nu *
 use ../setup_gitea.nu [ask]
 
-def "test setup_gitea: ask returns empty without a terminal" [] {
-    assert equal (ask "q? ") ""
+def "test setup_gitea: ask reads piped stdin and never blocks on a tty" [] {
+    let src = (script "setup_gitea.nu")
+    let out = ("yes\n" | ^nu --no-config-file -c $"use ($src) ask; print \(ask 'q? '\)" | complete)
+    assert ($out.stdout | str contains "yes")
+    let empty = ("" | ^nu --no-config-file -c $"use ($src) ask; print \(ask 'q? '\)" | complete)
+    assert equal ($empty.stdout | str replace 'q? ' '' | str trim) ""
 }
 
 def "test setup_gitea: fails outside a git repository" [] {
