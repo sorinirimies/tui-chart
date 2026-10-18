@@ -655,11 +655,6 @@ vhs-waterfall:
     vhs examples/vhs/waterfall.tape
     @echo "✅ examples/vhs/output/waterfall.gif"
 
-# Generate demo GIF for themes
-vhs-themes:
-    vhs examples/vhs/themes.tape
-    @echo "✅ examples/vhs/output/themes.gif"
-
 # Generate all demo GIFs
 vhs-all:
     nu scripts/generate_all_tapes.nu
