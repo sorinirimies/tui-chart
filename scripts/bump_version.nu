@@ -17,6 +17,27 @@ export def ask [prompt: string]: nothing -> string {
     }
 }
 
+# Compare two versions: -1 if a < b, 0 if equal, 1 if a > b.
+# A pre-release (X.Y.Z-suffix) sorts before the plain X.Y.Z release.
+export def version_cmp [a: string, b: string]: nothing -> int {
+    let split = {|v|
+        let parts = ($v | split row "-" | first 1 | get 0 | split row "." | each {|n| $n | into int })
+        let pre = (($v | split row "-" | length) > 1)
+        { nums: $parts, pre: $pre }
+    }
+    let x = (do $split $a)
+    let y = (do $split $b)
+    for i in 0..2 {
+        let xn = ($x.nums | get $i)
+        let yn = ($y.nums | get $i)
+        if $xn < $yn { return (-1) }
+        if $xn > $yn { return 1 }
+    }
+    if $x.pre and (not $y.pre) { return (-1) }
+    if (not $x.pre) and $y.pre { return 1 }
+    0
+}
+
 # True when `v` is X.Y.Z or X.Y.Z-suffix.
 export def is_valid_version [v: string]: nothing -> bool {
     $v =~ '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$'
@@ -89,6 +110,13 @@ def main [
     if $current_version == $new_version {
         error make {
             msg: $"($red)Error: Already at version ($new_version)($reset)\nNothing to do."
+        }
+    }
+
+    # ── Guard: never go backwards ─────────────────────────────────────
+    if (version_cmp $new_version $current_version) < 0 {
+        error make {
+            msg: $"($red)Error: ($new_version) is lower than current ($current_version)($reset)\nVersions only move forward."
         }
     }
 

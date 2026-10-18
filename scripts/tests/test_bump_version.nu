@@ -5,7 +5,7 @@
 use std/assert
 use runner.nu *
 use helpers.nu *
-use ../bump_version.nu [is_valid_version read_version set_version has_version_badge set_badge_version]
+use ../bump_version.nu [is_valid_version version_cmp read_version set_version has_version_badge set_badge_version]
 
 def "test bump: valid versions" [] {
     for v in ["0.0.1" "1.2.3" "10.20.30" "0.4.0-beta.1" "1.0.0-rc1"] {
@@ -71,6 +71,25 @@ def "test bump: rejects same version" [] {
     let r = (run-script $d "bump_version.nu" ["--yes" "0.1.0"])
     assert not equal $r.exit_code 0
     assert ($r.stderr | str contains "Already at version")
+}
+
+def "test bump: version_cmp orders versions" [] {
+    assert equal (version_cmp "0.1.0" "0.1.1") (-1)
+    assert equal (version_cmp "0.2.0" "0.1.9") 1
+    assert equal (version_cmp "1.0.0" "1.0.0") 0
+    assert equal (version_cmp "0.10.0" "0.9.0") 1
+    assert equal (version_cmp "1.0.0-rc1" "1.0.0") (-1)
+    assert equal (version_cmp "1.0.0" "1.0.0-rc1") 1
+}
+
+def "test bump: rejects downgrade" [] {
+    let d = (make-tmp)
+    write-fixture $d "0.3.0"
+    init-repo $d
+    let r = (run-script $d "bump_version.nu" ["--yes" "--skip-checks" "0.2.0"])
+    assert not equal $r.exit_code 0
+    assert ($r.stderr | str contains "lower than current")
+    assert equal (read_version (open ($d | path join "Cargo.toml") --raw)) "0.3.0"
 }
 
 def "test bump: rejects existing tag" [] {

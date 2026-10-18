@@ -134,6 +134,21 @@ audit:
 deny:
     cargo deny check
 
+# API compatibility vs the latest tag (cargo install cargo-semver-checks --locked).
+# Pass a release type (patch|minor|major) to assert that bump is sufficient;
+# note that for 0.y.z crates a 0.(y+1) bump counts as "major".
+semver bump="":
+    #!/usr/bin/env sh
+    base="$(git describe --tags --abbrev=0 2>/dev/null)" || { echo "↷ no tag yet, nothing to compare"; exit 0; }
+    if [ -n "{{bump}}" ]; then
+        cargo semver-checks --baseline-rev "$base" --release-type "{{bump}}"
+    else
+        cargo semver-checks --baseline-rev "$base"
+    fi
+
+# Fuzz smoke test (needs nightly + cargo-fuzz): SECONDS per target
+fuzz-smoke seconds="5": (fuzz-all seconds)
+
 # Build all fuzz targets (needs nightly + cargo install cargo-fuzz)
 fuzz-build:
     cargo +nightly fuzz build
@@ -306,6 +321,9 @@ REMOTES := "origin gitea-microlab gitea-starscream gitea-nexus-lab"
 # Push (or force-push / push tags) to ONE remote; skip gracefully if it isn't configured
 _push remote flags="" what="branch":
     #!/usr/bin/env sh
+    # fail fast on unreachable hosts instead of hanging
+    export GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-ssh -o ConnectTimeout=8 -o BatchMode=yes}"
+    export GIT_HTTP_LOW_SPEED_LIMIT=1000 GIT_HTTP_LOW_SPEED_TIME=15
     if ! git remote get-url "{{remote}}" >/dev/null 2>&1; then
         echo "↷ skipping {{remote}} (not configured here; add with: git remote add {{remote}} <url>, or: just setup-remotes)"
         exit 0
@@ -319,6 +337,9 @@ _push remote flags="" what="branch":
 # Push to EVERY remote in REMOTES; skip unconfigured ones, continue on failure, summarize
 _push-all flags="" what="branch":
     #!/usr/bin/env sh
+    # fail fast on unreachable hosts instead of hanging
+    export GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-ssh -o ConnectTimeout=8 -o BatchMode=yes}"
+    export GIT_HTTP_LOW_SPEED_LIMIT=1000 GIT_HTTP_LOW_SPEED_TIME=15
     failed=""; ok_=""; skipped=""
     for r in {{REMOTES}}; do
         if ! git remote get-url "$r" >/dev/null 2>&1; then
@@ -504,8 +525,11 @@ setup-gitea url:
     @echo "Test with: git push gitea-microlab main"
 
 # Full pre-release quality gate: everything in check-all plus a release build
-check-release: check-all build-release
-    @echo "✅ Release quality gate passed (fmt + clippy + test + nu + release build)!"
+check-release: check-all deny audit build-release
+    #!/usr/bin/env sh
+    # semver is advisory here (the version is not bumped yet): it tells you the minimum bump
+    just semver || echo "⚠️  API changes since the last tag: bump accordingly (0.x: next minor)"
+    echo "✅ Release quality gate passed (fmt + clippy + test + nu + deny + audit + release build)!"
 
 # Show what would be released without making any changes
 release-preview: check-git-cliff

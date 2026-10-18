@@ -116,3 +116,44 @@ jobs:
           nu --version
       - name: Run Nu script tests
         run: nu scripts/tests/run_all.nu
+
+  publish-dry-run:
+    name: publish dry-run
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+      - name: cargo publish --dry-run
+        run: cargo publish --dry-run --locked
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
+
+  semver:
+    name: semver-checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+      - name: Check API compatibility against the latest release
+        uses: obi1kenobi/cargo-semver-checks-action@v2
+        continue-on-error: true # advisory: 0.x releases may intentionally break
+
+  bench:
+    name: bench (smoke)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+      - name: Run render benchmark
+        run: cargo run --release --features theme --example bench | tee bench.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bench
+          path: bench.txt
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
