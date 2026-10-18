@@ -308,4 +308,31 @@ mod tests {
             3,
         );
     }
+
+    #[test]
+    fn custom_color_and_max() {
+        let b = Bullet::new([BulletItem::new("a", 50.0)])
+            .max(200.0)
+            .color(Color::Magenta);
+        let buf = render(&b, 40, 2);
+        assert!(buf.content().iter().any(|c| c.fg == Color::Magenta));
+        // a larger axis max shrinks the bar
+        let full = |m: f64| {
+            render(&Bullet::new([BulletItem::new("a", 50.0)]).max(m), 40, 2)
+                .content()
+                .iter()
+                .filter(|c| c.symbol() == "█")
+                .count()
+        };
+        assert!(full(100.0) > full(400.0));
+    }
+
+    #[test]
+    fn many_items_and_row_heights() {
+        let items = (0..6).map(|i| BulletItem::new(format!("m{i}"), i as f64 * 10.0));
+        let b = Bullet::new(items);
+        for h in [1, 2, 3, 6, 18, 40] {
+            render(&b, 50, h);
+        }
+    }
 }

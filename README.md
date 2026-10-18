@@ -20,18 +20,18 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 | `LineChart` | line, step, area, scatter, multi-series, legend, secondary y axis |
 | `CandlestickChart` | candles, Heikin-Ashi, OHLC, volume, overlays, indicator panes, trade markers |
 | `BarChart` | vertical/horizontal, grouped/stacked |
-| `Histogram` | auto-binned distribution |
-| `Heatmap` | multiple color gradients |
-| `Sparkline` | compact inline trend |
-| `Gauge` | progress / meter |
-| `RadarChart` | multi-axis comparison |
+| `Histogram` | auto-binned distribution, KDE overlay, mean/median markers (`.stats`) |
+| `Heatmap` | multiple color gradients, `.stretch(true)` to fill the area |
+| `Sparkline` | bars, area, line, win/loss, moving-average `.smooth(n)` |
+| `Gauge` | linear, blocks, segmented and arc dial with scale, needle and target |
+| `RadarChart` | multi-axis comparison, filled polygons, ring values, legend |
 | `BoxPlot` | quartiles, whiskers, outliers |
 | `Waterfall` | running deltas and totals |
 | `Gantt` | task timeline with progress |
 | `DepthChart` | order book bids/asks |
 | `RenkoChart` | fixed-size price bricks |
-| `Treemap` | nested weighted rectangles |
-| `Funnel` | stage conversion funnel with percentages |
+| `Treemap` | nested weighted rectangles with group headers and tile gutters |
+| `Funnel` | tapered stages, side labels, conversion % and drop-off (`.taper`, `.show_dropoff`) |
 | `Bullet` | value vs target over qualitative ranges |
 | `BubbleChart` | scatter with area-scaled bubble sizes |
 | `ChartStack` | vertical/horizontal stack with shared gutter |

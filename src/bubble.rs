@@ -254,4 +254,34 @@ mod tests {
             12,
         );
     }
+
+    #[test]
+    fn max_radius_limits_size() {
+        let count = |r: u16| {
+            let c =
+                BubbleChart::new([
+                    BubbleSeries::new("a", [(0.0, 0.0, 10.0), (5.0, 5.0, 100.0)]).color(Color::Red),
+                ])
+                .max_radius(r);
+            render(&c, 60, 20)
+                .content()
+                .iter()
+                .filter(|c| c.fg == Color::Red && c.symbol() != " ")
+                .count()
+        };
+        assert!(count(8) > count(2));
+    }
+
+    #[test]
+    fn multiple_series_and_markers() {
+        for m in [Marker::Braille, Marker::HalfBlock, Marker::Dot] {
+            let c = BubbleChart::new([
+                BubbleSeries::new("a", [(1.0, 1.0, 5.0)]).color(Color::Red),
+                BubbleSeries::new("b", [(2.0, 3.0, 9.0)]).color(Color::Blue),
+            ])
+            .marker(m);
+            let b = render(&c, 50, 16);
+            assert!(b.content().iter().any(|x| x.fg == Color::Blue));
+        }
+    }
 }

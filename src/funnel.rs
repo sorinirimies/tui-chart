@@ -297,4 +297,54 @@ mod tests {
         let mut b = Buffer::empty(Rect::new(0, 0, 30, 2));
         funnel().render(Rect::new(0, 0, 30, 2), &mut b);
     }
+
+    fn text(b: &Buffer) -> String {
+        b.content().iter().map(|c| c.symbol()).collect()
+    }
+
+    fn draw(f: Funnel, w: u16, h: u16) -> Buffer {
+        let a = Rect::new(0, 0, w, h);
+        let mut b = Buffer::empty(a);
+        f.render(a, &mut b);
+        b
+    }
+
+    #[test]
+    fn dropoff_toggle() {
+        let on = text(&draw(funnel(), 60, 9));
+        let off = text(&draw(funnel().show_dropoff(false), 60, 9));
+        assert!(on.contains('▼') && !off.contains('▼'));
+    }
+
+    #[test]
+    fn percent_toggle() {
+        let off = text(&draw(funnel().show_percent(false), 60, 9));
+        assert!(!off.contains("40%"));
+    }
+
+    #[test]
+    fn taper_changes_output_and_custom_color_applies() {
+        let f = || funnel();
+        assert_ne!(
+            text(&draw(f().taper(false), 60, 9)),
+            text(&draw(f().taper(true), 60, 9))
+        );
+        let b = draw(
+            Funnel::new([FunnelStage::new("a", 5.0).color(Color::Red)]),
+            40,
+            4,
+        );
+        assert!(b
+            .content()
+            .iter()
+            .any(|c| c.fg == Color::Red || c.bg == Color::Red));
+    }
+
+    #[test]
+    fn narrow_and_tiny_areas_do_not_panic() {
+        for (w, h) in [(0, 0), (1, 1), (5, 2), (12, 3), (200, 40)] {
+            draw(funnel(), w, h);
+            draw(funnel().taper(false).show_dropoff(false), w, h);
+        }
+    }
 }
