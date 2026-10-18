@@ -5,24 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.0](https://github.com/sorinirimies/tui-chart/releases/tag/v0.1.0) - 2026-10-18
+## [Unreleased]
 
 ### Features
 
 - Add ChartStack example, tape and gallery entry ([92c42dc](https://github.com/sorinirimies/tui-chart/commit/92c42dc1f6e964cdc107e41583d5edb0de76b716))
 - Funnel, Bullet, BubbleChart; faster line/area rendering; force-push just recipes ([4d613a6](https://github.com/sorinirimies/tui-chart/commit/4d613a6e75e6425f7a68308699b19826fa99e2ba))
-- **gauge,funnel:** Redesign gauge (solid tracks, rich arc, segmented style) and tapering funnel with drop-off ([cb3bf03](https://github.com/sorinirimies/tui-chart/commit/cb3bf03db3cb2eae83d06071f4eb71b9fa7f8db4))
-- **sparkline,bullet,histogram,depth:** Area/win-loss sparklines with smoothing, 3-row bullets with eighth precision, histogram mean/median markers, gradient depth fills ([a2e28b2](https://github.com/sorinirimies/tui-chart/commit/a2e28b2592effe72be99defc1113cfd6d3250a6c))
-- **heatmap,radar,treemap,waterfall:** Stretch-to-fit heatmap, filled radar with ring values and legend, treemap gutters and group headers, waterfall grid ([7dd66b3](https://github.com/sorinirimies/tui-chart/commit/7dd66b3b02430f0b2f29d33c6858bebdafe06fc3))
 
 ### Documentation
 
 - Add chart gallery to README and regenerate demo GIFs ([c4c886e](https://github.com/sorinirimies/tui-chart/commit/c4c886e70a1f2d0421761924092e90b12b1d952f))
 - Drop duplicate showcase GIF from README ([4125b98](https://github.com/sorinirimies/tui-chart/commit/4125b9845593e555ead6538a018939b597626137))
-
-### Testing
-
-- Cover funnel, bullet, bubble options; docs: README feature table; regenerate GIFs ([8895c75](https://github.com/sorinirimies/tui-chart/commit/8895c75e1c7ac7297216ec7842641b0f82984c73))
 
 ### Miscellaneous
 
@@ -31,8 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove duplicate showcase tape/gif; vhs-showcase builds tui_chart.gif ([b69dc71](https://github.com/sorinirimies/tui-chart/commit/b69dc710c093c94d4ede5fbcfbd45bd44ad12565))
 - Alias push-all-force ([0886ec2](https://github.com/sorinirimies/tui-chart/commit/0886ec2ab53bdb9c3d59b8a715dec3a88baf2e82))
 - **just:** Align push/force/sync/release recipes with sibling repos ([7cc8d31](https://github.com/sorinirimies/tui-chart/commit/7cc8d31802b220351388b8192c13aaa7e59792be))
-- Improve git-cliff config; regenerate changelog; remote-safe push recipes ([4f2f30e](https://github.com/sorinirimies/tui-chart/commit/4f2f30e25efb176f314988a68015e7e7690d3bff))
-- **vhs:** Remove themes tape and gif ([9b74857](https://github.com/sorinirimies/tui-chart/commit/9b748575dba7ea048a6bd4a1784f9650aee694e6))
 
 ## [0.1.1](https://github.com/sorinirimies/tui-chart/releases/tag/v0.1.1) - 2026-10-14
 
@@ -71,7 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Depend on tui-nuances 0.1.6 from crates.io ([4069a83](https://github.com/sorinirimies/tui-chart/commit/4069a8395f6b99831381fe6b0fc9110255a67494))
 
 
-[0.1.0]: https://github.com/sorinirimies/tui-chart/compare/v0.1.1...v0.1.0
+[Unreleased]: https://github.com/sorinirimies/tui-chart/compare/v0.1.1...HEAD
 
 [0.1.1]: https://github.com/sorinirimies/tui-chart/releases/tag/v0.1.1
 
