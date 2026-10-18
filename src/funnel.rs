@@ -2,7 +2,7 @@
 
 use crate::text::put_str;
 use crate::theme::{self, Theme};
-use crate::util::format_compact;
+use crate::util::{darken, format_compact};
 use crate::PALETTE;
 use ratatui::{
     buffer::Buffer,
@@ -47,6 +47,8 @@ pub struct Funnel {
     theme: Option<Theme>,
     base: Option<Style>,
     show_percent: bool,
+    show_dropoff: bool,
+    taper: bool,
     block: Option<Block<'static>>,
 }
 
@@ -58,6 +60,8 @@ impl Funnel {
             theme: None,
             base: None,
             show_percent: true,
+            show_dropoff: true,
+            taper: true,
             block: None,
         }
     }
@@ -65,6 +69,16 @@ impl Funnel {
     setter!(
         /// Show conversion percentage vs. the first stage (default on).
         show_percent: bool
+    );
+
+    setter!(
+        /// Show the drop-off vs. the previous stage (default on).
+        show_dropoff: bool
+    );
+
+    setter!(
+        /// Connect stages into one tapering funnel (default on); off draws separate bars.
+        taper: bool
     );
 
     theme_setter!(
@@ -104,7 +118,11 @@ impl Funnel {
             .theme
             .as_ref()
             .map_or(Style::default(), |t| t.label_style());
-        let max = self
+        let dim = Style::default().fg(darken(
+            self.theme.as_ref().map_or(Color::Gray, |t| t.foreground),
+            0.4,
+        ));
+        let vals: Vec<f64> = self
             .stages
             .iter()
             .map(|s| {
@@ -114,53 +132,118 @@ impl Funnel {
                     0.0
                 }
             })
-            .fold(0.0, f64::max);
+            .collect();
+        let max = vals.iter().copied().fold(0.0, f64::max);
         let conv = self.conversions();
+
+        // Columns: [labels] [funnel] [value + percent + drop-off]. Side columns
+        // are dropped on narrow areas, falling back to centered labels.
+        let label_w = (self
+            .stages
+            .iter()
+            .map(|s| s.label.chars().count())
+            .max()
+            .unwrap_or(0) as u16
+            + 2)
+        .min(inner.width / 4);
+        let stat_w: u16 = if self.show_percent { 16 } else { 8 };
+        let side = inner.width >= label_w + stat_w + 16;
+        let (fx, fw) = if side {
+            (inner.x + label_w, inner.width - label_w - stat_w)
+        } else {
+            (inner.x, inner.width)
+        };
+        let center = fx as f64 + fw as f64 / 2.0;
+
         for (i, st) in self.stages.iter().enumerate() {
             let y0 = inner.y as u32 + i as u32 * rows_each as u32;
             if y0 >= inner.bottom() as u32 {
                 break;
             }
             let h = (rows_each as u32).min(inner.bottom() as u32 - y0) as u16;
-            let v = if st.value.is_finite() {
-                st.value.max(0.0)
-            } else {
-                0.0
-            };
-            let frac = if max > 0.0 { v / max } else { 0.0 };
-            let bw = ((frac * inner.width as f64).round() as u16).clamp(1, inner.width);
-            let x0 = inner.x + (inner.width - bw) / 2;
             let color = st.color.unwrap_or_else(|| {
                 self.theme
                     .as_ref()
                     .map_or(PALETTE[i % PALETTE.len()], |t| t.color(i))
             });
-            let bar_h = if rows_each > 2 { h - 1 } else { h };
-            for y in y0 as u16..y0 as u16 + bar_h {
-                for x in x0..x0 + bw {
-                    buf[(x, y)].set_char('█').set_fg(color);
+            let frac = |v: f64| if max > 0.0 { v / max } else { 0.0 };
+            let top_w = (frac(vals[i]) * fw as f64).max(1.0);
+            // bottom edge meets the next stage's top; the last stage narrows to a neck
+            let bot_w = if !self.taper {
+                top_w
+            } else if let Some(nv) = vals.get(i + 1) {
+                (frac(*nv) * fw as f64).max(1.0)
+            } else {
+                (top_w * 0.7).max(1.0)
+            };
+            let bar_h = if self.taper || rows_each <= 2 {
+                h
+            } else {
+                h - 1
+            };
+            for r in 0..bar_h {
+                let t = (r as f64 + 0.5) / bar_h as f64;
+                let w = top_w + (bot_w - top_w) * t;
+                let (l, rt) = (center - w / 2.0, center + w / 2.0);
+                let y = y0 as u16 + r;
+                let first = (l.floor() as i64).max(fx as i64) as u16;
+                let last = ((rt.ceil() as i64).min((fx + fw) as i64) - 1).max(first as i64) as u16;
+                for x in first..=last.min(fx + fw - 1) {
+                    let cover_l = (x as f64).max(l);
+                    let cover_r = (x as f64 + 1.0).min(rt);
+                    let cover = (cover_r - cover_l).max(0.0);
+                    let cell = &mut buf[(x, y)];
+                    if cover >= 0.75 {
+                        cell.set_char('█').set_fg(color);
+                    } else if cover >= 0.25 {
+                        // partial edge cell: half block on the side that is covered
+                        let left_side = (x as f64) < l + 0.5 && l > x as f64;
+                        cell.set_char(if left_side { '▐' } else { '▌' })
+                            .set_fg(color);
+                    }
                 }
             }
-            let mut label = format!("{} {}", st.label, format_compact(v));
-            if self.show_percent {
-                label.push_str(&format!(" ({:.0}%)", conv[i] * 100.0));
-            }
-            let lw = label.chars().count() as u16;
-            let lx = inner.x + inner.width.saturating_sub(lw) / 2;
-            // On the bar (contrasting fg) when it fits; otherwise in the gap row
-            // below the bar, or on the bar when there is no gap.
-            let on_bar = lw <= bw;
-            let (ly, style) = if on_bar {
-                (
-                    y0 as u16 + bar_h.saturating_sub(1) / 2,
-                    Style::default().fg(Color::Black).bg(color),
-                )
-            } else if bar_h < h {
-                (y0 as u16 + bar_h, text)
+
+            // value / percent / drop-off (side) or centered label (narrow)
+            let mid = y0 as u16 + bar_h.saturating_sub(1) / 2;
+            if side {
+                put_str(buf, inner.x, mid, fx, &st.label, text);
+                let mut stat = format_compact(vals[i]);
+                if self.show_percent {
+                    stat.push_str(&format!("  {:>3.0}%", conv[i] * 100.0));
+                }
+                put_str(buf, fx + fw + 1, mid, inner.right(), &stat, text);
+                if self.show_percent && self.show_dropoff && i > 0 && vals[i - 1] > 0.0 {
+                    let drop = (1.0 - vals[i] / vals[i - 1]) * 100.0;
+                    if h > 1 {
+                        let dy = y0 as u16;
+                        if dy != mid {
+                            put_str(
+                                buf,
+                                fx + fw + 1,
+                                dy,
+                                inner.right(),
+                                &format!("▼ {drop:.0}%"),
+                                dim,
+                            );
+                        }
+                    }
+                }
             } else {
-                (y0 as u16 + bar_h.saturating_sub(1) / 2, text)
-            };
-            put_str(buf, lx, ly, inner.right(), &label, style);
+                let mut label = format!("{} {}", st.label, format_compact(vals[i]));
+                if self.show_percent {
+                    label.push_str(&format!(" ({:.0}%)", conv[i] * 100.0));
+                }
+                let lw = label.chars().count() as u16;
+                let lx = inner.x + inner.width.saturating_sub(lw) / 2;
+                let on_bar = (lw as f64) <= top_w.min(bot_w);
+                let style = if on_bar {
+                    Style::default().fg(Color::Black).bg(color)
+                } else {
+                    text
+                };
+                put_str(buf, lx, mid, inner.right(), &label, style);
+            }
         }
     }
 }

@@ -2,6 +2,7 @@
 
 use crate::canvas::{Canvas, Marker};
 use crate::theme::{self, Theme};
+use crate::util::{darken, format_compact};
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -29,8 +30,11 @@ pub enum GaugeStyle {
     Linear,
     /// Bullet chart: bands as background, thin value bar in the middle.
     Bullet,
-    /// Semicircular dial drawn with braille dots.
+    /// Semicircular dial drawn with braille dots: banded ring, ticks, needle,
+    /// target notch, min/max scale labels and the value label underneath.
     Arc,
+    /// Discrete blocks (htop / battery style); lit blocks take the band color.
+    Segmented,
 }
 
 /// Gauge showing a value inside `[min, max]`.
@@ -143,16 +147,40 @@ impl<'a> Gauge<'a> {
             .map_or(self.bar_color(), |b| b.1)
     }
 
-    fn draw_label(&self, area: Rect, buf: &mut Buffer) {
-        let Some(l) = &self.label else { return };
-        let n = l.chars().count().min(area.width as usize);
-        let x0 = area.x + (area.width as usize - n) as u16 / 2;
-        let y = area.y + area.height / 2;
-        for (i, ch) in l.chars().take(n).enumerate() {
+    /// Color of the unfilled part of the track at fraction `f`: the band color
+    /// (or track color) darkened, so bands stay readable without hatching.
+    fn dim(&self, f: f64) -> Color {
+        let base = if self.bands.is_empty() {
+            self.track()
+        } else {
+            self.band_color(f)
+        };
+        darken(base, if self.bands.is_empty() { 0.35 } else { 0.5 })
+    }
+
+    fn draw_label_at(&self, text: &str, cx: u16, y: u16, clip: Rect, buf: &mut Buffer) {
+        let n = text.chars().count().min(clip.width as usize) as u16;
+        let x0 = cx
+            .saturating_sub(n / 2)
+            .clamp(clip.x, clip.right().saturating_sub(n));
+        for (i, ch) in text.chars().take(n as usize).enumerate() {
             if let Some(c) = buf.cell_mut((x0 + i as u16, y)) {
-                c.set_char(ch).set_fg(self.fg());
+                c.set_char(ch)
+                    .set_fg(self.fg())
+                    .set_style(Style::default().add_modifier(ratatui::style::Modifier::BOLD));
             }
         }
+    }
+
+    fn draw_label(&self, area: Rect, buf: &mut Buffer) {
+        let Some(l) = &self.label else { return };
+        self.draw_label_at(
+            l,
+            area.x + area.width / 2,
+            area.y + area.height / 2,
+            area,
+            buf,
+        );
     }
 
     fn draw_linear(&self, area: Rect, buf: &mut Buffer) {
@@ -163,7 +191,9 @@ impl<'a> Gauge<'a> {
             (area.height, area.width)
         };
         let bullet = self.style == GaugeStyle::Bullet;
-        let eighths = (self.frac(self.value) * len as f64 * 8.0).round() as i64;
+        let segmented = self.style == GaugeStyle::Segmented;
+        let vf = self.frac(self.value);
+        let eighths = (vf * len as f64 * 8.0).round() as i64;
         let (c0, c1) = if bullet && cross >= 3 {
             (cross / 3, cross - cross / 3)
         } else if bullet {
@@ -174,9 +204,13 @@ impl<'a> Gauge<'a> {
         let tpos = self
             .target
             .map(|t| ((self.frac(t) * len as f64).floor() as u16).min(len.saturating_sub(1)));
+        // segmented: 2-cell blocks (1 vertically) separated by a 1-cell gap
+        let seg = if horiz { 2 } else { 1 };
+        let nseg = ((len as usize + 1) / (seg + 1)).max(1);
         for i in 0..len {
             let f = (i as f64 + 0.5) / len as f64;
             let bc = self.band_color(f);
+            let track = self.dim(f);
             let rem = eighths - i as i64 * 8;
             for c in 0..cross {
                 let (x, y) = if horiz {
@@ -187,12 +221,29 @@ impl<'a> Gauge<'a> {
                 let Some(cell) = buf.cell_mut((x, y)) else {
                     continue;
                 };
+                if segmented {
+                    let slot = i as usize % (seg + 1);
+                    if slot == seg {
+                        continue; // gap
+                    }
+                    let idx = i as usize / (seg + 1);
+                    let sf = (idx as f64 + 0.5) / nseg as f64;
+                    let lit = sf <= vf || (idx == 0 && vf > 0.0);
+                    let col = if lit {
+                        self.band_color(sf)
+                    } else {
+                        self.dim(sf)
+                    };
+                    cell.set_char('█').set_fg(col);
+                    continue;
+                }
                 let in_bar = c >= c0 && c < c1;
                 if tpos == Some(i) {
                     cell.set_char(if horiz { '┃' } else { '━' })
-                        .set_fg(self.fg());
+                        .set_fg(self.fg())
+                        .set_bg(track);
                 } else if in_bar && rem >= 8 {
-                    cell.set_char('█').set_fg(bc);
+                    cell.set_char('█').set_fg(bc).set_bg(bc);
                 } else if in_bar && rem > 0 {
                     let k = (rem - 1) as usize;
                     let ch = if horiz {
@@ -200,11 +251,26 @@ impl<'a> Gauge<'a> {
                     } else {
                         ['▁', '▂', '▃', '▄', '▅', '▆', '▇'][k]
                     };
-                    cell.set_char(ch).set_fg(bc);
-                } else if !self.bands.is_empty() || bullet {
-                    cell.set_char(if bullet { '▒' } else { '░' }).set_fg(bc);
+                    cell.set_char(ch).set_fg(bc).set_bg(track);
                 } else {
-                    cell.set_char('░').set_fg(self.track());
+                    // solid dimmed track (bullet: bands behind the bar)
+                    cell.set_char(' ').set_bg(track);
+                }
+            }
+        }
+        if let (Some(_), true) = (tpos, segmented) {
+            // keep the target visible between blocks
+            if let Some(i) = tpos {
+                for c in 0..cross {
+                    let (x, y) = if horiz {
+                        (area.x + i, area.y + c)
+                    } else {
+                        (area.x + c, area.y + area.height - 1 - i)
+                    };
+                    if let Some(cell) = buf.cell_mut((x, y)) {
+                        cell.set_char(if horiz { '┃' } else { '━' })
+                            .set_fg(self.fg());
+                    }
                 }
             }
         }
@@ -212,10 +278,44 @@ impl<'a> Gauge<'a> {
     }
 
     fn draw_arc(&self, area: Rect, buf: &mut Buffer) {
-        let mut cv = Canvas::new(area.width, area.height, self.marker);
+        // bottom row: min · value label · max (only when there is room)
+        let scale_row = area.height >= 3;
+        let canvas_area = if scale_row {
+            Rect::new(area.x, area.y, area.width, area.height - 1)
+        } else {
+            area
+        };
+        let mut cv = Canvas::new(canvas_area.width, canvas_area.height, self.marker);
         let (pw, ph) = (cv.px_w(), cv.px_h());
-        let r = ((pw / 2).min(ph - 1)).max(1) as f64;
-        let (cx, cy) = (pw as f64 / 2.0 - 0.5, ph as f64 - 1.0);
+        // leave room outside the ring for tick marks
+        let tick_len = if ph >= 12 { 3 } else { 0 };
+        let r = (((pw - 1) / 2 - tick_len).min(ph - 1 - tick_len)).max(1) as f64;
+        let thick = (r / 4.0).max(2.0);
+        let (cx, cy) = ((pw - 1) as f64 / 2.0, (ph - 1) as f64);
+        let vf = self.frac(self.value);
+        let mid = r - thick / 2.0;
+        let thumb = 1.6 / (std::f64::consts::PI * mid.max(1.0)); // ~1.6 dots wide, as a fraction
+        for py in 0..ph {
+            for px in 0..pw {
+                let (dx, dy) = (px as f64 - cx, cy - py as f64);
+                if dy < -0.5 {
+                    continue;
+                }
+                let d = (dx * dx + dy * dy).sqrt();
+                if d > r || d < r - thick {
+                    continue;
+                }
+                let f = 1.0 - dy.max(0.0).atan2(dx) / std::f64::consts::PI;
+                let col = if (f - vf).abs() <= thumb && vf > 0.0 && vf < 1.0 {
+                    self.fg()
+                } else if f <= vf {
+                    self.band_color(f)
+                } else {
+                    self.dim(f)
+                };
+                cv.set(px, py, col);
+            }
+        }
         let at = |f: f64, rad: f64| {
             let a = std::f64::consts::PI * (1.0 - f);
             (
@@ -223,30 +323,46 @@ impl<'a> Gauge<'a> {
                 (cy - rad * a.sin()).round() as i32,
             )
         };
-        let vf = self.frac(self.value);
-        let steps = (std::f64::consts::PI * r * 2.0).ceil() as usize + 1;
-        for s in 0..=steps {
-            let f = s as f64 / steps as f64;
-            let col = if f <= vf || !self.bands.is_empty() {
-                self.band_color(f)
-            } else {
-                self.track()
-            };
-            let col = if f > vf { self.track() } else { col };
-            for t in 0..(r as i32 / 4).max(1) {
-                let p = at(f, r - t as f64);
-                cv.set(p.0, p.1, col);
+        if tick_len > 0 {
+            let tick = darken(self.fg(), 0.35);
+            for k in 0..=10 {
+                let f = k as f64 / 10.0;
+                let len = if k % 5 == 0 { tick_len as f64 } else { 1.0 };
+                let (a, b) = (at(f, r + 1.0), at(f, r + 1.0 + len));
+                cv.line(a.0, a.1, b.0, b.1, tick);
             }
         }
         if let Some(t) = self.target {
             let tf = self.frac(t);
-            let (a, b) = (at(tf, r * 0.5), at(tf, r));
+            let (a, b) = (at(tf, r - thick - 1.0), at(tf, r + 1.0 + tick_len as f64));
             cv.line(a.0, a.1, b.0, b.1, self.fg());
         }
-        let tip = at(vf, r * 0.85);
+        // needle + hub
+        let tip = at(vf, r - thick - 2.0);
         cv.line(cx.round() as i32, cy as i32, tip.0, tip.1, self.fg());
-        cv.render(buf, area);
-        self.draw_label(area, buf);
+        let hub = 2;
+        for dy in -hub..=hub {
+            for dx in -hub..=hub {
+                if dx * dx + dy * dy <= hub * hub {
+                    cv.set(cx.round() as i32 + dx, cy as i32 + dy, self.fg());
+                }
+            }
+        }
+        cv.render(buf, canvas_area);
+        if scale_row {
+            let y = area.bottom() - 1;
+            let (rx, _) = self.marker.resolution();
+            let cell_of = |dot: f64| canvas_area.x + (dot / rx as f64).floor().max(0.0) as u16;
+            self.draw_label_at(&format_compact(self.min), cell_of(cx - mid), y, area, buf);
+            self.draw_label_at(&format_compact(self.max), cell_of(cx + mid), y, area, buf);
+            let center = self
+                .label
+                .clone()
+                .unwrap_or_else(|| format_compact(self.value));
+            self.draw_label_at(&center, area.x + area.width / 2, y, area, buf);
+        } else {
+            self.draw_label(area, buf);
+        }
     }
 }
 
@@ -289,7 +405,8 @@ mod tests {
         let b = run(Gauge::new(50.0), 10, 1);
         assert_eq!(b[(0, 0)].symbol(), "█");
         assert_eq!(b[(4, 0)].symbol(), "█");
-        assert_eq!(b[(5, 0)].symbol(), "░");
+        assert_eq!(b[(5, 0)].symbol(), " ");
+        assert_ne!(b[(5, 0)].bg, Color::Reset);
     }
 
     #[test]
@@ -319,17 +436,42 @@ mod tests {
             2,
             4,
         );
-        assert_eq!(b[(0, 3)].symbol(), "░");
+        assert_eq!(b[(0, 3)].symbol(), " ");
+    }
+
+    #[test]
+    fn segmented_lights_blocks_with_gaps() {
+        let b = run(Gauge::new(50.0).style(GaugeStyle::Segmented), 12, 1);
+        let s: String = (0..12).map(|x| b[(x, 0)].symbol().to_string()).collect();
+        assert_eq!(&s[..], "██ ██ ██ ██ ");
+        assert_ne!(b[(0, 0)].fg, b[(9, 0)].fg); // lit vs dim
+    }
+
+    #[test]
+    fn arc_shows_scale_and_value() {
+        let g = Gauge::new(42.0).style(GaugeStyle::Arc).range(0.0, 100.0);
+        let b = run(g, 40, 12);
+        let last: String = (0..40).map(|x| b[(x, 11)].symbol().to_string()).collect();
+        assert!(
+            last.contains('0') && last.contains("100") && last.contains("42"),
+            "{last:?}"
+        );
     }
 
     #[test]
     fn bullet_and_arc_and_degenerate() {
         let b = run(Gauge::new(60.0).style(GaugeStyle::Bullet), 10, 3);
         assert_eq!(b[(0, 1)].symbol(), "█");
-        assert_eq!(b[(0, 0)].symbol(), "▒");
+        assert_eq!(b[(0, 0)].symbol(), " ");
+        assert_ne!(b[(0, 0)].bg, Color::Reset);
         let b = run(Gauge::new(60.0).style(GaugeStyle::Arc).target(30.0), 20, 6);
         assert!(b.content().iter().any(|c| c.symbol() != " "));
-        for s in [GaugeStyle::Linear, GaugeStyle::Bullet, GaugeStyle::Arc] {
+        for s in [
+            GaugeStyle::Linear,
+            GaugeStyle::Bullet,
+            GaugeStyle::Arc,
+            GaugeStyle::Segmented,
+        ] {
             run(
                 Gauge::new(f64::NAN)
                     .style(s)

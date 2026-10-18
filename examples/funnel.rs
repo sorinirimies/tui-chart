@@ -1,4 +1,4 @@
-//! Funnel demo. Keys: p toggle percent · t/T theme · q quit
+//! Funnel demo. Keys: a taper/bars · p toggle percent · t/T theme · q quit
 
 #[path = "common/mod.rs"]
 mod common;
@@ -15,6 +15,7 @@ use tui_chart::{Funnel, FunnelStage, Theme};
 struct State {
     theme: Theme,
     percent: bool,
+    taper: bool,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -22,6 +23,7 @@ fn main() -> anyhow::Result<()> {
         State {
             theme: Theme::default(),
             percent: true,
+            taper: true,
         },
         Duration::from_millis(200),
         |f, s| {
@@ -35,16 +37,18 @@ fn main() -> anyhow::Result<()> {
                 FunnelStage::new("Retained", 520.0),
             ])
             .show_percent(s.percent)
+            .taper(s.taper)
             .theme(s.theme.clone())
             .block(Block::bordered().title(" Conversion funnel "));
             f.render_widget(&chart, main);
-            help(f, bar, " p percent · t/T theme · q quit");
+            help(f, bar, " a taper · p percent · t/T theme · q quit");
         },
         |s, key| {
             match key {
                 KeyCode::Char('t') => s.theme = s.theme.next(),
                 KeyCode::Char('T') => s.theme = s.theme.prev(),
                 KeyCode::Char('p') => s.percent = !s.percent,
+                KeyCode::Char('a') => s.taper = !s.taper,
                 KeyCode::Char('q') | KeyCode::Esc => return true,
                 _ => {}
             }

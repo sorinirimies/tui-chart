@@ -7,7 +7,7 @@ mod common;
 use common::{help, run};
 use crossterm::event::KeyCode;
 use ratatui::{
-    layout::{Constraint, Layout},
+    layout::{Constraint, Flex, Layout},
     style::Color,
     widgets::Block,
 };
@@ -53,7 +53,23 @@ fn main() -> anyhow::Result<()> {
                 .label(format!("{:.0}%", s.value))
                 .theme(s.theme.clone())
                 .block(Block::bordered().title(format!(" Gauge · {:?} ", s.style)));
-            f.render_widget(&g, main);
+            // Linear styles look best as a slim bar; the arc wants the full area.
+            let area = match (s.style, s.vertical) {
+                (GaugeStyle::Arc, _) => main,
+                (_, false) => {
+                    let h = main.height.min(5);
+                    Layout::vertical([Constraint::Length(h)])
+                        .flex(Flex::Center)
+                        .areas::<1>(main)[0]
+                }
+                (_, true) => {
+                    let w = main.width.min(11);
+                    Layout::horizontal([Constraint::Length(w)])
+                        .flex(Flex::Center)
+                        .areas::<1>(main)[0]
+                }
+            };
+            f.render_widget(&g, area);
             help(
                 f,
                 bar,
@@ -69,7 +85,8 @@ fn main() -> anyhow::Result<()> {
                     s.style = match s.style {
                         GaugeStyle::Linear => GaugeStyle::Bullet,
                         GaugeStyle::Bullet => GaugeStyle::Arc,
-                        GaugeStyle::Arc => GaugeStyle::Linear,
+                        GaugeStyle::Arc => GaugeStyle::Segmented,
+                        GaugeStyle::Segmented => GaugeStyle::Linear,
                     }
                 }
                 KeyCode::Char('k') => s.marker = s.marker.next(),

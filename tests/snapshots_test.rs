@@ -29,7 +29,7 @@ fn sparkline_ramp() {
 fn gauge_half() {
     assert_eq!(
         snap(Gauge::new(50.0).range(0.0, 100.0), 12, 1),
-        ["██████░░░░░░"]
+        ["██████      "]
     );
 }
 

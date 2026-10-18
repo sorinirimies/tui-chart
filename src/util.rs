@@ -105,6 +105,44 @@ pub fn format_compact(v: f64) -> String {
     }
 }
 
+/// Approximate RGB of a terminal color (named colors use common xterm values).
+pub fn to_rgb(c: ratatui::style::Color) -> (u8, u8, u8) {
+    use ratatui::style::Color::*;
+    match c {
+        Rgb(r, g, b) => (r, g, b),
+        Black => (0, 0, 0),
+        Red => (205, 49, 49),
+        Green => (13, 188, 121),
+        Yellow => (229, 229, 16),
+        Blue => (36, 114, 200),
+        Magenta => (188, 63, 188),
+        Cyan => (17, 168, 205),
+        Gray => (229, 229, 229),
+        DarkGray => (102, 102, 102),
+        LightRed => (241, 76, 76),
+        LightGreen => (35, 209, 139),
+        LightYellow => (245, 245, 67),
+        LightBlue => (59, 142, 234),
+        LightMagenta => (214, 112, 214),
+        LightCyan => (41, 184, 219),
+        White => (255, 255, 255),
+        Reset | Indexed(_) => (150, 150, 150),
+    }
+}
+
+/// Mix `a` toward `b` by `t` (0 = `a`, 1 = `b`); the result is always `Rgb`.
+pub fn mix(a: ratatui::style::Color, b: ratatui::style::Color, t: f64) -> ratatui::style::Color {
+    let (a, b) = (to_rgb(a), to_rgb(b));
+    let t = t.clamp(0.0, 1.0);
+    let f = |x: u8, y: u8| (x as f64 + (y as f64 - x as f64) * t).round() as u8;
+    ratatui::style::Color::Rgb(f(a.0, b.0), f(a.1, b.1), f(a.2, b.2))
+}
+
+/// Darken a color toward black by `amount` (0..=1); used for unfilled tracks.
+pub fn darken(c: ratatui::style::Color, amount: f64) -> ratatui::style::Color {
+    mix(c, ratatui::style::Color::Rgb(0, 0, 0), amount)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -159,5 +197,19 @@ mod tests {
         assert_eq!(format_compact(2_000_000.0), "2M");
         assert_eq!(format_compact(3_400_000_000.0), "3.4B");
         assert_eq!(format_compact(1.25), "1.25");
+    }
+
+    #[test]
+    fn mix_and_darken() {
+        use ratatui::style::Color;
+        assert_eq!(
+            mix(Color::Rgb(0, 0, 0), Color::Rgb(100, 200, 50), 0.5),
+            Color::Rgb(50, 100, 25)
+        );
+        assert_eq!(darken(Color::Rgb(200, 100, 50), 1.0), Color::Rgb(0, 0, 0));
+        assert_eq!(
+            darken(Color::Rgb(200, 100, 50), 0.0),
+            Color::Rgb(200, 100, 50)
+        );
     }
 }

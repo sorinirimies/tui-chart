@@ -15,17 +15,27 @@ Enter
 Sleep 5s
 Show
 
-Sleep 1s
-Type "t"
-Sleep 0.7s
+Sleep 1.5s
 Type "s"
-Sleep 0.7s
-Type "o"
-Sleep 0.7s
-Down
-Sleep 0.7s
+Sleep 1.5s
+Type "s"
+Sleep 1.5s
 Up
-Sleep 0.7s
+Sleep 0.5s
+Up
+Sleep 0.5s
+Up
+Sleep 0.5s
+Down
+Sleep 0.5s
+Type "s"
+Sleep 1.5s
+Type "o"
+Sleep 1.2s
+Type "o"
+Sleep 0.8s
+Type "t"
+Sleep 1s
 Sleep 1s
 
 Hide

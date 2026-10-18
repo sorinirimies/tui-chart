@@ -16,7 +16,15 @@ Sleep 5s
 Show
 
 Sleep 1s
+Type "a"
+Sleep 0.8s
+Type "a"
+Sleep 0.8s
 Type "p"
+Sleep 0.8s
+Type "a"
+Sleep 0.8s
+Type "a"
 Sleep 0.8s
 Type "p"
 Sleep 0.8s
