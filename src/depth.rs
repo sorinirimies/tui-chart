@@ -2,7 +2,7 @@
 
 use crate::canvas::{Canvas, Marker};
 use crate::theme::{self, Theme};
-use crate::util::{format_compact, format_tick};
+use crate::util::{darken, format_compact, format_tick};
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -220,16 +220,29 @@ impl DepthChart {
                 0.0
             };
             let units = units.round() as usize;
+            let top_row = units.div_ceil(8); // rows that hold fill
             for r in 0..plot_h as usize {
                 let y = top + plot_h - 1 - r as u16;
                 let have = units.saturating_sub(r * 8).min(8);
-                let style = Style::default().fg(color);
+                // brightest at the edge, fading toward the baseline
+                let below = top_row.saturating_sub(r + 1) as f64 / plot_h.max(1) as f64;
+                let style = Style::default().fg(darken(color, (below * 0.6).min(0.6)));
                 if have >= 8 {
                     put(buf, inner, x, y, "█", style);
                 } else if have > 0 {
                     put(buf, inner, x, y, &EIGHTHS[have - 1].to_string(), style);
                 } else if mid_col == Some(i) {
                     put(buf, inner, x, y, "│", Style::default().fg(dim_c));
+                } else if i % 2 == 0 && plot_h >= 8 && ((r + 1) * 4) % (plot_h as usize) < 4 {
+                    // faint quarter grid lines in empty space
+                    put(
+                        buf,
+                        inner,
+                        x,
+                        y,
+                        "·",
+                        Style::default().fg(darken(dim_c, 0.3)),
+                    );
                 }
             }
         }
@@ -271,6 +284,16 @@ impl DepthChart {
         put_str(buf, inner, inner.x, label_y, &l, dim);
         let rx = inner.right().saturating_sub(r.chars().count() as u16);
         put_str(buf, inner, rx.max(inner.x), label_y, &r, dim);
+        // quarter price ticks when there is room
+        for q in [1.0, 3.0] {
+            let t = format_tick(lo + (hi - lo) * q / 4.0, step);
+            let n = t.chars().count() as u16;
+            let x = inner.x + (inner.width as f64 * q / 4.0) as u16;
+            let x = x.saturating_sub(n / 2);
+            if x > inner.x + l.chars().count() as u16 + 1 && x + n + 1 < rx {
+                put_str(buf, inner, x, label_y, &t, dim);
+            }
+        }
         if let Some(m) = self.mid().filter(|_| self.show_mid) {
             let t = format_tick(m, step);
             let mx = inner.x + (inner.width.saturating_sub(t.chars().count() as u16)) / 2;

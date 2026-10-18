@@ -2,7 +2,7 @@
 
 use crate::text::put_str;
 use crate::theme::{self, Theme};
-use crate::util::format_compact;
+use crate::util::{darken, format_compact};
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -153,55 +153,109 @@ impl Bullet {
                 Color::Rgb(52, 52, 52),
                 Color::Rgb(36, 36, 36),
             ],
-            |t| [t.muted, t.border, t.grid],
+            |t| {
+                let f = t.foreground;
+                [darken(f, 0.68), darken(f, 0.8), darken(f, 0.9)]
+            },
         );
         let col = |v: f64, max: f64| -> u16 {
             ((fin(v) / max).clamp(0.0, 1.0) * (bw - 1) as f64).round() as u16
         };
-        let stride = if inner.height as usize >= self.items.len() * 2 {
-            2
-        } else {
-            1
-        };
+        // Row height 3 → 2 → 1 (with a blank spacer row when it fits).
+        let n = self.items.len();
+        let avail = inner.height as usize;
+        let (rh, gap) = [(3usize, 1usize), (2, 1), (1, 1), (1, 0)]
+            .into_iter()
+            .find(|(h, g)| n * h + n.saturating_sub(1) * g <= avail)
+            .unwrap_or((1, 0));
+        let total = n * rh + n.saturating_sub(1) * gap;
+        let top = inner.y as usize + avail.saturating_sub(total) / 2;
+        let good = Color::Rgb(80, 200, 120);
+        let warn = Color::Rgb(240, 180, 60);
         for (i, it) in self.items.iter().enumerate() {
-            let y = inner.y as u32 + (i * stride) as u32;
-            if y >= inner.bottom() as u32 {
+            let y0 = top + i * (rh + gap);
+            if y0 >= inner.bottom() as usize {
                 break;
             }
-            let y = y as u16;
-            put_str(buf, inner.x, y, bx, &it.label, text);
+            let rh = rh.min(inner.bottom() as usize - y0) as u16;
+            let y0 = y0 as u16;
+            let ymid = y0 + rh / 2;
+            put_str(buf, inner.x, ymid, bx, &it.label, text);
             let max = self.scale_max(it);
             // qualitative ranges: lightest = worst; no ranges → one neutral band
             let nb = it.ranges.len();
+            let mut shade_at = vec![bands[2]; bw as usize];
             let mut from = 0u16;
             for (k, r) in it.ranges.iter().enumerate() {
                 let to = col(*r, max) + 1;
                 let shade = bands[(k * 3 / nb.max(1)).min(2)];
                 for x in from..to.min(bw) {
-                    buf[(bx + x, y)].set_char(' ').set_bg(shade);
+                    shade_at[x as usize] = shade;
                 }
                 from = from.max(to);
             }
-            for x in from..bw {
-                buf[(bx + x, y)].set_char(' ').set_bg(bands[2]);
+            for r in 0..rh {
+                for x in 0..bw {
+                    buf[(bx + x, y0 + r)]
+                        .set_char(' ')
+                        .set_bg(shade_at[x as usize]);
+                }
             }
-            // value bar (thin, so the ranges stay visible above it)
-            let end = col(it.value, max) + u16::from(fin(it.value) > 0.0);
-            for x in 0..end.min(bw) {
-                buf[(bx + x, y)].set_char('▄').set_fg(bar);
+            // value bar: eighth-block precision on the middle row (lower half if 1 row)
+            let frac = (fin(it.value) / max).clamp(0.0, 1.0);
+            let bar_y = y0 + if rh == 1 { 0 } else { rh / 2 };
+            if rh == 1 {
+                let end = col(it.value, max) + u16::from(fin(it.value) > 0.0);
+                for x in 0..end.min(bw) {
+                    buf[(bx + x, bar_y)].set_char('▄').set_fg(bar);
+                }
+            } else {
+                let eighths = (frac * bw as f64 * 8.0).round() as u32;
+                for x in 0..bw {
+                    let rem = eighths.saturating_sub(x as u32 * 8);
+                    let cell = &mut buf[(bx + x, bar_y)];
+                    if rem >= 8 {
+                        cell.set_char('█').set_fg(bar);
+                    } else if rem > 0 {
+                        cell.set_char(['▏', '▎', '▍', '▌', '▋', '▊', '▉'][rem as usize - 1])
+                            .set_fg(bar);
+                    }
+                }
             }
             if let Some(t) = it.target {
                 let x = col(t, max).min(bw - 1);
-                buf[(bx + x, y)].set_char('│').set_fg(marker);
+                for r in 0..rh {
+                    buf[(bx + x, y0 + r)]
+                        .set_char(if rh == 1 { '│' } else { '┃' })
+                        .set_fg(marker);
+                }
             }
+            let mut vstyle = text;
+            let mut note = String::new();
+            if let Some(t) = it.target.filter(|t| fin(*t) > 0.0) {
+                let pct = fin(it.value) / fin(t) * 100.0;
+                vstyle = vstyle.fg(if pct >= 100.0 { good } else { warn });
+                note = format!(" {pct:.0}%");
+            }
+            let vx = bx + bw + 1;
             put_str(
                 buf,
-                bx + bw + 1,
-                y,
+                vx,
+                ymid,
                 inner.right(),
                 &format_compact(fin(it.value)),
-                text,
+                vstyle,
             );
+            if !note.is_empty() && rh >= 2 && ymid + 1 < y0 + rh {
+                put_str(
+                    buf,
+                    vx,
+                    ymid + 1,
+                    inner.right(),
+                    note.trim_start(),
+                    Style::default().fg(darken(marker, 0.35)),
+                );
+            }
         }
     }
 }
@@ -234,7 +288,10 @@ mod tests {
             .ranges([50.0, 80.0, 100.0])]);
         let buf = render(&b, 40, 2);
         let all: String = buf.content().iter().map(|c| c.symbol()).collect();
-        assert!(all.contains('▄') && all.contains('│') && all.contains("Rev"));
+        assert!(all.contains('█') && all.contains('┃') && all.contains("Rev"));
+        let one = render(&b, 40, 1);
+        let all: String = one.content().iter().map(|c| c.symbol()).collect();
+        assert!(all.contains('▄') && all.contains('│'));
         assert!(buf.content().iter().any(|c| c.bg != Color::Reset));
     }
 

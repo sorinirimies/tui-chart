@@ -33,6 +33,7 @@ pub struct Histogram {
     range: Option<(f64, f64)>,
     color: Option<Color>,
     kde: bool,
+    stats: bool,
     kde_bandwidth: Option<f64>,
     gradient: Option<Gradient>,
     theme: Option<Theme>,
@@ -56,6 +57,7 @@ impl Histogram {
             range: None,
             color: None,
             kde: false,
+            stats: false,
             kde_bandwidth: None,
             gradient: None,
             theme: None,
@@ -93,6 +95,12 @@ impl Histogram {
         /// (vertical, non-cumulative histograms only; ignored otherwise).
         /// The curve is scaled to the bar units (counts, or density when normalized).
         kde: bool
+    );
+
+    setter!(
+        /// Mark the mean (`μ`) and median (`med`) with labelled vertical lines
+        /// (vertical, non-cumulative histograms only).
+        stats: bool
     );
 
     opt_setter!(
@@ -334,6 +342,62 @@ impl Histogram {
         }
         canvas.render(buf, Rect::new(plot.x, plot.y, span, plot.height));
     }
+
+    fn draw_stats(&self, chart: &BarChart, area: Rect, buf: &mut Buffer) {
+        let bins = self.compute_bins();
+        let Some(first) = bins.first() else { return };
+        let Some((plot, ..)) = chart.vertical_geometry(area) else {
+            return;
+        };
+        let bw = chart.vertical_geometry(area).map_or(0, |g| g.3);
+        let span = bins.len() as u16 * bw;
+        let (x0, x1) = (first.start, bins[bins.len() - 1].end);
+        if span == 0 || span > plot.width || x1 <= x0 || self.data.is_empty() {
+            return;
+        }
+        let mut sorted = self.data.clone();
+        sorted.sort_by(|a, b| a.total_cmp(b));
+        let n = sorted.len();
+        let mean = sorted.iter().sum::<f64>() / n as f64;
+        let median = if n % 2 == 1 {
+            sorted[n / 2]
+        } else {
+            (sorted[n / 2 - 1] + sorted[n / 2]) / 2.0
+        };
+        let th = self.theme.as_ref();
+        let items = [
+            (mean, "μ", th.map_or(Color::White, |t| t.foreground), 0u16),
+            (
+                median,
+                "med",
+                th.map_or(Color::Yellow, |t| t.color(2)),
+                1u16,
+            ),
+        ];
+        for (v, name, color, row) in items {
+            let fx = ((v - x0) / (x1 - x0)).clamp(0.0, 1.0);
+            let x = plot.x + ((fx * span as f64) as u16).min(span - 1);
+            for y in plot.y..plot.bottom() {
+                if let Some(c) = buf.cell_mut((x, y)) {
+                    c.set_char('┆').set_fg(color);
+                }
+            }
+            let label = format!("{name} {}", format_tick(v, 0.1));
+            let lx = if x + 1 + label.chars().count() as u16 <= plot.right() {
+                x + 1
+            } else {
+                x.saturating_sub(label.chars().count() as u16)
+            };
+            crate::text::put_str(
+                buf,
+                lx,
+                plot.y + row,
+                plot.right(),
+                &label,
+                Style::default().fg(color),
+            );
+        }
+    }
 }
 
 impl Histogram {
@@ -342,6 +406,9 @@ impl Histogram {
         (&chart).render(area, buf);
         if self.kde && !self.cumulative && self.orientation == BarOrientation::Vertical {
             self.draw_kde(&chart, area, buf);
+        }
+        if self.stats && !self.cumulative && self.orientation == BarOrientation::Vertical {
+            self.draw_stats(&chart, area, buf);
         }
     }
 }
@@ -359,6 +426,18 @@ impl tui_nuances::Themed for Histogram {
 mod tests {
     use super::*;
     use ratatui::widgets::Widget;
+
+    #[test]
+    fn stats_draw_mean_and_median_labels() {
+        let area = Rect::new(0, 0, 50, 14);
+        let mut buf = Buffer::empty(area);
+        Histogram::new((0..200).map(|i| (i % 50) as f64))
+            .bins(10)
+            .stats(true)
+            .render(area, &mut buf);
+        let all: String = buf.content().iter().map(|c| c.symbol()).collect();
+        assert!(all.contains('┆') && all.contains('μ') && all.contains("med"));
+    }
 
     #[test]
     fn bins_cover_all_samples() {

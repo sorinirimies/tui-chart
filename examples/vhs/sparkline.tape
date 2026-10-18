@@ -18,8 +18,8 @@ Show
 Sleep 1s
 Type "t"
 Sleep 0.7s
-Type "s"
-Sleep 0.7s
+Type "m"
+Sleep 1s
 Type "g"
 Sleep 0.7s
 Sleep 1s

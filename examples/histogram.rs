@@ -1,5 +1,5 @@
 //! Histogram demo.
-//! Keys: +/- bins · k marker · o orientation · r resample · t/T theme · q quit
+//! Keys: d density · m stats · g gradient · +/- bins · k marker · o orientation · r resample · t/T theme · q quit
 
 #[path = "common/mod.rs"]
 mod common;
@@ -12,7 +12,7 @@ use ratatui::{
     widgets::Block,
 };
 use std::time::Duration;
-use tui_chart::{BarOrientation, Histogram, Marker, Theme};
+use tui_chart::{BarOrientation, Gradient, Histogram, Marker, Theme};
 
 fn cycle(m: Option<Marker>) -> Option<Marker> {
     match m {
@@ -29,6 +29,9 @@ struct State {
     bins: usize,
     orientation: BarOrientation,
     marker: Option<Marker>,
+    kde: bool,
+    stats: bool,
+    gradient: bool,
 }
 
 fn sample(rng: &mut Rng) -> Vec<f64> {
@@ -46,6 +49,9 @@ fn main() -> anyhow::Result<()> {
             bins: 12,
             orientation: BarOrientation::Vertical,
             marker: None,
+            kde: true,
+            stats: true,
+            gradient: true,
         },
         Duration::from_millis(500),
         |f, s| {
@@ -53,7 +59,8 @@ fn main() -> anyhow::Result<()> {
                 Layout::vertical([Constraint::Min(5), Constraint::Length(2)]).areas(f.area());
             let mut h = Histogram::new(s.data.clone())
                 .bins(s.bins)
-                .color(Color::LightBlue)
+                .kde(s.kde)
+                .stats(s.stats)
                 .orientation(s.orientation)
                 .show_values(true)
                 .theme(s.theme.clone())
@@ -62,6 +69,11 @@ fn main() -> anyhow::Result<()> {
                     s.bins,
                     s.data.len()
                 )));
+            h = if s.gradient {
+                h.gradient(Gradient::Viridis)
+            } else {
+                h.color(Color::LightBlue)
+            };
             if let Some(m) = s.marker {
                 h = h.bar_marker(m).marker(m);
             }
@@ -69,7 +81,7 @@ fn main() -> anyhow::Result<()> {
             help(
                 f,
                 bar,
-                " +/- bins · k marker · o orientation · r resample · t/T theme · q quit",
+                " d density · m stats · g gradient · +/- bins · k marker · o orientation · r resample · t/T theme · q quit",
             );
         },
         |s, key| {
@@ -85,6 +97,9 @@ fn main() -> anyhow::Result<()> {
                         BarOrientation::Horizontal => BarOrientation::Vertical,
                     }
                 }
+                KeyCode::Char('d') => s.kde = !s.kde,
+                KeyCode::Char('m') => s.stats = !s.stats,
+                KeyCode::Char('g') => s.gradient = !s.gradient,
                 KeyCode::Char('k') => s.marker = cycle(s.marker),
                 KeyCode::Char('r') => s.data = sample(&mut s.rng),
                 _ => {}

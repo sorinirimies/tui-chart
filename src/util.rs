@@ -140,6 +140,9 @@ pub fn mix(a: ratatui::style::Color, b: ratatui::style::Color, t: f64) -> ratatu
 
 /// Darken a color toward black by `amount` (0..=1); used for unfilled tracks.
 pub fn darken(c: ratatui::style::Color, amount: f64) -> ratatui::style::Color {
+    if amount <= 0.0 {
+        return c; // keep named colors untouched
+    }
     mix(c, ratatui::style::Color::Rgb(0, 0, 0), amount)
 }
 

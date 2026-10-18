@@ -2,6 +2,7 @@
 
 use crate::canvas::{Canvas, Marker};
 use crate::theme::{self, ChartThemeExt, Theme};
+use crate::util::darken;
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -20,6 +21,10 @@ pub enum SparklineStyle {
     Bar,
     /// Braille line connecting the points.
     Line,
+    /// Braille line over a dimmed filled area (the classic "stock ticker" look).
+    Area,
+    /// Up / down ticks around the baseline (default 0): wins above, losses below.
+    WinLoss,
 }
 
 /// Compact trend chart, one column per data point (newest points kept when too wide).
@@ -39,6 +44,9 @@ pub struct Sparkline<'a> {
     min_color: Option<Color>,
     max_color: Option<Color>,
     marker: Marker,
+    smooth: usize,
+    win_color: Color,
+    loss_color: Color,
     block: Option<Block<'a>>,
 }
 
@@ -60,6 +68,9 @@ impl<'a> Sparkline<'a> {
             min_color: None,
             max_color: None,
             marker: Marker::Braille,
+            smooth: 1,
+            win_color: Color::Green,
+            loss_color: Color::Red,
             block: None,
         }
     }
@@ -116,6 +127,17 @@ impl<'a> Sparkline<'a> {
         marker: Marker
     );
 
+    setter!(
+        /// Moving-average window (default 1 = raw); tames noisy series.
+        smooth: usize
+    );
+    /// Colors for [`SparklineStyle::WinLoss`] (win, loss).
+    pub fn win_loss_colors(mut self, win: Color, loss: Color) -> Self {
+        self.win_color = win;
+        self.loss_color = loss;
+        self
+    }
+
     block_setter!(block, 'a);
 
     fn draw(&self, area: Rect, buf: &mut Buffer) {
@@ -123,7 +145,30 @@ impl<'a> Sparkline<'a> {
             return;
         }
         let start = self.data.len().saturating_sub(area.width as usize);
-        let pts: Vec<(usize, f64)> = self.data[start..]
+        let window = &self.data[start..];
+        let smoothed: Vec<f64>;
+        let window = if self.smooth > 1 {
+            let k = self.smooth;
+            smoothed = (0..window.len())
+                .map(|i| {
+                    let lo = i.saturating_sub(k - 1);
+                    let xs: Vec<f64> = window[lo..=i]
+                        .iter()
+                        .copied()
+                        .filter(|v| v.is_finite())
+                        .collect();
+                    if xs.is_empty() {
+                        f64::NAN
+                    } else {
+                        xs.iter().sum::<f64>() / xs.len() as f64
+                    }
+                })
+                .collect();
+            &smoothed[..]
+        } else {
+            window
+        };
+        let pts: Vec<(usize, f64)> = window
             .iter()
             .copied()
             .enumerate()
@@ -208,7 +253,60 @@ impl<'a> Sparkline<'a> {
                     }
                 }
             }
-            SparklineStyle::Line => {
+            SparklineStyle::WinLoss => {
+                let b = self.baseline.unwrap_or(0.0);
+                let mid = area.height / 2;
+                for &(i, v) in &pts {
+                    let x = area.x + i as u16;
+                    let win = v >= b;
+                    let col = if win { self.win_color } else { self.loss_color };
+                    if area.height == 1 {
+                        if let Some(c) = buf.cell_mut((x, area.y)) {
+                            c.set_char(if win { '▀' } else { '▄' }).set_fg(col);
+                        }
+                        continue;
+                    }
+                    // odd heights keep the centre row as an axis dash
+                    let (r0, r1) = if win {
+                        (0, mid)
+                    } else {
+                        (area.height - mid, area.height)
+                    };
+                    for r in r0..r1 {
+                        if let Some(c) = buf.cell_mut((x, area.y + r)) {
+                            c.set_char('█').set_fg(col);
+                        }
+                    }
+                    if area.height % 2 == 1 {
+                        if let Some(c) = buf.cell_mut((x, area.y + mid)) {
+                            c.set_char('─').set_fg(darken(col, 0.5));
+                        }
+                    }
+                }
+            }
+            SparklineStyle::Line | SparklineStyle::Area => {
+                if self.style == SparklineStyle::Area {
+                    let levels = area.height as f64 * 8.0;
+                    for &(i, v) in &pts {
+                        let x = area.x + i as u16;
+                        let top = (norm(v) * levels).round() as i64;
+                        let dim = darken(color_of(i, v), 0.6);
+                        for row in 0..area.height as i64 {
+                            let cov = top - row * 8;
+                            if cov <= 0 {
+                                break;
+                            }
+                            let y = area.y + area.height - 1 - row as u16;
+                            if let Some(cell) = buf.cell_mut((x, y)) {
+                                if cov >= 8 {
+                                    cell.set_char(' ').set_bg(dim);
+                                } else {
+                                    cell.set_char(GLYPHS[(cov - 1) as usize]).set_fg(dim);
+                                }
+                            }
+                        }
+                    }
+                }
                 let mut cv = Canvas::new(area.width, area.height, self.marker);
                 let pw = cv.px_w();
                 let ph = cv.px_h();
@@ -300,6 +398,37 @@ mod tests {
         Sparkline::new(Vec::new()).render(area, &mut buf);
         Sparkline::new([1.0]).render(Rect::new(0, 0, 0, 0), &mut buf);
         Sparkline::new([5.0, 5.0]).render(area, &mut buf);
+    }
+
+    #[test]
+    fn area_fills_below_line_and_winloss_splits() {
+        let area = Rect::new(0, 0, 3, 3);
+        let mut buf = Buffer::empty(area);
+        Sparkline::new([10.0, 10.0, 10.0])
+            .min(0.0)
+            .style(SparklineStyle::Area)
+            .render(area, &mut buf);
+        assert_ne!(buf[(1, 2)].bg, Color::Reset); // filled under the line
+        let mut buf = Buffer::empty(Rect::new(0, 0, 2, 4));
+        Sparkline::new([1.0, -1.0])
+            .style(SparklineStyle::WinLoss)
+            .render(Rect::new(0, 0, 2, 4), &mut buf);
+        assert_eq!(sym(&buf, 0, 0), "█");
+        assert_eq!(sym(&buf, 0, 3), " ");
+        assert_eq!(sym(&buf, 1, 3), "█");
+        assert_eq!(buf[(1, 3)].fg, Color::Red);
+    }
+
+    #[test]
+    fn smoothing_averages() {
+        let area = Rect::new(0, 0, 3, 1);
+        let mut buf = Buffer::empty(area);
+        Sparkline::new([0.0, 8.0, 0.0, 8.0])
+            .smooth(2)
+            .min(0.0)
+            .max(8.0)
+            .render(area, &mut buf);
+        assert_eq!(sym(&buf, 2, 0), "▄"); // mean of 8 and 0
     }
 
     #[test]
