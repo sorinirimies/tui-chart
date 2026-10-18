@@ -25,7 +25,7 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 | `Sparkline` | bars, area, line, win/loss, moving-average `.smooth(n)` |
 | `Gauge` | linear, blocks, segmented and arc dial with scale, needle and target |
 | `RadarChart` | multi-axis comparison, filled polygons, ring values, legend |
-| `BoxPlot` | quartiles, whiskers, outliers |
+| `BoxPlot` | quartiles, whiskers, outliers, mean marker, notches, jittered points |
 | `Waterfall` | running deltas and totals |
 | `Gantt` | task timeline with progress |
 | `DepthChart` | order book bids/asks |
@@ -34,6 +34,13 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 | `Funnel` | tapered stages, side labels, conversion % and drop-off (`.taper`, `.show_dropoff`) |
 | `Bullet` | value vs target over qualitative ranges |
 | `BubbleChart` | scatter with area-scaled bubble sizes |
+| `LollipopChart` | lollipop stems and dumbbells (`LollipopItem::from`), sortable |
+| `SlopeChart` | two-state comparison with trend colors and non-overlapping labels |
+| `CalendarHeatmap` | GitHub-style daily calendar with levels, month/weekday labels, legend |
+| `ViolinChart` | mirrored KDE per group with quartile box and median |
+| `RoseChart` | polar-area / Nightingale chart, area or linear scale, optional hole |
+| `StackedAreaChart` | stacked or 100 % normalised areas with legend |
+| `Sankey` | flow diagram with auto layout and weighted ribbons |
 | `ChartStack` | vertical/horizontal stack with shared gutter |
 
 ## Gallery
@@ -109,6 +116,34 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 ### Bubble
 
 ![Bubble](examples/vhs/output/bubble.gif)
+
+### LollipopChart
+
+![LollipopChart](examples/vhs/output/lollipop.gif)
+
+### SlopeChart
+
+![SlopeChart](examples/vhs/output/slope.gif)
+
+### CalendarHeatmap
+
+![CalendarHeatmap](examples/vhs/output/calendar.gif)
+
+### ViolinChart
+
+![ViolinChart](examples/vhs/output/violin.gif)
+
+### RoseChart
+
+![RoseChart](examples/vhs/output/rose.gif)
+
+### StackedAreaChart
+
+![StackedAreaChart](examples/vhs/output/stacked_area.gif)
+
+### Sankey
+
+![Sankey](examples/vhs/output/sankey.gif)
 
 ### Live streaming
 
@@ -190,6 +225,17 @@ impl From<&AppTheme> for tui_chart::Theme {
 let chart = LineChart::new(series).theme(&app_theme);
 ```
 
+## Accessibility
+
+Wrap any chart in `Monochrome` (or `Monochrome::auto`, which honours the
+[`NO_COLOR`](https://no-color.org) convention) to render without colour. Solid fills
+(heatmap, treemap, calendar, bars) become `░▒▓█` shades by intensity, so values stay readable:
+
+```rust
+use tui_chart::{Heatmap, Monochrome};
+frame.render_widget(Monochrome::auto(Heatmap::new(data)), area);
+```
+
 ## Cargo features
 
 | Feature | Description |
@@ -223,6 +269,13 @@ cargo run --features theme --example bars
 cargo run --features theme --example boxplot
 cargo run --features theme --example candlestick
 cargo run --features theme --example bubble
+cargo run --features theme --example lollipop
+cargo run --features theme --example slope
+cargo run --features theme --example calendar
+cargo run --features theme --example violin
+cargo run --features theme --example rose
+cargo run --features theme --example stacked_area
+cargo run --features theme --example sankey
 cargo run --features theme --example bullet
 cargo run --features theme --example funnel
 cargo run --features theme --example chartstack

@@ -41,6 +41,18 @@ impl FunnelStage {
 }
 
 /// Funnel chart widget: centered bars whose width follows the value.
+///
+/// # Example
+///
+/// ```
+/// use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
+/// use tui_chart::{Funnel, FunnelStage};
+///
+/// let chart = Funnel::new([FunnelStage::new("Visits", 1000.0), FunnelStage::new("Signups", 240.0)]);
+/// let area = Rect::new(0, 0, 40, 12);
+/// let mut buf = Buffer::empty(area);
+/// chart.render(area, &mut buf);
+/// ```
 #[derive(Debug, Clone, Default)]
 pub struct Funnel {
     stages: Vec<FunnelStage>,

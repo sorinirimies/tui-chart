@@ -213,6 +213,18 @@ fn decade_label(k: i32) -> String {
 }
 
 /// Multi-series line / step / area / scatter chart with sub-cell resolution.
+///
+/// # Example
+///
+/// ```
+/// use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
+/// use tui_chart::{LineChart, Series};
+///
+/// let chart = LineChart::new(vec![Series::new("squares").data((0..10).map(|i| (i as f64, (i * i) as f64)))]);
+/// let area = Rect::new(0, 0, 40, 12);
+/// let mut buf = Buffer::empty(area);
+/// chart.render(area, &mut buf);
+/// ```
 #[derive(Debug, Clone, Default)]
 pub struct LineChart {
     series: Vec<Series>,

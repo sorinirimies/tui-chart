@@ -42,6 +42,18 @@ impl BubbleSeries {
 }
 
 /// Bubble chart widget. Bubble area is proportional to size.
+///
+/// # Example
+///
+/// ```
+/// use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
+/// use tui_chart::{BubbleChart, BubbleSeries};
+///
+/// let chart = BubbleChart::new([BubbleSeries::new("a", [(1.0, 2.0, 5.0), (3.0, 1.0, 9.0)])]);
+/// let area = Rect::new(0, 0, 40, 12);
+/// let mut buf = Buffer::empty(area);
+/// chart.render(area, &mut buf);
+/// ```
 #[derive(Debug, Clone, Default)]
 pub struct BubbleChart {
     series: Vec<BubbleSeries>,

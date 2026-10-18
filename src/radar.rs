@@ -38,6 +38,18 @@ impl RadarSeries {
 }
 
 /// Spider chart with N axes and any number of series.
+///
+/// # Example
+///
+/// ```
+/// use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
+/// use tui_chart::{RadarChart, RadarSeries};
+///
+/// let chart = RadarChart::new(["Speed", "Power", "Armor"]).series(RadarSeries::new("A", [3.0, 7.0, 5.0]));
+/// let area = Rect::new(0, 0, 40, 12);
+/// let mut buf = Buffer::empty(area);
+/// chart.render(area, &mut buf);
+/// ```
 #[derive(Debug, Clone)]
 pub struct RadarChart<'a> {
     axes: Vec<String>,

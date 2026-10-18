@@ -22,6 +22,12 @@ Type "o"
 Sleep 0.7s
 Type "r"
 Sleep 0.7s
+Type "m"
+Sleep 0.7s
+Type "n"
+Sleep 0.7s
+Type "j"
+Sleep 0.9s
 Type "w"
 Sleep 0.7s
 Sleep 1s

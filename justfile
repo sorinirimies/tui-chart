@@ -91,6 +91,34 @@ example-funnel:
 example-bullet:
     cargo run --features theme --example bullet
 
+# Run lollipop example
+example-lollipop:
+    cargo run --features theme --example lollipop
+
+# Run slope example
+example-slope:
+    cargo run --features theme --example slope
+
+# Run calendar example
+example-calendar:
+    cargo run --features theme --example calendar
+
+# Run violin example
+example-violin:
+    cargo run --features theme --example violin
+
+# Run rose example
+example-rose:
+    cargo run --features theme --example rose
+
+# Run stacked_area example
+example-stacked_area:
+    cargo run --features theme --example stacked_area
+
+# Run sankey example
+example-sankey:
+    cargo run --features theme --example sankey
+
 # Run bubble example
 example-bubble:
     cargo run --features theme --example bubble
@@ -108,7 +136,7 @@ example-waterfall:
     cargo run --features theme --example waterfall
 
 # Run all examples (sequentially)
-examples: example-themes example-bars example-boxplot example-candlestick example-chartstack example-bubble example-bullet example-funnel example-depth example-gantt example-gauge example-heatmap example-histogram example-line example-radar example-renko example-showcase example-sparkline example-stream example-treemap example-waterfall
+examples: example-themes example-bars example-boxplot example-candlestick example-chartstack example-bubble example-lollipop example-slope example-calendar example-violin example-rose example-stacked_area example-sankey example-bullet example-funnel example-depth example-gantt example-gauge example-heatmap example-histogram example-line example-radar example-renko example-showcase example-sparkline example-stream example-treemap example-waterfall
 
 # Run themes example
 example-themes:
@@ -117,6 +145,10 @@ example-themes:
 # Run tests
 test:
     cargo test --all-features
+
+# Re-bless golden (snapshot) test outputs after an intentional visual change
+golden-update:
+    UPDATE_GOLDEN=1 cargo test --all-features --test golden_test
 
 # Run the Nushell script tests (scripts/tests)
 test-nu:
@@ -658,6 +690,41 @@ vhs-funnel:
 vhs-bullet:
     vhs examples/vhs/bullet.tape
     @echo "✅ examples/vhs/output/bullet.gif"
+
+# Generate demo GIF for lollipop
+vhs-lollipop:
+    vhs examples/vhs/lollipop.tape
+    @echo "✅ examples/vhs/output/lollipop.gif"
+
+# Generate demo GIF for slope
+vhs-slope:
+    vhs examples/vhs/slope.tape
+    @echo "✅ examples/vhs/output/slope.gif"
+
+# Generate demo GIF for calendar
+vhs-calendar:
+    vhs examples/vhs/calendar.tape
+    @echo "✅ examples/vhs/output/calendar.gif"
+
+# Generate demo GIF for violin
+vhs-violin:
+    vhs examples/vhs/violin.tape
+    @echo "✅ examples/vhs/output/violin.gif"
+
+# Generate demo GIF for rose
+vhs-rose:
+    vhs examples/vhs/rose.tape
+    @echo "✅ examples/vhs/output/rose.gif"
+
+# Generate demo GIF for stacked_area
+vhs-stacked_area:
+    vhs examples/vhs/stacked_area.tape
+    @echo "✅ examples/vhs/output/stacked_area.gif"
+
+# Generate demo GIF for sankey
+vhs-sankey:
+    vhs examples/vhs/sankey.tape
+    @echo "✅ examples/vhs/output/sankey.gif"
 
 # Generate demo GIF for bubble
 vhs-bubble:

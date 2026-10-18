@@ -329,6 +329,18 @@ fn tag(buf: &mut Buffer, area: Rect, row: u16, text: &str, style: Style) {
 const EIGHTHS: [char; 9] = [' ', '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'];
 
 /// Candlestick / OHLC chart with optional volume panel and overlays.
+///
+/// # Example
+///
+/// ```
+/// use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
+/// use tui_chart::{Candle, CandlestickChart};
+///
+/// let chart = CandlestickChart::new(vec![Candle::new(10.0, 12.0, 9.0, 11.0), Candle::new(11.0, 13.0, 10.0, 12.5)]);
+/// let area = Rect::new(0, 0, 40, 12);
+/// let mut buf = Buffer::empty(area);
+/// chart.render(area, &mut buf);
+/// ```
 #[derive(Debug, Clone)]
 pub struct CandlestickChart {
     candles: Vec<Candle>,

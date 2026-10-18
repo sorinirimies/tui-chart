@@ -232,6 +232,87 @@ pub fn all_widgets(d: Data, theme: Option<Th>) -> Vec<(&'static str, Draw)> {
     ));
     let c = t();
     v.push((
+        "LollipopChart",
+        mk(move || {
+            let it: Vec<LollipopItem> = vals(d)
+                .into_iter()
+                .enumerate()
+                .map(|(i, x)| LollipopItem::new(format!("l{i}"), x).from(x * 0.5))
+                .collect();
+            th!(LollipopChart::new(it), c.clone())
+        }),
+    ));
+    let c = t();
+    v.push((
+        "SlopeChart",
+        mk(move || {
+            let it: Vec<SlopeItem> = vals(d)
+                .into_iter()
+                .enumerate()
+                .map(|(i, x)| SlopeItem::new(format!("s{i}"), x, x * 1.5 - 2.0))
+                .collect();
+            th!(SlopeChart::new(it).titles("a", "b"), c.clone())
+        }),
+    ));
+    let c = t();
+    v.push((
+        "CalendarHeatmap",
+        mk(move || th!(CalendarHeatmap::new(19_000, vals(d)), c.clone())),
+    ));
+    let c = t();
+    v.push((
+        "ViolinChart",
+        mk(move || {
+            th!(
+                ViolinChart::new([
+                    ViolinGroup::new("a", vals(d)),
+                    ViolinGroup::new("b", vals(d))
+                ]),
+                c.clone()
+            )
+        }),
+    ));
+    let c = t();
+    v.push((
+        "RoseChart",
+        mk(move || {
+            let it: Vec<RoseItem> = vals(d)
+                .into_iter()
+                .enumerate()
+                .map(|(i, x)| RoseItem::new(format!("r{i}"), x))
+                .collect();
+            th!(RoseChart::new(it), c.clone())
+        }),
+    ));
+    let c = t();
+    v.push((
+        "StackedAreaChart",
+        mk(move || {
+            th!(
+                StackedAreaChart::new([
+                    AreaLayer::new("a", vals(d)),
+                    AreaLayer::new("b", vals(d).into_iter().rev())
+                ]),
+                c.clone()
+            )
+        }),
+    ));
+    let c = t();
+    v.push((
+        "Sankey",
+        mk(move || {
+            let l: Vec<SankeyLink> = vals(d)
+                .into_iter()
+                .enumerate()
+                .map(|(i, x)| {
+                    SankeyLink::new(format!("n{}", i % 4), format!("n{}", (i + 1) % 5), x)
+                })
+                .collect();
+            th!(Sankey::new(l), c.clone())
+        }),
+    ));
+    let c = t();
+    v.push((
         "Treemap",
         mk(move || {
             let items: Vec<TreemapItem> = vals(d)

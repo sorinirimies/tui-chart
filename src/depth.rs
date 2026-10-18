@@ -14,6 +14,18 @@ const EIGHTHS: [char; 8] = ['▁', '▂', '▃', '▄', '▅', '▆', '▇', '�
 
 /// Order-book depth chart. Bids are drawn as a cumulative step-area on the
 /// left, asks on the right, with a mid-price marker and spread readout.
+///
+/// # Example
+///
+/// ```
+/// use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
+/// use tui_chart::{DepthChart};
+///
+/// let chart = DepthChart::new([(99.0, 5.0), (98.0, 9.0)], [(101.0, 4.0), (102.0, 8.0)]);
+/// let area = Rect::new(0, 0, 40, 12);
+/// let mut buf = Buffer::empty(area);
+/// chart.render(area, &mut buf);
+/// ```
 #[derive(Debug, Clone)]
 pub struct DepthChart {
     bids: Vec<(f64, f64)>,

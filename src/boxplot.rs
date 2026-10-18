@@ -37,6 +37,15 @@ pub struct BoxStats {
     pub max: f64,
     /// Points outside the whiskers.
     pub outliers: Vec<f64>,
+    /// Arithmetic mean, when known (set by [`BoxStats::from_samples`]).
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub mean: Option<f64>,
+    /// Number of samples behind the statistics (0 = unknown); drives the notch width.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub n: usize,
+    /// Raw samples (at most 300, evenly thinned) for jittered points.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub points: Vec<f64>,
 }
 
 impl BoxStats {
@@ -49,7 +58,28 @@ impl BoxStats {
             q3,
             max,
             outliers: vec![],
+            mean: None,
+            n: 0,
+            points: vec![],
         }
+    }
+
+    /// Set the mean.
+    pub fn mean(mut self, m: f64) -> Self {
+        self.mean = Some(m).filter(|m| m.is_finite());
+        self
+    }
+
+    /// Set the sample count (used for notches).
+    pub fn count(mut self, n: usize) -> Self {
+        self.n = n;
+        self
+    }
+
+    /// Raw samples to show as jittered points (non-finite values dropped).
+    pub fn points(mut self, p: impl IntoIterator<Item = f64>) -> Self {
+        self.points = p.into_iter().filter(|v| v.is_finite()).collect();
+        self
     }
 
     /// Add outliers.
@@ -83,6 +113,7 @@ impl BoxStats {
             .copied()
             .filter(|v| *v < lo_f || *v > hi_f)
             .collect();
+        let stride = (s.len() / 300).max(1);
         Some(Self {
             min,
             q1,
@@ -90,6 +121,9 @@ impl BoxStats {
             q3,
             max,
             outliers,
+            mean: Some(s.iter().sum::<f64>() / s.len() as f64),
+            n: s.len(),
+            points: s.iter().step_by(stride).copied().collect(),
         })
     }
 
@@ -107,6 +141,18 @@ struct Group {
 }
 
 /// Box-and-whisker chart widget.
+///
+/// # Example
+///
+/// ```
+/// use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
+/// use tui_chart::{BoxPlot};
+///
+/// let chart = BoxPlot::new().group("a", (1..=20).map(|x| x as f64)).group("b", (5..=30).map(|x| x as f64));
+/// let area = Rect::new(0, 0, 40, 12);
+/// let mut buf = Buffer::empty(area);
+/// chart.render(area, &mut buf);
+/// ```
 #[derive(Debug, Clone)]
 pub struct BoxPlot {
     groups: Vec<Group>,
@@ -116,6 +162,9 @@ pub struct BoxPlot {
     orientation: BoxOrientation,
     whisker_iqr: f64,
     show_outliers: bool,
+    show_mean: bool,
+    notched: bool,
+    jitter: bool,
     range: Option<(f64, f64)>,
     block: Option<Block<'static>>,
 }
@@ -137,6 +186,9 @@ impl BoxPlot {
             orientation: BoxOrientation::Vertical,
             whisker_iqr: 1.5,
             show_outliers: true,
+            show_mean: true,
+            notched: false,
+            jitter: false,
             range: None,
             block: None,
         }
@@ -212,6 +264,23 @@ impl BoxPlot {
     setter!(
         /// Draw outliers (default on).
         show_outliers: bool
+    );
+
+    setter!(
+        /// Mark the mean with a `◆` when it is known (default on).
+        show_mean: bool
+    );
+
+    setter!(
+        /// Notch the box around the median's ~95 % confidence interval
+        /// (`1.58 × IQR / √n`); needs the sample count (default off).
+        notched: bool
+    );
+
+    setter!(
+        /// Overlay the raw samples as deterministically jittered dots
+        /// (only for groups built from samples; default off).
+        jitter: bool
     );
 
     /// Fixed value range.
@@ -437,6 +506,42 @@ impl BoxPlot {
             for c in left..left + bw {
                 put(buf, amed, c, ml, ms);
             }
+            // notch: carve the box sides around the median CI
+            if self.notched && st.n > 1 && bw >= 5 {
+                let ci = 1.58 * (st.q3 - st.q1) / (st.n as f64).sqrt();
+                let (a0, a1) = (to_a(st.median - ci).max(aq1), to_a(st.median + ci).min(aq3));
+                for a in a0..=a1 {
+                    put(buf, a, left, ' ', Style::default());
+                    put(buf, a, left + bw - 1, ' ', Style::default());
+                }
+                if a0 > aq1 && a1 < aq3 {
+                    for c in [left, left + bw - 1] {
+                        put(buf, a0 - 1, c, if c == left { '┐' } else { '┌' }, s);
+                        put(buf, a1 + 1, c, if c == left { '┘' } else { '└' }, s);
+                    }
+                }
+            }
+            if self.jitter && bw >= 3 {
+                let ps =
+                    Style::default().fg(self.theme.as_ref().map_or(Color::White, |t| t.foreground));
+                for (k, &v) in st.points.iter().enumerate() {
+                    if v < st.min || v > st.max {
+                        continue;
+                    }
+                    // deterministic hash → column offset inside the box
+                    let h = (k as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15) >> 40;
+                    let c = left + (h % bw as u64) as i32;
+                    put(buf, to_a(v), c, '•', ps);
+                }
+            }
+            if self.show_mean {
+                if let Some(m) = st.mean.filter(|m| m.is_finite()) {
+                    let ms = Style::default()
+                        .fg(self.theme.as_ref().map_or(Color::White, |t| t.foreground))
+                        .bg(color);
+                    put(buf, to_a(m), mid, '◆', ms);
+                }
+            }
             if self.show_outliers {
                 for &o in &st.outliers {
                     let os = match (&self.colors, &self.theme) {
@@ -501,6 +606,52 @@ mod tests {
         assert!(count(&render(&p2, 30, 15), "█") > 0);
         assert!(count(&b, "━") > 0);
         assert_eq!(count(&b, "○"), 1);
+    }
+
+    #[test]
+    fn mean_marker_toggle() {
+        let p = BoxPlot::new().group("a", (1..=20).map(|x| x as f64));
+        assert_eq!(count(&render(&p, 30, 15), "◆"), 1);
+        assert_eq!(count(&render(&p.clone().show_mean(false), 30, 15), "◆"), 0);
+        // precomputed stats without a mean draw no marker
+        let q = BoxPlot::new().stats("a", BoxStats::new(0.0, 2.0, 5.0, 8.0, 10.0));
+        assert_eq!(count(&render(&q, 30, 15), "◆"), 0);
+        let q = BoxPlot::new().stats("a", BoxStats::new(0.0, 2.0, 5.0, 8.0, 10.0).mean(4.0));
+        assert_eq!(count(&render(&q, 30, 15), "◆"), 1);
+    }
+
+    #[test]
+    fn notches_change_box_only_with_sample_count() {
+        let samples = (1..=40).map(|x| x as f64);
+        let plain = render(&BoxPlot::new().group("a", samples.clone()), 30, 30);
+        let notched = render(&BoxPlot::new().group("a", samples).notched(true), 30, 30);
+        assert_ne!(plain, notched);
+        let unknown = BoxPlot::new().stats("a", BoxStats::new(0.0, 2.0, 5.0, 8.0, 10.0));
+        assert_eq!(
+            render(&unknown, 30, 30),
+            render(&unknown.clone().notched(true), 30, 30)
+        );
+    }
+
+    #[test]
+    fn jitter_draws_points_deterministically() {
+        let p = BoxPlot::new()
+            .group("a", (1..=60).map(|x| x as f64))
+            .jitter(true);
+        let a = render(&p, 30, 20);
+        assert!(count(&a, "•") > 5);
+        assert_eq!(a, render(&p, 30, 20));
+        assert_eq!(
+            count(
+                &render(
+                    &BoxPlot::new().group("a", (1..=60).map(|x| x as f64)),
+                    30,
+                    20
+                ),
+                "•"
+            ),
+            0
+        );
     }
 
     #[test]

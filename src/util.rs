@@ -146,6 +146,23 @@ pub fn darken(c: ratatui::style::Color, amount: f64) -> ratatui::style::Color {
     mix(c, ratatui::style::Color::Rgb(0, 0, 0), amount)
 }
 
+/// Dim (grid/axis) and text styles for a widget's optional theme.
+pub(crate) fn dim_text(
+    theme: &Option<crate::theme::Theme>,
+) -> (ratatui::style::Style, ratatui::style::Style) {
+    use ratatui::style::{Color, Style};
+    let dim = Style::default().fg(theme.as_ref().map_or(Color::DarkGray, |t| t.grid));
+    let text = theme.as_ref().map_or(Style::default(), |t| t.label_style());
+    (dim, text)
+}
+
+/// Color `i` of the theme palette, or of the default palette without a theme.
+pub(crate) fn pick(theme: &Option<crate::theme::Theme>, i: usize) -> ratatui::style::Color {
+    theme
+        .as_ref()
+        .map_or(crate::PALETTE[i % crate::PALETTE.len()], |t| t.color(i))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

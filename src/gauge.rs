@@ -38,6 +38,18 @@ pub enum GaugeStyle {
 }
 
 /// Gauge showing a value inside `[min, max]`.
+///
+/// # Example
+///
+/// ```
+/// use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
+/// use tui_chart::{Gauge};
+///
+/// let chart = Gauge::new(0.62);
+/// let area = Rect::new(0, 0, 40, 12);
+/// let mut buf = Buffer::empty(area);
+/// chart.render(area, &mut buf);
+/// ```
 #[derive(Debug, Clone)]
 pub struct Gauge<'a> {
     value: f64,

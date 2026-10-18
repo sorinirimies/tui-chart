@@ -26,6 +26,18 @@ pub struct Bin {
 }
 
 /// Histogram widget.
+///
+/// # Example
+///
+/// ```
+/// use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
+/// use tui_chart::{Histogram};
+///
+/// let chart = Histogram::new((0..100).map(|i| ((i * 37) % 23) as f64));
+/// let area = Rect::new(0, 0, 40, 12);
+/// let mut buf = Buffer::empty(area);
+/// chart.render(area, &mut buf);
+/// ```
 #[derive(Debug, Clone)]
 pub struct Histogram {
     data: Vec<f64>,

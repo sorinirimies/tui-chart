@@ -28,6 +28,18 @@ pub enum SparklineStyle {
 }
 
 /// Compact trend chart, one column per data point (newest points kept when too wide).
+///
+/// # Example
+///
+/// ```
+/// use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
+/// use tui_chart::{Sparkline};
+///
+/// let chart = Sparkline::new([1.0, 4.0, 2.0, 8.0, 5.0, 7.0]);
+/// let area = Rect::new(0, 0, 40, 12);
+/// let mut buf = Buffer::empty(area);
+/// chart.render(area, &mut buf);
+/// ```
 #[derive(Debug, Clone)]
 pub struct Sparkline<'a> {
     data: Vec<f64>,

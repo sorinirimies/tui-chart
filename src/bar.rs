@@ -83,6 +83,18 @@ const BOTTOM_EIGHTHS: [char; 9] = [' ', '▁', '▂', '▃', '▄', '▅', '▆'
 const LEFT_EIGHTHS: [char; 9] = [' ', '▏', '▎', '▍', '▌', '▋', '▊', '▉', '█'];
 
 /// Bar chart widget.
+///
+/// # Example
+///
+/// ```
+/// use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
+/// use tui_chart::{BarChart, BarGroup};
+///
+/// let chart = BarChart::new(vec![BarGroup::new("Q1", [3.0, 5.0]), BarGroup::new("Q2", [4.0, 2.0])]);
+/// let area = Rect::new(0, 0, 40, 12);
+/// let mut buf = Buffer::empty(area);
+/// chart.render(area, &mut buf);
+/// ```
 #[derive(Debug, Clone, Default)]
 pub struct BarChart {
     groups: Vec<BarGroup>,

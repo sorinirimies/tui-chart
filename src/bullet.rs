@@ -49,6 +49,18 @@ impl BulletItem {
 }
 
 /// Bullet chart widget (one row per item, shared scale `0..max`).
+///
+/// # Example
+///
+/// ```
+/// use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
+/// use tui_chart::{Bullet, BulletItem};
+///
+/// let chart = Bullet::new([BulletItem::new("Revenue", 270.0).target(300.0)]);
+/// let area = Rect::new(0, 0, 40, 12);
+/// let mut buf = Buffer::empty(area);
+/// chart.render(area, &mut buf);
+/// ```
 #[derive(Debug, Clone, Default)]
 pub struct Bullet {
     items: Vec<BulletItem>,

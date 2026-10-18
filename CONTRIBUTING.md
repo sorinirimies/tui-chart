@@ -100,7 +100,8 @@ All contributions must be submitted through GitHub using the forking workflow:
 | `src/text.rs` | Internal text helpers (`trunc`, clipped `put_str`) |
 | `src/timeaxis.rs`, `src/indicator.rs`, `src/stream.rs` | Time ticks/formatting, technical indicators, ring buffer / streaming series |
 | `src/annotation.rs`, `src/crosshair.rs`, `src/stack.rs` | Overlays, nearest-point lookup, multi-pane layout |
-| `src/<widget>.rs` | One file per widget (`line`, `bar`, `candle`, `histogram`, `heatmap`, `gauge`, `radar`, `treemap`, `boxplot`, `waterfall`, `gantt`, `depth`, `renko`, `sparkline`) |
+| `src/<widget>.rs` | One file per widget (`line`, `bar`, `candle`, `histogram`, `heatmap`, `gauge`, `radar`, `treemap`, `boxplot`, `waterfall`, `gantt`, `depth`, `renko`, `sparkline`, `funnel`, `bullet`, `bubble`, `lollipop`, `slope`, `calendar`, `violin`, `rose`, `stacked_area`, `sankey`) |
+| `src/accessibility.rs` | `Monochrome` wrapper / `strip_color`: render any widget without colour (`NO_COLOR` aware) |
 
 ### Macro catalog (`src/macros.rs`)
 
@@ -123,12 +124,19 @@ is enforced.
 2. Implement `fn render_into(&self, area, buf)`. Start with
    `theme::begin(&self.block, &self.theme, self.base, area, buf)` to get the inner
    area, return early for tiny/empty areas, never write outside `area`, and
-   tolerate NaN/inf/empty data. Resolve colors as explicit → theme → default.
+   tolerate NaN/inf/empty data. Resolve colors as explicit → theme → default
+   (helpers: `util::pick(&theme, i)` for palette colors, `util::dim_text(&theme)` for
+   grid/label styles, `util::darken`/`mix` for fills).
 3. `widget_impls!(Name);`, add `mod name;` and `pub use` in `src/lib.rs`.
 4. Add the widget to `all_widgets` in `tests/common/mod.rs` (it is then covered by
    `tests/robustness_test.rs` and `tests/theme_test.rs`), plus a snapshot test in
    `tests/snapshots_test.rs` and an example in `examples/`.
-5. Run `cargo fmt`, `cargo clippy --all-targets --all-features -- -D warnings`,
+   Add unit tests next to the widget: every toggle/option changes output, explicit
+   colors apply, degenerate data/areas don't panic.
+5. Document it: a `# Example` doctest on the struct (docs.rs), a row in the README
+   table, a `examples/vhs/<name>.tape` and (after `just vhs-<name>`) its GIF + README
+   gallery entry, `[[example]]` in `Cargo.toml`, `example-<name>`/`vhs-<name>` recipes.
+6. Run `cargo fmt`, `cargo clippy --all-targets --all-features -- -D warnings`,
    `cargo test --all-features`, `RUSTDOCFLAGS='-D warnings' cargo doc --no-deps`.
 
 ### Test layout

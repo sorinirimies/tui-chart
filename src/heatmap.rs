@@ -103,6 +103,18 @@ fn luminance(c: Color) -> f64 {
 }
 
 /// Heatmap widget (rows × columns of values).
+///
+/// # Example
+///
+/// ```
+/// use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
+/// use tui_chart::{Heatmap};
+///
+/// let chart = Heatmap::new(vec![vec![0.0, 0.5, 1.0], vec![1.0, 0.5, 0.0]]);
+/// let area = Rect::new(0, 0, 40, 12);
+/// let mut buf = Buffer::empty(area);
+/// chart.render(area, &mut buf);
+/// ```
 #[derive(Debug, Clone, Default)]
 pub struct Heatmap {
     data: Vec<Vec<f64>>,

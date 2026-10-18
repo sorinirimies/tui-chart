@@ -73,6 +73,18 @@ impl TreemapItem {
 }
 
 /// Squarified treemap widget.
+///
+/// # Example
+///
+/// ```
+/// use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
+/// use tui_chart::{Treemap, TreemapItem};
+///
+/// let chart = Treemap::new([TreemapItem::new("a", 5.0), TreemapItem::new("b", 3.0)]);
+/// let area = Rect::new(0, 0, 40, 12);
+/// let mut buf = Buffer::empty(area);
+/// chart.render(area, &mut buf);
+/// ```
 #[derive(Debug, Clone)]
 pub struct Treemap {
     items: Vec<TreemapItem>,

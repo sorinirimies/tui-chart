@@ -54,6 +54,18 @@ impl Task {
 }
 
 /// Gantt chart widget.
+///
+/// # Example
+///
+/// ```
+/// use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
+/// use tui_chart::{Gantt, Task};
+///
+/// let chart = Gantt::new([Task::new("Design", 0.0, 4.0), Task::new("Build", 3.0, 9.0)]);
+/// let area = Rect::new(0, 0, 40, 12);
+/// let mut buf = Buffer::empty(area);
+/// chart.render(area, &mut buf);
+/// ```
 #[derive(Debug, Clone)]
 pub struct Gantt {
     tasks: Vec<Task>,

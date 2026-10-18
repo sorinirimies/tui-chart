@@ -9,8 +9,13 @@
 //! - [`BarChart`] – vertical/horizontal, grouped/stacked
 //! - [`Histogram`], [`Heatmap`], [`Sparkline`], [`Gauge`], [`RadarChart`]
 //! - [`BoxPlot`], [`Waterfall`], [`Gantt`], [`DepthChart`], [`RenkoChart`], [`Treemap`]
-//! - [`Funnel`], [`Bullet`], [`BubbleChart`]
+//! - [`Funnel`], [`Bullet`], [`BubbleChart`], [`LollipopChart`], [`SlopeChart`], [`CalendarHeatmap`], [`ViolinChart`], [`RoseChart`], [`StackedAreaChart`], [`Sankey`]
 //! - [`ChartStack`] – stack charts with a shared gutter
+//!
+//! ## Accessibility
+//!
+//! Wrap any chart in [`Monochrome`] (or [`Monochrome::auto`], which honours
+//! `NO_COLOR`) to render without colour: solid fills turn into `░▒▓█` shades.
 //!
 //! ## Features
 //!
@@ -72,12 +77,14 @@
 
 #[macro_use]
 mod macros;
+mod accessibility;
 mod annotation;
 mod axis;
 mod bar;
 mod boxplot;
 mod bubble;
 mod bullet;
+mod calendar;
 mod candle;
 mod canvas;
 mod crosshair;
@@ -90,26 +97,34 @@ mod histogram;
 mod indicator;
 mod layout;
 mod line;
+mod lollipop;
 mod radar;
 mod renko;
+mod rose;
+mod sankey;
 mod scale;
+mod slope;
 mod sparkline;
 mod stack;
+mod stacked_area;
 mod stream;
 mod text;
 mod theme;
 mod timeaxis;
 mod treemap;
+mod violin;
 mod waterfall;
 
 pub mod util;
 
+pub use accessibility::{no_color_requested, strip_color, Monochrome};
 pub use annotation::{draw_annotations, Annotation, AnnotationKind};
 pub use axis::{Axis, GridStyle};
 pub use bar::{BarChart, BarGroup, BarMode, BarOrientation, LabelPosition};
 pub use boxplot::{BoxOrientation, BoxPlot, BoxStats};
 pub use bubble::{BubbleChart, BubbleSeries};
 pub use bullet::{Bullet, BulletItem};
+pub use calendar::CalendarHeatmap;
 pub use candle::{
     ema, heikin_ashi, sma, BandOverlay, Candle, CandleStyle, CandlestickChart, HLine,
     IndicatorPane, Overlay, TradeMarker, TradeSide,
@@ -124,10 +139,15 @@ pub use heatmap::{Gradient, Heatmap};
 pub use histogram::{Bin, Histogram};
 pub use indicator::{atr, bollinger, macd, rsi, stochastic, vwap};
 pub use line::{LegendPosition, LineChart, LineMode, Series};
+pub use lollipop::{LollipopChart, LollipopItem};
 pub use radar::{RadarChart, RadarSeries};
 pub use renko::{renko_bricks, RenkoBrick, RenkoChart, RenkoStyle};
+pub use rose::{RoseChart, RoseItem};
+pub use sankey::{Sankey, SankeyLink};
+pub use slope::{SlopeChart, SlopeItem};
 pub use sparkline::{Sparkline, SparklineStyle};
 pub use stack::{shared_gutter, ChartStack, StackDirection};
+pub use stacked_area::{AreaLayer, StackedAreaChart};
 pub use stream::{RingBuffer, Stream};
 #[cfg(feature = "theme")]
 pub use theme::{ChartThemeExt, Theme};
@@ -138,6 +158,7 @@ pub use timeaxis::{
 pub use treemap::{Treemap, TreemapItem};
 #[cfg(feature = "theme")]
 pub use tui_nuances::{Status, ThemeProvider, ThemeSwitcher, Themed};
+pub use violin::{ViolinChart, ViolinGroup};
 pub use waterfall::Waterfall;
 
 use ratatui::style::Color;

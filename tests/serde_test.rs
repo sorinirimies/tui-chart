@@ -53,6 +53,9 @@ fn annotation_boxstats_roundtrip() {
         q3: 3.0,
         max: 4.0,
         outliers: vec![9.0],
+        mean: Some(2.0),
+        n: 5,
+        points: vec![1.0, 2.0],
     };
     assert_eq!(rt(&s), s);
 }

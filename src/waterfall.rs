@@ -24,6 +24,18 @@ struct Step {
 }
 
 /// Waterfall chart widget.
+///
+/// # Example
+///
+/// ```
+/// use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
+/// use tui_chart::{Waterfall};
+///
+/// let chart = Waterfall::new().delta("Sales", 50.0).delta("Costs", -20.0).total("Net");
+/// let area = Rect::new(0, 0, 40, 12);
+/// let mut buf = Buffer::empty(area);
+/// chart.render(area, &mut buf);
+/// ```
 #[derive(Debug, Clone)]
 pub struct Waterfall {
     steps: Vec<Step>,

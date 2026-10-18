@@ -99,6 +99,18 @@ pub fn renko_bricks(closes: &[f64], brick_size: f64) -> Vec<RenkoBrick> {
 }
 
 /// Renko / point-and-figure chart widget.
+///
+/// # Example
+///
+/// ```
+/// use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
+/// use tui_chart::{RenkoChart};
+///
+/// let chart = RenkoChart::new(&[10.0, 12.0, 15.0, 13.0, 9.0], 1.0);
+/// let area = Rect::new(0, 0, 40, 12);
+/// let mut buf = Buffer::empty(area);
+/// chart.render(area, &mut buf);
+/// ```
 #[derive(Debug, Clone)]
 pub struct RenkoChart {
     bricks: Vec<RenkoBrick>,

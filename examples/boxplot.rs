@@ -1,5 +1,5 @@
 //! BoxPlot demo.
-//! Keys: o orientation · r resample · w toggle outliers · t/T theme · q quit
+//! Keys: o orientation · r resample · w outliers · m mean · n notches · j jitter · t/T theme · q quit
 
 #[path = "common/mod.rs"]
 mod common;
@@ -19,6 +19,9 @@ struct State {
     data: Vec<Vec<f64>>,
     orientation: BoxOrientation,
     outliers: bool,
+    mean: bool,
+    notched: bool,
+    jitter: bool,
 }
 
 fn sample(rng: &mut Rng) -> Vec<Vec<f64>> {
@@ -41,6 +44,9 @@ fn main() -> anyhow::Result<()> {
             data,
             orientation: BoxOrientation::Vertical,
             outliers: true,
+            mean: true,
+            notched: false,
+            jitter: false,
         },
         Duration::from_millis(500),
         |f, s| {
@@ -49,6 +55,9 @@ fn main() -> anyhow::Result<()> {
             let mut p = BoxPlot::new()
                 .orientation(s.orientation)
                 .show_outliers(s.outliers)
+                .show_mean(s.mean)
+                .notched(s.notched)
+                .jitter(s.jitter)
                 .theme(s.theme.clone())
                 .block(Block::bordered().title(" BoxPlot "));
             for (i, d) in s.data.iter().enumerate() {
@@ -58,7 +67,7 @@ fn main() -> anyhow::Result<()> {
             help(
                 f,
                 bar,
-                " o orientation · r resample · w outliers · t/T theme · q quit",
+                " o orient · r resample · w outliers · m mean · n notches · j jitter · t/T theme · q quit",
             );
         },
         |s, key| {
@@ -73,6 +82,9 @@ fn main() -> anyhow::Result<()> {
                     }
                 }
                 KeyCode::Char('w') => s.outliers = !s.outliers,
+                KeyCode::Char('m') => s.mean = !s.mean,
+                KeyCode::Char('n') => s.notched = !s.notched,
+                KeyCode::Char('j') => s.jitter = !s.jitter,
                 KeyCode::Char('r') => s.data = sample(&mut s.rng),
                 _ => {}
             }

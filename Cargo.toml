@@ -156,3 +156,38 @@ opt-level = 1
 lto = true
 codegen-units = 1
 strip = true
+
+[[example]]
+name = "lollipop"
+path = "examples/lollipop.rs"
+required-features = ["theme"]
+
+[[example]]
+name = "slope"
+path = "examples/slope.rs"
+required-features = ["theme"]
+
+[[example]]
+name = "calendar"
+path = "examples/calendar.rs"
+required-features = ["theme"]
+
+[[example]]
+name = "violin"
+path = "examples/violin.rs"
+required-features = ["theme"]
+
+[[example]]
+name = "rose"
+path = "examples/rose.rs"
+required-features = ["theme"]
+
+[[example]]
+name = "stacked_area"
+path = "examples/stacked_area.rs"
+required-features = ["theme"]
+
+[[example]]
+name = "sankey"
+path = "examples/sankey.rs"
+required-features = ["theme"]
