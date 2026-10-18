@@ -296,115 +296,91 @@ pull-all:
     [ -n "$skipped" ] && echo "ℹ️  Skipped (not configured):$skipped"
     if [ -n "$failed" ]; then echo "⚠️  Failed:$failed"; exit 1; fi
 
+# ── push ──────────────────────────────────────────────────────────────────────────────
+# One place for the remote list. Every recipe skips (never fails on) a remote this
+# checkout doesn't have, and prints how to add it. The `*-all` recipes continue past
+# failures and print a summary. `*-force` recipes use plain --force: be sure!
+
+REMOTES := "origin gitea-microlab gitea-starscream gitea-nexus-lab"
+
+# Push (or force-push / push tags) to ONE remote; skip gracefully if it isn't configured
+_push remote flags="" what="branch":
+    #!/usr/bin/env sh
+    if ! git remote get-url "{{remote}}" >/dev/null 2>&1; then
+        echo "↷ skipping {{remote}} (not configured here; add with: git remote add {{remote}} <url>, or: just setup-remotes)"
+        exit 0
+    fi
+    if [ "{{what}}" = "tags" ]; then
+        git push {{flags}} "{{remote}}" --tags
+    else
+        git push {{flags}} "{{remote}}" "$(git branch --show-current)"
+    fi
+
+# Push to EVERY remote in REMOTES; skip unconfigured ones, continue on failure, summarize
+_push-all flags="" what="branch":
+    #!/usr/bin/env sh
+    failed=""; ok_=""; skipped=""
+    for r in {{REMOTES}}; do
+        if ! git remote get-url "$r" >/dev/null 2>&1; then
+            echo "↷ skipping $r (not configured here; add with: git remote add $r <url>)"
+            skipped="$skipped $r"; continue
+        fi
+        echo "→ pushing {{what}} to $r {{flags}}"
+        if [ "{{what}}" = "tags" ]; then
+            git push {{flags}} "$r" --tags && ok_="$ok_ $r" || failed="$failed $r"
+        else
+            git push {{flags}} "$r" "$(git branch --show-current)" && ok_="$ok_ $r" || failed="$failed $r"
+        fi
+    done
+    echo ""
+    [ -n "$ok_" ] && echo "✅ Pushed {{what}} to:$ok_"
+    [ -n "$skipped" ] && echo "ℹ️  Skipped (not configured):$skipped"
+    if [ -n "$failed" ]; then echo "⚠️  Failed:$failed"; exit 1; fi
+    exit 0
+
 # Git: push to GitHub (origin)
-push:
-    git push origin "$(git branch --show-current)"
+push: (_push "origin")
 
 # Git: push to Gitea Microlab
-push-gitea-microlab:
-    git push gitea-microlab "$(git branch --show-current)"
+push-gitea-microlab: (_push "gitea-microlab")
 
 # Git: push to Gitea (nexus-lab instance)
-push-gitea-nexus-lab:
-    git push gitea-nexus-lab "$(git branch --show-current)"
+push-gitea-nexus-lab: (_push "gitea-nexus-lab")
 
 # Git: push to Gitea Starscream
-push-gitea-starscream:
-    git push gitea-starscream "$(git branch --show-current)"
+push-gitea-starscream: (_push "gitea-starscream")
 
-# Git: push to GitHub, Gitea, and Gitea (nexus-lab)
-push-all:
-    #!/usr/bin/env sh
-    failed=""; ok_=""; skipped=""
-    for r in origin gitea-microlab gitea-starscream gitea-nexus-lab; do
-        if ! git remote get-url "$r" >/dev/null 2>&1; then
-            echo "↷ skipping $r (not configured here; add with: git remote add $r <url>)"
-            skipped="$skipped $r"; continue
-        fi
-        echo "→ pushing to $r"
-        if git push "$r" "$(git branch --show-current)"; then ok_="$ok_ $r"; else failed="$failed $r"; fi
-    done
-    echo ""
-    [ -n "$ok_" ] && echo "✅ Pushed to:$ok_"
-    [ -n "$skipped" ] && echo "ℹ️  Skipped (not configured):$skipped"
-    if [ -n "$failed" ]; then echo "⚠️  Failed:$failed"; exit 1; fi
+# Git: push to every configured remote (continues on failure)
+push-all: (_push-all)
 
 # Git: force-push to GitHub (origin)
-push-force:
-    git push --force origin "$(git branch --show-current)"
+push-force: (_push "origin" "--force")
 
 # Git: force-push to Gitea Microlab
-push-gitea-microlab-force:
-    git push --force gitea-microlab "$(git branch --show-current)"
+push-gitea-microlab-force: (_push "gitea-microlab" "--force")
 
 # Git: force-push to Gitea (nexus-lab instance)
-push-gitea-nexus-lab-force:
-    git push --force gitea-nexus-lab "$(git branch --show-current)"
+push-gitea-nexus-lab-force: (_push "gitea-nexus-lab" "--force")
 
 # Git: force-push to Gitea Starscream
-push-gitea-starscream-force:
-    git push --force gitea-starscream "$(git branch --show-current)"
+push-gitea-starscream-force: (_push "gitea-starscream" "--force")
 
 # Git: force-push to every configured remote (continues on failure)
-push-all-force:
-    #!/usr/bin/env sh
-    failed=""; ok_=""; skipped=""
-    for r in origin gitea-microlab gitea-starscream gitea-nexus-lab; do
-        if ! git remote get-url "$r" >/dev/null 2>&1; then
-            echo "↷ skipping $r (not configured here; add with: git remote add $r <url>)"
-            skipped="$skipped $r"; continue
-        fi
-        echo "→ force pushing to $r"
-        if git push --force "$r" "$(git branch --show-current)"; then ok_="$ok_ $r"; else failed="$failed $r"; fi
-    done
-    echo ""
-    [ -n "$ok_" ] && echo "✅ Force-pushed to:$ok_"
-    [ -n "$skipped" ] && echo "ℹ️  Skipped (not configured):$skipped"
-    if [ -n "$failed" ]; then echo "⚠️  Failed:$failed"; exit 1; fi
+push-all-force: (_push-all "--force")
 
 # Git: push tags to GitHub
-push-tags:
-    git push origin --tags
+push-tags: (_push "origin" "" "tags")
 
-# Git: push tags to all remotes
-push-tags-all:
-    #!/usr/bin/env sh
-    failed=""; ok_=""; skipped=""
-    for r in origin gitea-microlab gitea-starscream gitea-nexus-lab; do
-        if ! git remote get-url "$r" >/dev/null 2>&1; then
-            echo "↷ skipping $r (not configured here; add with: git remote add $r <url>)"
-            skipped="$skipped $r"; continue
-        fi
-        echo "→ pushing tags to $r"
-        if git push "$r" --tags; then ok_="$ok_ $r"; else failed="$failed $r"; fi
-    done
-    echo ""
-    [ -n "$ok_" ] && echo "✅ Tags pushed to:$ok_"
-    [ -n "$skipped" ] && echo "ℹ️  Skipped (not configured):$skipped"
-    if [ -n "$failed" ]; then echo "⚠️  Failed:$failed"; exit 1; fi
+# Git: push tags to every configured remote (continues on failure)
+push-tags-all: (_push-all "" "tags")
 
 # Git: force-push tags to GitHub
-push-tags-force:
-    git push --force origin --tags
+push-tags-force: (_push "origin" "--force" "tags")
 
-# Git: force-push tags to all remotes (continues on failure)
-push-tags-all-force:
-    #!/usr/bin/env sh
-    failed=""; ok_=""; skipped=""
-    for r in origin gitea-microlab gitea-starscream gitea-nexus-lab; do
-        if ! git remote get-url "$r" >/dev/null 2>&1; then
-            echo "↷ skipping $r (not configured here; add with: git remote add $r <url>)"
-            skipped="$skipped $r"; continue
-        fi
-        echo "→ force pushing tags to $r"
-        if git push --force "$r" --tags; then ok_="$ok_ $r"; else failed="$failed $r"; fi
-    done
-    echo ""
-    [ -n "$ok_" ] && echo "✅ Tags force-pushed to:$ok_"
-    [ -n "$skipped" ] && echo "ℹ️  Skipped (not configured):$skipped"
-    if [ -n "$failed" ]; then echo "⚠️  Failed:$failed"; exit 1; fi
+# Git: force-push tags to every configured remote (continues on failure)
+push-tags-all-force: (_push-all "--force" "tags")
 
-# Git: force-push branch + tags to all remotes (continues on failure)
+# Git: force-push branch + tags to every configured remote
 push-all-force-with-tags: push-all-force push-tags-all-force
 
 # Force-sync all Gitea instances with GitHub: branch + tags (continues on failure)
@@ -422,6 +398,15 @@ sync-all-gitea:
     [ -n "$skipped" ] && echo "ℹ️  Skipped (not configured):$skipped"
     if [ -n "$failed" ]; then echo "⚠️  Failed to sync:$failed"; exit 1; fi
     echo "✅ All Gitea instances synced!"
+
+# Add the remotes this repo is expected to have (skips ones that exist; nexus-lab needs a URL)
+setup-remotes:
+    #!/usr/bin/env sh
+    git remote get-url origin >/dev/null 2>&1 || git remote add origin git@github.com:sorinirimies/tui-chart.git
+    git remote get-url gitea-microlab >/dev/null 2>&1 || git remote add gitea-microlab ssh://git@192.168.1.204:30009/sorin/tui-chart.git
+    git remote get-url gitea-starscream >/dev/null 2>&1 || git remote add gitea-starscream gitea@192.168.1.44:sorin/tui-chart.git
+    echo "nexus-lab: git remote add gitea-nexus-lab <url>"
+    git remote -v
 
 # Full release workflow: bump version and push to GitHub
 release version: (bump version)

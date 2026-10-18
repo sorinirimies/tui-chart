@@ -1,33 +1,96 @@
+# git-cliff configuration — https://git-cliff.org/docs/configuration
+# Sections are ordered via the hidden <!-- NN --> prefix on each group.
+
+[remote.github]
+owner = "sorinirimies"
+repo = "tui-chart"
+
 [changelog]
 header = """
 # Changelog
+
 All notable changes to this project will be documented in this file.
 
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 """
 body = """
-{% if version -%}
-## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
-{% else -%}
-## [unreleased]
-{% endif -%}
-{% for group, commits in commits | group_by(attribute="group") %}
-### {{ group | upper_first }}
-{% for commit in commits -%}
-- {{ commit.message | upper_first }}
-{% endfor -%}
-{% endfor %}
+{%- macro remote_url() -%}
+  https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}
+{%- endmacro -%}
 
+{% if version -%}
+## [{{ version | trim_start_matches(pat="v") }}]({{ self::remote_url() }}/releases/tag/{{ version }}) - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else -%}
+## [Unreleased]
+{% endif -%}
+
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | striptags | trim | upper_first }}
+{% for commit in commits %}
+- {% if commit.scope %}**{{ commit.scope }}:** {% endif -%}
+  {% if commit.breaking %}**BREAKING** {% endif -%}
+  {{ commit.message | upper_first }} ([{{ commit.id | truncate(length=7, end="") }}]({{ self::remote_url() }}/commit/{{ commit.id }}))
+{%- endfor %}
+{% endfor %}
 """
-trim = true
+footer = """
+{%- macro remote_url() -%}
+  https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}
+{%- endmacro -%}
+
+{% for release in releases %}
+{%- if release.version %}
+{%- if release.previous.version %}
+[{{ release.version | trim_start_matches(pat="v") }}]: {{ self::remote_url() }}/compare/{{ release.previous.version }}...{{ release.version }}
+{%- else %}
+[{{ release.version | trim_start_matches(pat="v") }}]: {{ self::remote_url() }}/releases/tag/{{ release.version }}
+{%- endif %}
+{%- else %}
+[Unreleased]: {{ self::remote_url() }}/compare/{{ release.previous.version }}...HEAD
+{%- endif %}
+{% endfor %}
+"""
+trim = false
 
 [git]
 conventional_commits = true
-filter_unconventional = true
+filter_unconventional = false   # keep non-conventional commits (grouped as "Other")
+split_commits = false
+protect_breaking_commits = true
+filter_commits = false
+tag_pattern = "v[0-9].*"
+topo_order = false
+sort_commits = "oldest"
+
+commit_preprocessors = [
+  # strip trailing PR numbers; they are linked via the commit hash
+  { pattern = '\s*\(#\d+\)$', replace = "" },
+]
+
 commit_parsers = [
-  { message = "^feat", group = "Features"},
-  { message = "^fix", group = "Bug Fixes"},
-  { message = "^doc", group = "Documentation"},
-  { message = "^perf", group = "Performance"},
-  { message = "^refactor", group = "Refactor"},
-  { message = "^chore", group = "Miscellaneous"},
+  # ── noise: never shown ──
+  { message = "^chore\\(deps\\): nightly library update", skip = true },
+  { message = "(?i)^nightly library update", skip = true },
+  { message = "^chore: bump version", skip = true },
+  { message = "^chore: prepare release", skip = true },
+  { message = "^chore\\(release\\)", skip = true },
+  { message = "^Merge ", skip = true },
+  { message = "^Initial commit", skip = true },
+
+  # ── breaking changes always first ──
+  { body = "BREAKING CHANGE", group = "<!-- 00 -->Breaking Changes" },
+
+  { message = "^feat", group = "<!-- 01 -->Features" },
+  { message = "^fix", group = "<!-- 02 -->Bug Fixes" },
+  { message = "^perf", group = "<!-- 03 -->Performance" },
+  { message = "^refactor", group = "<!-- 04 -->Refactor" },
+  { message = "^doc", group = "<!-- 05 -->Documentation" },
+  { message = "^style", group = "<!-- 06 -->Styling" },
+  { message = "^test", group = "<!-- 07 -->Testing" },
+  { message = "^build|^deps", group = "<!-- 08 -->Build" },
+  { message = "^ci", group = "<!-- 09 -->CI" },
+  { message = "^revert", group = "<!-- 10 -->Reverted" },
+  { message = "^chore", group = "<!-- 11 -->Miscellaneous" },
+  { message = ".*", group = "<!-- 12 -->Other" },
 ]
