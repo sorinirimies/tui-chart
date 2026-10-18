@@ -88,15 +88,15 @@ fn waterfall_up_down_total() {
             "  ██████ ██████    7    ",
             "         ██████┄███████ ",
             "                ███████ ",
-            "0               ███████ ",
-            "  up     dn     T       ",
+            "0 · · · · · · · ███████ ",
+            "    up     dn      T    ",
         ]
     );
 }
 
 #[test]
 fn treemap_two_items() {
-    let t = Treemap::new([TreemapItem::new("A", 3.0), TreemapItem::new("B", 1.0)]);
+    let t = Treemap::new([TreemapItem::new("A", 3.0), TreemapItem::new("B", 1.0)]).gap(false);
     assert_eq!(
         snap(t, 12, 4),
         [

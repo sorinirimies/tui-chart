@@ -196,6 +196,13 @@ impl Waterfall {
                 dim,
             );
         }
+        // faint horizontal grid at each tick (under the bars)
+        for v in &ticks {
+            let y = row(*v);
+            for x in (plot.x..plot.right()).step_by(2) {
+                buf[(x, y)].set_char('·').set_style(dim);
+            }
+        }
         // zero line
         if lo < 0.0 && hi > 0.0 {
             let y = row(0.0);
@@ -275,7 +282,8 @@ impl Waterfall {
                 }
             }
             let l: String = step.label.chars().take(slot_w as usize).collect();
-            put_str(buf, x0, inner.bottom() - 1, inner.right(), &l, text);
+            let lx = x0 + bw.saturating_sub(l.chars().count() as u16) / 2;
+            put_str(buf, lx, inner.bottom() - 1, inner.right(), &l, text);
         }
     }
 }

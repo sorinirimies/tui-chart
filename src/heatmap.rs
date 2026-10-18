@@ -115,6 +115,7 @@ pub struct Heatmap {
     cell_height: u16,
     bounds: Option<(f64, f64)>,
     show_values: bool,
+    stretch: bool,
     legend: bool,
     block: Option<Block<'static>>,
 }
@@ -204,6 +205,12 @@ impl Heatmap {
     );
 
     setter!(
+        /// Stretch cells so the grid fills the plot area (overrides
+        /// [`cell_width`](Self::cell_width) / [`cell_height`](Self::cell_height)).
+        stretch: bool
+    );
+
+    setter!(
         /// Show the min–max gradient legend row.
         legend: bool
     );
@@ -260,11 +267,23 @@ impl Heatmap {
             return;
         };
         let plot = a.plot;
-        let (cw, ch) = (self.cell_width, self.cell_height);
+        let cols = self.data.iter().map(Vec::len).max().unwrap_or(1).max(1);
+        let rows = self.data.len().max(1);
+        // (offset, size) of a cell span: fixed stride, or proportional when stretched
+        let span_of = |i: usize, n: usize, total: u16, fixed: u16| -> (u16, u16) {
+            if self.stretch && n as u16 <= total {
+                let a = i * total as usize / n;
+                let b = (i + 1) * total as usize / n;
+                (a as u16, (b - a).max(1) as u16)
+            } else {
+                ((i as u32 * fixed as u32).min(u16::MAX as u32) as u16, fixed)
+            }
+        };
         let mut y_ticks = vec![];
         let mut x_ticks = vec![];
         for (r, row) in self.data.iter().enumerate() {
-            let y = plot.y as u32 + r as u32 * ch as u32;
+            let (dy0, ch) = span_of(r, rows, plot.height, self.cell_height);
+            let y = plot.y as u32 + dy0 as u32;
             if y + ch as u32 > plot.bottom() as u32 {
                 break;
             }
@@ -276,7 +295,8 @@ impl Heatmap {
                 ));
             }
             for (c, &v) in row.iter().enumerate() {
-                let x = plot.x as u32 + c as u32 * cw as u32;
+                let (dx0, cw) = span_of(c, cols, plot.width, self.cell_width);
+                let x = plot.x as u32 + dx0 as u32;
                 if x + cw as u32 > plot.right() as u32 {
                     break;
                 }
@@ -402,6 +422,18 @@ mod tests {
         assert_eq!(first, Color::Rgb(0, 0, 0));
         assert_eq!(last, Color::Rgb(255, 255, 255));
         assert_eq!(buf[(0, 0)].symbol(), "a");
+    }
+
+    #[test]
+    fn stretch_fills_plot() {
+        let area = Rect::new(0, 0, 40, 12);
+        let mut buf = Buffer::empty(area);
+        Heatmap::new(grid())
+            .stretch(true)
+            .legend(false)
+            .render(area, &mut buf);
+        let filled = |y: u16| (0..40).any(|x| buf[(x, y)].bg != Color::Reset);
+        assert!(filled(0) && filled(10), "grid should span the height");
     }
 
     #[test]

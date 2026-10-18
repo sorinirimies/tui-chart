@@ -28,7 +28,7 @@ fn main() -> anyhow::Result<()> {
         State {
             theme: Theme::default(),
             t: 0.0,
-            fill: false,
+            fill: true,
             rings: 4,
             paused: false,
             marker: Marker::Braille,

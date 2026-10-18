@@ -35,7 +35,7 @@ fn main() -> anyhow::Result<()> {
         rng: Rng::new(5),
         weights: vec![],
         gradient: false,
-        border: true,
+        border: false,
         values: true,
     };
     randomize(&mut state);

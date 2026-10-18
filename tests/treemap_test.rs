@@ -17,6 +17,7 @@ fn treemap_fills_area_and_shows_labels() {
         TreemapItem::new("Zig", 10.0),
         TreemapItem::new("C", 5.0),
     ])
+    .gap(false)
     .render(area, &mut buf);
     let t: String = (0..16)
         .flat_map(|y| (0..50).map(move |x| (x, y)))

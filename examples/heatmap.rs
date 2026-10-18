@@ -52,7 +52,7 @@ fn main() -> anyhow::Result<()> {
             let hm = Heatmap::new(grid(s.t))
                 .row_labels(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"])
                 .col_labels(hours)
-                .cell_width(3)
+                .stretch(true)
                 .gradient(s.gradient.clone())
                 .show_values(s.values)
                 .theme(s.theme.clone())

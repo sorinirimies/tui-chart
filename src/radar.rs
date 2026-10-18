@@ -2,6 +2,7 @@
 
 use crate::canvas::{Canvas, Marker};
 use crate::theme::{self, Theme};
+use crate::util::darken;
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -45,6 +46,7 @@ pub struct RadarChart<'a> {
     rings: usize,
     fill: bool,
     show_labels: bool,
+    legend: bool,
     theme: Option<Theme>,
     base: Option<Style>,
     marker: Marker,
@@ -61,6 +63,7 @@ impl<'a> RadarChart<'a> {
             rings: 4,
             fill: false,
             show_labels: true,
+            legend: true,
             theme: None,
             base: None,
             marker: Marker::Braille,
@@ -103,6 +106,11 @@ impl<'a> RadarChart<'a> {
         marker: Marker
     );
 
+    setter!(
+        /// Series-name legend on the bottom row (default on, shown when it fits).
+        legend: bool
+    );
+
     block_setter!(block, 'a);
 
     fn draw(&self, area: Rect, buf: &mut Buffer) {
@@ -110,6 +118,13 @@ impl<'a> RadarChart<'a> {
         if n < 3 || area.width < 3 || area.height < 3 {
             return;
         }
+        let legend = self.legend && area.height >= 9 && !self.series.is_empty();
+        let full = area;
+        let area = if legend {
+            Rect::new(area.x, area.y, area.width, area.height - 1)
+        } else {
+            area
+        };
         let lab_w = self
             .axes
             .iter()
@@ -165,6 +180,7 @@ impl<'a> RadarChart<'a> {
             let b = pt(i, r);
             cv.line(cx.round() as i32, cy.round() as i32, b.0, b.1, grid);
         }
+        let mut polys: Vec<(Color, Vec<(i32, i32)>)> = vec![];
         for (si, s) in self.series.iter().enumerate() {
             let color = self.series_color(si, s);
             let pts: Vec<(i32, i32)> = (0..n)
@@ -178,31 +194,85 @@ impl<'a> RadarChart<'a> {
                     pt(i, r * (v / max).clamp(0.0, 1.0))
                 })
                 .collect();
-            if self.fill {
-                for i in 0..n {
-                    let (a, b) = (pts[i], pts[(i + 1) % n]);
-                    let steps = (a.0 - b.0).abs().max((a.1 - b.1).abs()).max(1);
-                    for t in 0..=steps {
-                        let x = a.0 + (b.0 - a.0) * t / steps;
-                        let y = a.1 + (b.1 - a.1) * t / steps;
-                        cv.line(cx.round() as i32, cy.round() as i32, x, y, color);
+            polys.push((color, pts));
+        }
+        if self.fill {
+            // scanline even-odd fill in a dimmed series color
+            for (color, pts) in &polys {
+                let dim = darken(*color, 0.55);
+                for py in 0..ph as i32 {
+                    let mut xs: Vec<f64> = vec![];
+                    for i in 0..n {
+                        let (a, b) = (pts[i], pts[(i + 1) % n]);
+                        let (y0, y1) = (a.1.min(b.1), a.1.max(b.1));
+                        if py >= y0 && py < y1 {
+                            let t = (py - a.1) as f64 / (b.1 - a.1) as f64;
+                            xs.push(a.0 as f64 + t * (b.0 - a.0) as f64);
+                        }
+                    }
+                    xs.sort_by(|a, b| a.total_cmp(b));
+                    for pair in xs.chunks(2) {
+                        if let [x0, x1] = pair {
+                            for px in x0.round() as i32..=x1.round() as i32 {
+                                cv.set(px, py, dim);
+                            }
+                        }
                     }
                 }
             }
+        }
+        for (color, pts) in &polys {
             for i in 0..n {
                 let (a, b) = (pts[i], pts[(i + 1) % n]);
-                cv.line(a.0, a.1, b.0, b.1, color);
+                cv.line(a.0, a.1, b.0, b.1, *color);
+            }
+            for &(x, y) in pts {
+                for (dx, dy) in [(0, 0), (1, 0), (-1, 0), (0, 1), (0, -1)] {
+                    cv.set(x + dx, y + dy, *color);
+                }
             }
         }
         cv.render(buf, plot);
+        // ring values along the first axis (up), dim
+        if self.rings > 0 && plot.height >= 9 {
+            let (rxd, ryd) = self.marker.resolution();
+            let dim = Style::default().fg(darken(fg, 0.4));
+            let ccx = plot.x as i32 + plot.width as i32 / 2;
+            let ccy = plot.y as i32 + plot.height as i32 / 2;
+            for k in 1..=self.rings {
+                let v = max * k as f64 / self.rings as f64;
+                let y = ccy - (r * k as f64 / self.rings as f64 / ryd as f64).round() as i32;
+                let _ = rxd;
+                let t = crate::util::format_tick(v, max / self.rings as f64);
+                if y > plot.y as i32 && y < plot.bottom() as i32 && ccx + 2 < plot.right() as i32 {
+                    crate::text::put_str(buf, (ccx + 2) as u16, y as u16, plot.right(), &t, dim);
+                }
+            }
+        }
+        if legend {
+            let mut x = full.x + 1;
+            let y = full.bottom() - 1;
+            for (si, se) in self.series.iter().enumerate() {
+                let c = self.series_color(si, se);
+                let name = format!(" {}", se.name);
+                if x + 2 + name.chars().count() as u16 > full.right() {
+                    break;
+                }
+                crate::text::put_str(buf, x, y, full.right(), "●", Style::default().fg(c));
+                crate::text::put_str(buf, x + 1, y, full.right(), &name, Style::default().fg(fg));
+                x += 3 + name.chars().count() as u16;
+            }
+        }
         if labels {
             for (i, l) in self.axes.iter().enumerate() {
                 let (ux, uy) = (ang(i).cos(), ang(i).sin());
                 let w = l.chars().count() as i32;
                 let ccx = plot.x as i32 + plot.width as i32 / 2;
                 let ccy = plot.y as i32 + plot.height as i32 / 2;
-                let ex = ccx + (ux * (plot.width as f64 / 2.0)).round() as i32;
-                let ey = ccy + (uy * (plot.height as f64 / 2.0 + 1.0)).round() as i32;
+                let (rxd, ryd) = self.marker.resolution();
+                let (rx, ry) = (r / rxd as f64, r / ryd as f64);
+                let ex = ccx + (ux * (rx + 1.5)).round() as i32;
+                let ey = ccy + (uy * (ry + 1.0)).round() as i32;
                 let x = if ux > 0.3 {
                     ex
                 } else if ux < -0.3 {
@@ -296,7 +366,12 @@ mod tests {
 
     #[test]
     fn fill_covers_more_cells() {
-        let count = |b: &Buffer| b.content().iter().filter(|c| c.fg == Color::Red).count();
+        let count = |b: &Buffer| {
+            b.content()
+                .iter()
+                .filter(|c| c.symbol() != " " && c.fg != Color::DarkGray && c.fg != Color::White)
+                .count()
+        };
         assert!(count(&run(chart().fill(true), 40, 20)) > count(&run(chart(), 40, 20)));
     }
 

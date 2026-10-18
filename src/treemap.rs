@@ -78,6 +78,7 @@ pub struct Treemap {
     items: Vec<TreemapItem>,
     gradient: Option<(Color, Color)>,
     border: bool,
+    gap: bool,
     border_color: Option<Color>,
     theme: Option<Theme>,
     base: Option<Style>,
@@ -92,6 +93,7 @@ impl Treemap {
             items: items.into_iter().collect(),
             gradient: None,
             border: false,
+            gap: true,
             border_color: None,
             theme: None,
             base: None,
@@ -99,6 +101,12 @@ impl Treemap {
             block: None,
         }
     }
+
+    setter!(
+        /// Leave a thin gutter (one column, half a row) between leaf tiles so
+        /// neighbours stay distinguishable (default on).
+        gap: bool
+    );
 
     /// Color items without explicit color by value, interpolating `low`→`high`
     /// (use `Color::Rgb` values for smooth results).
@@ -226,34 +234,53 @@ impl Treemap {
             let color = it
                 .color
                 .unwrap_or_else(|| self.auto_color(idx, weights[idx], range));
+            let is_group = !it.children.is_empty();
+            // groups get a dark header strip; leaves fill with their color
+            let color = if is_group { self.header_color() } else { color };
             let bg = Style::default().bg(color).fg(text_color(color));
+            let bordered = self.border && !is_group && r.width >= 2 && r.height >= 2;
+            let gutter = self.gap && !is_group && !bordered && r.width >= 4 && r.height >= 2;
+            let base = self.canvas_bg();
             for y in r.y..r.bottom() {
                 for x in r.x..r.right() {
-                    buf[(x, y)].set_symbol(" ").set_style(bg);
+                    let last_col = gutter && x == r.right() - 1;
+                    let last_row = gutter && y == r.bottom() - 1;
+                    if last_col {
+                        buf[(x, y)]
+                            .set_symbol(" ")
+                            .set_style(Style::default().bg(base));
+                    } else if last_row {
+                        buf[(x, y)]
+                            .set_symbol("▀")
+                            .set_style(Style::default().fg(color).bg(base));
+                    } else if !(is_group && y > r.y) {
+                        buf[(x, y)].set_symbol(" ").set_style(bg);
+                    }
                 }
             }
-            if self.border && r.width >= 2 && r.height >= 2 {
+            if bordered {
                 self.draw_border(buf, r, color);
             }
-            let inset = if self.border && r.width >= 2 && r.height >= 2 {
-                1
-            } else {
-                0
-            };
+            let inset = if bordered { 1 } else { 0 };
             let text = Rect::new(
                 r.x + inset,
                 r.y + inset,
-                r.width.saturating_sub(2 * inset),
-                r.height.saturating_sub(2 * inset),
+                r.width.saturating_sub(2 * inset + u16::from(gutter)),
+                r.height.saturating_sub(2 * inset + u16::from(gutter)),
             );
             if text.width == 0 || text.height == 0 {
                 continue;
             }
+            let label = if is_group {
+                format!("▾ {} · {}", it.label, format_compact(it.weight()))
+            } else {
+                it.label.clone()
+            };
             put_text(
                 buf,
                 text,
                 0,
-                &it.label,
+                &label,
                 bg.add_modifier(ratatui::style::Modifier::BOLD),
             );
             if it.children.is_empty() {
@@ -264,6 +291,23 @@ impl Treemap {
                 let sub = Rect::new(text.x, text.y + 1, text.width, text.height - 1);
                 self.draw(&it.children, sub, buf, range);
             }
+        }
+    }
+
+    fn canvas_bg(&self) -> Color {
+        self.theme
+            .as_ref()
+            .and_then(|t| t.background)
+            .unwrap_or(Color::Reset)
+    }
+
+    fn header_color(&self) -> Color {
+        let (r, g, b) = rgb(self.canvas_bg());
+        let lift = |c: u8| c.saturating_add(34);
+        if matches!(self.canvas_bg(), Color::Reset) {
+            Color::Rgb(48, 52, 64)
+        } else {
+            Color::Rgb(lift(r), lift(g), lift(b))
         }
     }
 
@@ -426,6 +470,7 @@ mod tests {
             TreemapItem::new("beta", 3.0),
             TreemapItem::new("gamma", 2.0),
         ])
+        .gap(false)
         .render(area, &mut buf);
         let t: String = (0..12)
             .flat_map(|y| (0..40).map(move |x| (x, y)))
@@ -460,6 +505,16 @@ mod tests {
             .gradient(Color::Rgb(1, 2, 3), Color::Rgb(1, 2, 3))
             .render(area, &mut buf);
         assert!(has(&buf, Color::Rgb(1, 2, 3)) && !has(&buf, g.color_at(0.0)));
+    }
+
+    #[test]
+    fn gap_leaves_gutters() {
+        let area = Rect::new(0, 0, 40, 12);
+        let mut buf = Buffer::empty(area);
+        Treemap::new([TreemapItem::new("a", 1.0), TreemapItem::new("b", 1.0)])
+            .render(area, &mut buf);
+        let t: String = buf.content().iter().map(|c| c.symbol()).collect();
+        assert!(t.contains('▀'), "bottom half-block gutter expected");
     }
 
     #[test]
