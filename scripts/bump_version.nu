@@ -1,6 +1,6 @@
 #!/usr/bin/env nu
 # Automated version bump script for tui-chart
-# Usage: nu scripts/bump_version.nu [--yes] <new_version>
+# Usage: nu scripts/bump_version.nu [--yes] [--skip-checks] <new_version>
 # Example: nu scripts/bump_version.nu 0.4.0
 # Example: nu scripts/bump_version.nu --yes 0.4.0
 
@@ -46,6 +46,7 @@ export def set_badge_version [readme: string, new_version: string]: nothing -> s
 def main [
     new_version: string,  # Target version in semver format (e.g., 0.4.0)
     --yes (-y),           # Skip confirmation prompt
+    --skip-checks,        # Skip clippy + tests (already run by `just bump` via check-all)
 ] {
     # ── Colors ────────────────────────────────────────────────────────
     let red = (ansi red)
@@ -151,27 +152,32 @@ def main [
     }
     print $"($green)  ✓ Code formatted($reset)"
 
-    # ── Step 5/8: cargo clippy ────────────────────────────────────────
-    print ""
-    print $"($cyan)Step 5/8: Running cargo clippy...($reset)"
-    let clippy_result = (do { run-external "cargo" "clippy" "--all-targets" "--all-features" "--" "-D" "warnings" } | complete)
-    if $clippy_result.exit_code != 0 {
-        print $"($red)  ✗ Clippy found issues. Please fix them before continuing.($reset)"
-        print $clippy_result.stderr
-        error make { msg: $"($red)cargo clippy failed with warnings or errors($reset)" }
-    }
-    print $"($green)  ✓ Clippy passed($reset)"
+    if $skip_checks {
+        print ""
+        print $"($yellow)Steps 5-6/8: clippy + tests skipped (--skip-checks)($reset)"
+    } else {
+        # ── Step 5/8: cargo clippy ────────────────────────────────────────
+        print ""
+        print $"($cyan)Step 5/8: Running cargo clippy...($reset)"
+        let clippy_result = (do { run-external "cargo" "clippy" "--all-targets" "--all-features" "--" "-D" "warnings" } | complete)
+        if $clippy_result.exit_code != 0 {
+            print $"($red)  ✗ Clippy found issues. Please fix them before continuing.($reset)"
+            print $clippy_result.stderr
+            error make { msg: $"($red)cargo clippy failed with warnings or errors($reset)" }
+        }
+        print $"($green)  ✓ Clippy passed($reset)"
 
-    # ── Step 6/8: cargo test ──────────────────────────────────────────
-    print ""
-    print $"($cyan)Step 6/8: Running tests...($reset)"
-    let test_result = (do { run-external "cargo" "test" "--all-features" "--all-targets" } | complete)
-    if $test_result.exit_code != 0 {
-        print $"($red)  ✗ Tests failed. Please fix them before continuing.($reset)"
-        print $test_result.stderr
-        error make { msg: $"($red)cargo test failed($reset)" }
+        # ── Step 6/8: cargo test ──────────────────────────────────────────
+        print ""
+        print $"($cyan)Step 6/8: Running tests...($reset)"
+        let test_result = (do { run-external "cargo" "test" "--all-features" "--all-targets" } | complete)
+        if $test_result.exit_code != 0 {
+            print $"($red)  ✗ Tests failed. Please fix them before continuing.($reset)"
+            print $test_result.stderr
+            error make { msg: $"($red)cargo test failed($reset)" }
+        }
+        print $"($green)  ✓ All tests passed($reset)"
     }
-    print $"($green)  ✓ All tests passed($reset)"
 
     # ── Step 7/8: Generate CHANGELOG.md ───────────────────────────────
     print ""

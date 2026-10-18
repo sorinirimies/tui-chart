@@ -220,7 +220,7 @@ changelog-update: check-git-cliff
 # Note: Runs check-all first to ensure code quality before version bump (fail early)
 bump version: check-all check-git-cliff
     @echo "Bumping version to {{version}}..."
-    nu scripts/bump_version.nu {{version}}
+    nu scripts/bump_version.nu --skip-checks {{version}}
 
 # Quick release: format, check, test, and build
 release-check: fmt clippy test build-release

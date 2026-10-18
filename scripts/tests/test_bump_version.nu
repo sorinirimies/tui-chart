@@ -78,7 +78,7 @@ def "test bump: rejects existing tag" [] {
     write-fixture $d "0.1.0"
     init-repo $d
     git-in $d tag v0.2.0 | ignore
-    let r = (run-script $d "bump_version.nu" ["--yes" "0.2.0"])
+    let r = (run-script $d "bump_version.nu" ["--yes" "--skip-checks" "0.2.0"])
     assert not equal $r.exit_code 0
     assert ($r.stderr | str contains "already exists")
     assert equal (read_version (open ($d | path join "Cargo.toml") --raw)) "0.1.0"
@@ -101,7 +101,7 @@ def "test bump: full run in temp repo commits and tags" [] {
     do { cd $d; ^cargo generate-lockfile --offline } | complete | ignore
     "//! fixture\n" | save --force ($d | path join "src" "lib.rs")
     init-repo $d
-    let r = (run-script $d "bump_version.nu" ["--yes" "0.2.0"])
+    let r = (run-script $d "bump_version.nu" ["--yes" "--skip-checks" "0.2.0"])
     assert equal $r.exit_code 0 $"stdout: ($r.stdout)\nstderr: ($r.stderr)"
     assert equal (read_version (open ($d | path join "Cargo.toml") --raw)) "0.2.0"
     assert (open ($d | path join "README.md") --raw | str contains "version-0.2.0-blue")
