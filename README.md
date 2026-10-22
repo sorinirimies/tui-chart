@@ -37,7 +37,7 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 | `BubbleChart` | scatter with area-scaled bubble sizes |
 | `LollipopChart` | lollipop stems and dumbbells (`LollipopItem::from`), sortable |
 | `SlopeChart` | two-state paired_bars with trend colors and non-overlapping labels |
-| `CalendarHeatmap` | GitHub-style daily calendar with levels, month/weekday labels, legend |
+| `CalendarHeatmap` | GitHub-style daily calendar with levels, month/weekday labels, legend, missing/zero handling |
 | `ViolinChart` | mirrored KDE per group with quartile box and median |
 | `RoseChart` | polar-area / Nightingale chart, area or linear scale, optional hole |
 | `StackedAreaChart` | stacked or 100 % normalised areas with legend |
@@ -133,6 +133,11 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 ### CalendarHeatmap
 
 ![CalendarHeatmap](examples/vhs/output/calendar.gif)
+
+- `NaN` days draw as a dim `·` (missing); `±inf` clamp to the top / bottom of the range.
+- `zero_empty(true)` draws exact-zero days in the dim theme colour, distinct from the lowest level.
+- Flat data renders at the lowest level (all zero) or mid-scale instead of max colour; `bounds()` swaps an inverted range.
+- At height 7 the labels are dropped so the grid still draws; the legend needs height 10+ and shows a 9-step ramp in `continuous()` mode.
 
 ### ViolinChart
 

@@ -38,6 +38,7 @@ pub struct CalendarHeatmap {
     monday_first: bool,
     show_labels: bool,
     legend: bool,
+    zero_empty: bool,
     cell: char,
     bounds: Option<(f64, f64)>,
     theme: Option<Theme>,
@@ -47,7 +48,8 @@ pub struct CalendarHeatmap {
 
 impl CalendarHeatmap {
     /// `start_day` is days since 1970-01-01 (see [`days_from_civil`](crate::days_from_civil));
-    /// `values[i]` is the value of day `start_day + i`. Non-finite values draw as empty.
+    /// `values[i]` is the value of day `start_day + i`. `NaN` draws as a missing
+    /// day (`·`); `±inf` clamp to the top / bottom of the range.
     pub fn new(start_day: i64, values: impl IntoIterator<Item = f64>) -> Self {
         Self {
             start_day,
@@ -63,6 +65,7 @@ impl CalendarHeatmap {
             monday_first: true,
             show_labels: true,
             legend: true,
+            zero_empty: false,
             cell: '■',
             bounds: None,
             theme: None,
@@ -90,7 +93,13 @@ impl CalendarHeatmap {
     );
     setter!(
         /// "Less … More" legend on the bottom row (default on, needs height 10+).
+        /// Shows a 9-step ramp in [`continuous`](Self::continuous) mode.
         legend: bool
+    );
+    setter!(
+        /// Draw exactly-zero days in the dim theme colour instead of the lowest
+        /// gradient colour, so "no activity" is distinct from level 0 (default off).
+        zero_empty: bool
     );
     setter!(
         /// Cell glyph (default `■`).
@@ -103,9 +112,12 @@ impl CalendarHeatmap {
     base_style_setter!(base);
     block_setter!(block, 'static);
 
-    /// Fixed `(min, max)` value range instead of the data range.
+    /// Fixed `(min, max)` value range instead of the data range. Swapped if
+    /// inverted; ignored if either end is not finite.
     pub fn bounds(mut self, min: f64, max: f64) -> Self {
-        self.bounds = Some((min, max));
+        if min.is_finite() && max.is_finite() {
+            self.bounds = Some((min.min(max), min.max(max)));
+        }
         self
     }
 
@@ -116,10 +128,20 @@ impl CalendarHeatmap {
     }
 
     fn color_for(&self, v: f64, lo: f64, hi: f64) -> Color {
+        let v = if v == f64::INFINITY {
+            hi
+        } else if v == f64::NEG_INFINITY {
+            lo
+        } else {
+            v
+        };
         let t = if hi > lo {
             ((v - lo) / (hi - lo)).clamp(0.0, 1.0)
+        } else if lo <= 0.0 {
+            // flat data: all-zero is "lowest", anything else sits mid-scale
+            0.0
         } else {
-            1.0
+            0.5
         };
         let t = match self.levels {
             Some(n) if n >= 2 => (t * (n - 1) as f64).round() / (n - 1) as f64,
@@ -159,15 +181,19 @@ impl CalendarHeatmap {
         let off = wd(self.start_day) as usize;
         let weeks = (off + self.values.len()).div_ceil(7);
 
-        let label_w: u16 = if self.show_labels { 4 } else { 0 };
-        let top = inner.y + u16::from(self.show_labels);
+        // labels need one extra row; drop them (not the grid) when height is tight
+        let labels = self.show_labels && inner.height >= 8;
+        let label_w: u16 = if labels { 4 } else { 0 };
+        let top = inner.y + u16::from(labels);
         let legend = self.legend && inner.height >= 10;
-        let grid_h_avail = inner.height - u16::from(self.show_labels) - u16::from(legend);
+        let grid_h_avail = inner.height - u16::from(labels) - u16::from(legend);
         if grid_h_avail < 7 {
             return;
         }
         // widen / heighten cells when the whole year fits with room to spare
         let cw = (((inner.width - label_w) as usize / weeks.max(1)).clamp(2, 4)) as u16;
+        // cells are `cw - 1` glyphs wide (min 1) with a one-column gap
+        let gw = (cw - 1).max(1);
         let ch = (grid_h_avail / 7).clamp(1, 2);
         let max_weeks = ((inner.width - label_w) / cw) as usize;
         if max_weeks == 0 {
@@ -177,7 +203,7 @@ impl CalendarHeatmap {
         let first_week = weeks.saturating_sub(max_weeks);
         let x0 = inner.x + label_w;
 
-        if self.show_labels {
+        if labels {
             let names = if self.monday_first {
                 [(0, "Mon"), (2, "Wed"), (4, "Fri")]
             } else {
@@ -187,30 +213,57 @@ impl CalendarHeatmap {
                 put_str(buf, inner.x, top + row * ch, x0, n, dim);
             }
         }
+        let len = self.values.len() as i64;
+        // month whose 1st falls in week `w`, if any
+        let month_start = |w: usize| -> Option<u32> {
+            (0..7i64).find_map(|r| {
+                let idx = (w * 7) as i64 + r - off as i64;
+                if idx < 0 || idx >= len {
+                    return None;
+                }
+                let (_, m, d) = civil_from_days(self.start_day + idx);
+                (d == 1).then_some(m)
+            })
+        };
+        let label_span = 4usize.div_ceil(cw as usize);
         let mut last_label_end = 0u16;
         for w in first_week..weeks {
             let x = x0 + (w - first_week) as u16 * cw;
             for r in 0..7usize {
                 let idx = (w * 7 + r) as i64 - off as i64;
-                if idx < 0 || idx as usize >= self.values.len() {
+                if idx < 0 || idx >= len {
                     continue;
                 }
                 let v = self.values[idx as usize];
-                let st = if v.is_finite() {
-                    Style::default().fg(self.color_for(v, lo, hi))
-                } else {
+                let missing = v.is_nan();
+                let st = if missing || (self.zero_empty && v == 0.0) {
                     dim
+                } else {
+                    Style::default().fg(self.color_for(v, lo, hi))
                 };
-                let glyph = if v.is_finite() { self.cell } else { '·' };
+                let (glyph, width) = if missing { ('·', 1) } else { (self.cell, gw) };
                 for dy in 0..ch {
-                    buf[(x, top + r as u16 * ch + dy)]
-                        .set_char(glyph)
-                        .set_style(st);
+                    for dx in 0..width {
+                        buf[(x + dx, top + r as u16 * ch + dy)]
+                            .set_char(glyph)
+                            .set_style(st);
+                    }
                 }
-                // month label above the week containing the 1st of a month
-                if self.show_labels {
-                    let (_, m, d) = civil_from_days(self.start_day + idx);
-                    if d == 1 && r < 7 && x >= last_label_end {
+            }
+            if labels {
+                // label the week holding a 1st; on the first visible week fall
+                // back to its month unless the next label would collide
+                let month = month_start(w).or_else(|| {
+                    if w != first_week {
+                        return None;
+                    }
+                    let crowded =
+                        (1..=label_span).any(|k| w + k < weeks && month_start(w + k).is_some());
+                    let first_idx = (w * 7).saturating_sub(off) as i64;
+                    (!crowded).then(|| civil_from_days(self.start_day + first_idx).1)
+                });
+                if let Some(m) = month {
+                    if x >= last_label_end {
                         let name = MONTHS[(m as usize - 1) % 12];
                         put_str(buf, x, inner.y, inner.right(), name, text);
                         last_label_end = x + 4;
@@ -220,8 +273,8 @@ impl CalendarHeatmap {
         }
         if legend {
             let y = inner.bottom() - 1;
-            let n = self.levels.unwrap_or(5).clamp(2, 9);
-            let w = (n * 2 + 11) as u16;
+            let n = self.levels.unwrap_or(9).clamp(2, 9);
+            let w = (n * 2 + 9) as u16;
             let mut x = inner.right().saturating_sub(w).max(inner.x);
             put_str(buf, x, y, inner.right(), "Less ", dim);
             x += 5;
@@ -311,6 +364,127 @@ mod tests {
         let b = render(&year(), 30, 12);
         let t: String = b.content().iter().map(|c| c.symbol()).collect();
         assert!(t.contains("Dec") && !t.contains("Feb"));
+    }
+
+    fn text(b: &Buffer) -> String {
+        b.content().iter().map(|c| c.symbol()).collect()
+    }
+
+    fn row(b: &Buffer, y: u16) -> String {
+        (0..b.area.width).map(|x| b[(x, y)].symbol()).collect()
+    }
+
+    #[test]
+    fn height_seven_drops_labels_but_draws_grid() {
+        let b = render(&year(), 120, 7);
+        let t = text(&b);
+        assert!(t.contains('■') && !t.contains("Jan") && !t.contains("Mon"));
+    }
+
+    #[test]
+    fn month_labels_positioned_above_first_of_month() {
+        // Jan 1 2024 is a Monday: week 0 -> x = 4; Feb 1 is a Thursday in week 4.
+        let b = render(&year(), 120, 12);
+        let top = row(&b, 0);
+        assert_eq!(&top[4..7], "Jan");
+        let feb = top.find("Feb").expect("Feb label");
+        assert!(feb > 4 && top.find("Mar").unwrap() > feb);
+    }
+
+    #[test]
+    fn mid_month_start_labels_first_column() {
+        let c = CalendarHeatmap::new(days_from_civil(2024, 1, 20), (0..120).map(|i| i as f64));
+        let top = row(&render(&c, 120, 12), 0);
+        assert_eq!(&top[4..7], "Jan");
+        assert!(top.contains("Feb"));
+    }
+
+    #[test]
+    fn truncated_view_labels_left_edge_month() {
+        let top = row(&render(&year(), 30, 12), 0);
+        assert!(top.contains("Dec"));
+        assert!(
+            top[4..8].trim().len() >= 3,
+            "left edge month unlabeled: {top:?}"
+        );
+    }
+
+    #[test]
+    fn labels_do_not_overlap() {
+        let top = row(&render(&year(), 60, 12), 0);
+        for m in MONTHS {
+            assert!(top.matches(m).count() <= 1, "{top:?}");
+        }
+    }
+
+    #[test]
+    fn flat_data_is_not_max_colour() {
+        let max = Color::Rgb(57, 211, 83);
+        let fg = |vals: Vec<f64>| {
+            let c = CalendarHeatmap::new(days_from_civil(2024, 1, 1), vals);
+            render(&c, 40, 12)[(4, 1)].fg
+        };
+        assert_ne!(fg(vec![5.0; 30]), max);
+        assert_eq!(fg(vec![0.0; 30]), Color::Rgb(28, 33, 40));
+    }
+
+    #[test]
+    fn inverted_and_nan_bounds_are_normalised() {
+        let a = render(&year().bounds(8.0, 0.0), 120, 12);
+        let b = render(&year().bounds(0.0, 8.0), 120, 12);
+        assert_eq!(a, b);
+        let c = render(&year().bounds(f64::NAN, 1.0), 120, 12);
+        assert_eq!(c, render(&year(), 120, 12));
+    }
+
+    #[test]
+    fn nan_is_missing_and_inf_clamps() {
+        let c = CalendarHeatmap::new(
+            days_from_civil(2024, 1, 1),
+            [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, 0.0, 10.0],
+        );
+        let b = render(&c, 40, 12);
+        assert_eq!(b[(4, 1)].symbol(), "·");
+        assert_eq!(b[(4, 2)].fg, Color::Rgb(57, 211, 83));
+        assert_eq!(b[(4, 3)].fg, Color::Rgb(28, 33, 40));
+    }
+
+    #[test]
+    fn zero_empty_uses_dim_style() {
+        let vals = [0.0, 5.0, 10.0];
+        let mk = |z| CalendarHeatmap::new(days_from_civil(2024, 1, 1), vals).zero_empty(z);
+        let off = render(&mk(false), 40, 12)[(4, 1)].fg;
+        let on = render(&mk(true), 40, 12)[(4, 1)].fg;
+        assert_ne!(off, on);
+    }
+
+    #[test]
+    fn wide_cells_fill_multiple_columns() {
+        // 10 weeks in 60 cols -> cw = 4, glyphs 3 wide
+        let c = CalendarHeatmap::new(days_from_civil(2024, 1, 1), (0..70).map(|i| i as f64));
+        let b = render(&c, 60, 12);
+        assert!((4..7).all(|x| b[(x, 1)].symbol() == "■"));
+        assert_eq!(b[(7, 1)].symbol(), " ");
+    }
+
+    #[test]
+    fn tall_cells_use_two_rows() {
+        let b = render(&year(), 120, 18);
+        assert_eq!(b[(4, 1)].symbol(), "■");
+        assert_eq!(b[(4, 2)].symbol(), "■");
+    }
+
+    #[test]
+    fn legend_sizes_follow_mode() {
+        let swatches = |c: &CalendarHeatmap| {
+            let b = render(c, 120, 12);
+            row(&b, 11).matches('■').count()
+        };
+        assert_eq!(swatches(&year()), 5);
+        assert_eq!(swatches(&year().continuous()), 9);
+        assert_eq!(swatches(&year().levels(3)), 3);
+        let t = row(&render(&year(), 120, 12), 11);
+        assert!(t.trim_end().ends_with("More") && t.contains("Less"));
     }
 
     #[test]
