@@ -142,6 +142,11 @@ pub fn draw_annotations(
         return;
     }
     let (w, h) = (plot.width as i32, plot.height as i32);
+    // (row, first column, last column) of the labels of vertical lines already placed, so that
+    // the labels of lines that are close do not print over each other
+    let mut taken: Vec<(i32, i32, i32)> = Vec::new();
+    // drawn after all lines, so that no later line is drawn through a label
+    let mut labels: Vec<(i32, i32, &str, Style)> = Vec::new();
     for a in annotations {
         let text = a.text.as_deref();
         match a.kind {
@@ -167,7 +172,16 @@ pub fn draw_annotations(
                 if let Some(t) = text {
                     let tw = text_width(t) as i32;
                     let col = if c + 1 + tw <= w { c + 1 } else { c - tw };
-                    put_text(buf, plot, col, 0, t, a.style);
+                    // the first row from the top where the label meets no other
+                    let row = (0..h)
+                        .find(|r| {
+                            !taken
+                                .iter()
+                                .any(|&(tr, a0, a1)| tr == *r && col <= a1 && col + tw > a0)
+                        })
+                        .unwrap_or(0);
+                    taken.push((row, col, col + tw - 1));
+                    labels.push((col, row, t, a.style));
                 }
             }
             AnnotationKind::XRegion(x0, x1) => {
@@ -208,6 +222,9 @@ pub fn draw_annotations(
                 }
             }
         }
+    }
+    for (col, row, text, style) in labels {
+        put_text(buf, plot, col, row, text, style);
     }
 }
 
@@ -253,6 +270,28 @@ mod tests {
         assert_eq!(buf[(5, 5)].symbol(), "╎");
         assert_eq!(buf[(6, 1)].symbol(), "v");
         assert_eq!(buf[(8, 4)].bg, Color::Blue);
+    }
+
+    #[test]
+    fn labels_of_close_vertical_lines_do_not_overlap() {
+        let plot = Rect::new(0, 0, 30, 4);
+        let mut buf = Buffer::empty(plot);
+        let anns = [
+            Annotation::vline(5.0).text("first"),
+            Annotation::vline(7.0).text("second"),
+            Annotation::vline(20.0).text("far"),
+        ];
+        draw_annotations(&mut buf, plot, &anns, &map, &map);
+        let row = |y: u16| {
+            (0..30)
+                .map(|x| buf[(x, y)].symbol().to_string())
+                .collect::<String>()
+        };
+        assert!(row(0).contains("first"), "{}", row(0));
+        // the second label is one row down, whole
+        assert!(row(1).contains("second"), "{}", row(1));
+        // a line far away keeps the top row
+        assert!(row(0).contains("far"), "{}", row(0));
     }
 
     #[test]
