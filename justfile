@@ -273,6 +273,12 @@ bump version: check-all check-git-cliff
     @echo "Bumping version to {{version}}..."
     nu scripts/bump_version.nu --skip-checks {{version}}
 
+# Same as `bump` but skips the y/n confirmation (used by the release recipes)
+[private]
+bump-yes version: check-all check-git-cliff
+    @echo "Bumping version to {{version}}..."
+    nu scripts/bump_version.nu --yes --skip-checks {{version}}
+
 # Quick release: format, check, test, and build
 release-check: fmt clippy test build-release
     @echo "✅ Ready for release!"
@@ -466,35 +472,35 @@ setup-remotes:
     git remote -v
 
 # Full release workflow: bump version and push to GitHub
-release version: (bump version)
+release version: (bump-yes version)
     @echo "Pushing to GitHub..."
     git push origin "$(git branch --show-current)"
     git push origin v{{version}}
     @echo "✅ Release v{{version}} complete on GitHub!"
 
 # Full release workflow: bump version and push to Gitea Microlab
-release-gitea-microlab version: (bump version)
+release-gitea-microlab version: (bump-yes version)
     @echo "Pushing to Gitea Microlab..."
     git push gitea-microlab "$(git branch --show-current)"
     git push gitea-microlab v{{version}}
     @echo "✅ Release v{{version}} complete on Gitea Microlab!"
 
 # Full release workflow: bump version and push to Gitea (nexus-lab instance)
-release-gitea-nexus-lab version: (bump version)
+release-gitea-nexus-lab version: (bump-yes version)
     @echo "Pushing to Gitea (nexus-lab)..."
     git push gitea-nexus-lab "$(git branch --show-current)"
     git push gitea-nexus-lab v{{version}}
     @echo "✅ Release v{{version}} complete on Gitea (nexus-lab)!"
 
 # Full release workflow: bump version and push to Gitea Starscream
-release-gitea-starscream version: (bump version)
+release-gitea-starscream version: (bump-yes version)
     @echo "Pushing to Gitea Starscream..."
     git push gitea-starscream "$(git branch --show-current)"
     git push gitea-starscream v{{version}}
     @echo "✅ Release v{{version}} complete on Gitea Starscream!"
 
 # Full release workflow: bump version and push to GitHub, Gitea, and Gitea (nexus-lab)
-release-all version: (bump version)
+release-all version: (bump-yes version)
     #!/usr/bin/env sh
     failed=""; ok_=""; skipped=""
     for r in origin gitea-microlab gitea-starscream gitea-nexus-lab; do
