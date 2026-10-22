@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.3](https://github.com/sorinirimies/tui-chart/releases/tag/v0.1.3) - 2026-10-22
+
+### Features
+
+- Lollipop, slope, calendar, violin, rose, stacked-area and sankey charts; boxplot mean/notches/jitter; Monochrome accessibility wrapper; golden tests, docs examples ([3fd18e1](https://github.com/sorinirimies/tui-chart/commit/3fd18e162aa5ad57e6d10240edae0f1c351f5003))
+- **comparison:** Comparison, before/after bar pairs per measure, inline or stacked, with a legend ([186be45](https://github.com/sorinirimies/tui-chart/commit/186be452b778a8c4ceeb45be1599eb4417f77dac))
+
+### Bug Fixes
+
+- **annotation:** Labels of close vertical lines go on separate rows instead of printing over each other, and over the lines ([7f87d1f](https://github.com/sorinirimies/tui-chart/commit/7f87d1f3d561c44d10e03c471f750a3e3bd9a5c0))
+
+### Documentation
+
+- **comparison:** Demo gif ([4800427](https://github.com/sorinirimies/tui-chart/commit/4800427c390321eadc007175b78c0f68c6ca58b5))
+
+### CI
+
+- **deps:** Nightly update pushes to main directly like tui-spinner (no manual-merge PR) ([1bd98a5](https://github.com/sorinirimies/tui-chart/commit/1bd98a53208ae5082ec381969b595e0520eab362))
+
 ## [0.1.2](https://github.com/sorinirimies/tui-chart/releases/tag/v0.1.2) - 2026-10-18
 
 ### Features
@@ -81,6 +100,8 @@ This reverts commit 84cc5e27f0e8118c92869d129f38a03b2ff85756. ([aa58de9](https:/
 - Depend on tui-nuances 0.1.6 ([8927821](https://github.com/sorinirimies/tui-chart/commit/89278213e38ec0b99efab66b73724508f10e610b))
 - Depend on tui-nuances 0.1.6 from crates.io ([4069a83](https://github.com/sorinirimies/tui-chart/commit/4069a8395f6b99831381fe6b0fc9110255a67494))
 
+
+[0.1.3]: https://github.com/sorinirimies/tui-chart/compare/v0.1.2...v0.1.3
 
 [0.1.2]: https://github.com/sorinirimies/tui-chart/compare/v0.1.1...v0.1.2
 
