@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4](https://github.com/sorinirimies/tui-chart/releases/tag/v0.1.4) - 2026-10-22
+
+### Refactor
+
+- **paired_bars:** **BREAKING** Rename Comparison to PairedBars; feat: label_color ([8ab9e58](https://github.com/sorinirimies/tui-chart/commit/8ab9e58b97d2b99a301c2ffc343f71a6547279ec))
+
 ## [0.1.3](https://github.com/sorinirimies/tui-chart/releases/tag/v0.1.3) - 2026-10-22
 
 ### Features
@@ -100,6 +106,8 @@ This reverts commit 84cc5e27f0e8118c92869d129f38a03b2ff85756. ([aa58de9](https:/
 - Depend on tui-nuances 0.1.6 ([8927821](https://github.com/sorinirimies/tui-chart/commit/89278213e38ec0b99efab66b73724508f10e610b))
 - Depend on tui-nuances 0.1.6 from crates.io ([4069a83](https://github.com/sorinirimies/tui-chart/commit/4069a8395f6b99831381fe6b0fc9110255a67494))
 
+
+[0.1.4]: https://github.com/sorinirimies/tui-chart/compare/v0.1.3...v0.1.4
 
 [0.1.3]: https://github.com/sorinirimies/tui-chart/compare/v0.1.2...v0.1.3
 
