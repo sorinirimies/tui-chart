@@ -33,6 +33,7 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 | `Treemap` | nested weighted rectangles with group headers and tile gutters |
 | `Funnel` | tapered stages, side labels, conversion % and drop-off (`.taper`, `.show_dropoff`) |
 | `Bullet` | value vs target over qualitative ranges |
+| `Comparison` | before/after bar pairs, each measure on its own scale, inline or stacked, with a legend |
 | `BubbleChart` | scatter with area-scaled bubble sizes |
 | `LollipopChart` | lollipop stems and dumbbells (`LollipopItem::from`), sortable |
 | `SlopeChart` | two-state comparison with trend colors and non-overlapping labels |
@@ -112,6 +113,10 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 ### Bullet
 
 ![Bullet](examples/vhs/output/bullet.gif)
+
+### Comparison
+
+![Comparison](examples/vhs/output/comparison.gif)
 
 ### Bubble
 
@@ -277,6 +282,7 @@ cargo run --features theme --example rose
 cargo run --features theme --example stacked_area
 cargo run --features theme --example sankey
 cargo run --features theme --example bullet
+cargo run --features theme --example comparison
 cargo run --features theme --example funnel
 cargo run --features theme --example chartstack
 cargo run --features theme --example depth

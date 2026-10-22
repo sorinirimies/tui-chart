@@ -9,7 +9,7 @@
 //! - [`BarChart`] – vertical/horizontal, grouped/stacked
 //! - [`Histogram`], [`Heatmap`], [`Sparkline`], [`Gauge`], [`RadarChart`]
 //! - [`BoxPlot`], [`Waterfall`], [`Gantt`], [`DepthChart`], [`RenkoChart`], [`Treemap`]
-//! - [`Funnel`], [`Bullet`], [`BubbleChart`], [`LollipopChart`], [`SlopeChart`], [`CalendarHeatmap`], [`ViolinChart`], [`RoseChart`], [`StackedAreaChart`], [`Sankey`]
+//! - [`Funnel`], [`Bullet`], [`Comparison`], [`BubbleChart`], [`LollipopChart`], [`SlopeChart`], [`CalendarHeatmap`], [`ViolinChart`], [`RoseChart`], [`StackedAreaChart`], [`Sankey`]
 //! - [`ChartStack`] – stack charts with a shared gutter
 //!
 //! ## Accessibility
@@ -87,6 +87,7 @@ mod bullet;
 mod calendar;
 mod candle;
 mod canvas;
+mod comparison;
 mod crosshair;
 mod depth;
 mod funnel;
@@ -130,6 +131,7 @@ pub use candle::{
     IndicatorPane, Overlay, TradeMarker, TradeSide,
 };
 pub use canvas::{Canvas, Marker, OverlapPolicy};
+pub use comparison::{Comparison, ComparisonItem, ComparisonLayout};
 pub use crosshair::{nearest_point, Crosshair, NearestPoint};
 pub use depth::DepthChart;
 pub use funnel::{Funnel, FunnelStage};

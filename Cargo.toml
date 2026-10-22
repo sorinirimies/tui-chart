@@ -135,6 +135,11 @@ path = "examples/bullet.rs"
 required-features = ["theme"]
 
 [[example]]
+name = "comparison"
+path = "examples/comparison.rs"
+required-features = ["theme"]
+
+[[example]]
 name = "bubble"
 path = "examples/bubble.rs"
 required-features = ["theme"]

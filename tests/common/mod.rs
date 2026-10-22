@@ -224,6 +224,18 @@ pub fn all_widgets(d: Data, theme: Option<Th>) -> Vec<(&'static str, Draw)> {
     ));
     let c = t();
     v.push((
+        "Comparison",
+        mk(move || {
+            let it: Vec<ComparisonItem> = vals(d)
+                .into_iter()
+                .enumerate()
+                .map(|(i, x)| ComparisonItem::new(format!("c{i}"), x, x * 0.5).unit("%"))
+                .collect();
+            th!(Comparison::new(it).legend("a", "b"), c.clone())
+        }),
+    ));
+    let c = t();
+    v.push((
         "BubbleChart",
         mk(move || {
             let pts: Vec<(f64, f64, f64)> = vals(d).into_iter().map(|x| (x, x, x)).collect();

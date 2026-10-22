@@ -91,6 +91,10 @@ example-funnel:
 example-bullet:
     cargo run --features theme --example bullet
 
+# Run comparison example
+example-comparison:
+    cargo run --features theme --example comparison
+
 # Run lollipop example
 example-lollipop:
     cargo run --features theme --example lollipop
@@ -136,7 +140,7 @@ example-waterfall:
     cargo run --features theme --example waterfall
 
 # Run all examples (sequentially)
-examples: example-themes example-bars example-boxplot example-candlestick example-chartstack example-bubble example-lollipop example-slope example-calendar example-violin example-rose example-stacked_area example-sankey example-bullet example-funnel example-depth example-gantt example-gauge example-heatmap example-histogram example-line example-radar example-renko example-showcase example-sparkline example-stream example-treemap example-waterfall
+examples: example-themes example-bars example-boxplot example-candlestick example-chartstack example-bubble example-lollipop example-slope example-calendar example-violin example-rose example-stacked_area example-sankey example-bullet example-comparison example-funnel example-depth example-gantt example-gauge example-heatmap example-histogram example-line example-radar example-renko example-showcase example-sparkline example-stream example-treemap example-waterfall
 
 # Run themes example
 example-themes:
@@ -690,6 +694,11 @@ vhs-funnel:
 vhs-bullet:
     vhs examples/vhs/bullet.tape
     @echo "✅ examples/vhs/output/bullet.gif"
+
+# Generate demo GIF for comparison
+vhs-comparison:
+    vhs examples/vhs/comparison.tape
+    @echo "✅ examples/vhs/output/comparison.gif"
 
 # Generate demo GIF for lollipop
 vhs-lollipop:
