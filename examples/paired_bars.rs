@@ -1,4 +1,4 @@
-//! Comparison chart demo. Keys: l layout · up/down adjust the "after" values · t/T theme · q quit
+//! PairedBars chart demo. Keys: l layout · up/down adjust the "after" values · t/T theme · q quit
 
 #[path = "common/mod.rs"]
 mod common;
@@ -10,11 +10,11 @@ use ratatui::{
     widgets::Block,
 };
 use std::time::Duration;
-use tui_chart::{Comparison, ComparisonItem, ComparisonLayout, Theme};
+use tui_chart::{PairedBars, PairedBarsItem, PairedBarsLayout, Theme};
 
 struct State {
     theme: Theme,
-    layout: ComparisonLayout,
+    layout: PairedBarsLayout,
     scale: f64,
 }
 
@@ -22,17 +22,17 @@ fn main() -> anyhow::Result<()> {
     run(
         State {
             theme: Theme::default(),
-            layout: ComparisonLayout::Inline,
+            layout: PairedBarsLayout::Inline,
             scale: 0.5,
         },
         Duration::from_millis(200),
         |f, s| {
             let [main, bar] =
                 Layout::vertical([Constraint::Min(5), Constraint::Length(2)]).areas(f.area());
-            let chart = Comparison::new([
-                ComparisonItem::new("mean ΔE", 3.2, 3.2 * s.scale),
-                ComparisonItem::new("p95 ΔE (worst 5%)", 8.4, 8.4 * s.scale),
-                ComparisonItem::new("over ΔE 7", 12.0, 12.0 * s.scale).unit("%"),
+            let chart = PairedBars::new([
+                PairedBarsItem::new("mean ΔE", 3.2, 3.2 * s.scale),
+                PairedBarsItem::new("p95 ΔE (worst 5%)", 8.4, 8.4 * s.scale),
+                PairedBarsItem::new("over ΔE 7", 12.0, 12.0 * s.scale).unit("%"),
             ])
             .layout(s.layout)
             .legend("46 shipped", "286 in use")
@@ -47,8 +47,8 @@ fn main() -> anyhow::Result<()> {
                 KeyCode::Char('T') => s.theme = s.theme.prev(),
                 KeyCode::Char('l') => {
                     s.layout = match s.layout {
-                        ComparisonLayout::Inline => ComparisonLayout::Stacked,
-                        ComparisonLayout::Stacked => ComparisonLayout::Inline,
+                        PairedBarsLayout::Inline => PairedBarsLayout::Stacked,
+                        PairedBarsLayout::Stacked => PairedBarsLayout::Inline,
                     }
                 }
                 KeyCode::Up => s.scale = (s.scale + 0.1).min(1.2),

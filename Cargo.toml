@@ -135,8 +135,8 @@ path = "examples/bullet.rs"
 required-features = ["theme"]
 
 [[example]]
-name = "comparison"
-path = "examples/comparison.rs"
+name = "paired_bars"
+path = "examples/paired_bars.rs"
 required-features = ["theme"]
 
 [[example]]

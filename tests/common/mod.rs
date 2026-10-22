@@ -224,14 +224,14 @@ pub fn all_widgets(d: Data, theme: Option<Th>) -> Vec<(&'static str, Draw)> {
     ));
     let c = t();
     v.push((
-        "Comparison",
+        "PairedBars",
         mk(move || {
-            let it: Vec<ComparisonItem> = vals(d)
+            let it: Vec<PairedBarsItem> = vals(d)
                 .into_iter()
                 .enumerate()
-                .map(|(i, x)| ComparisonItem::new(format!("c{i}"), x, x * 0.5).unit("%"))
+                .map(|(i, x)| PairedBarsItem::new(format!("c{i}"), x, x * 0.5).unit("%"))
                 .collect();
-            th!(Comparison::new(it).legend("a", "b"), c.clone())
+            th!(PairedBars::new(it).legend("a", "b"), c.clone())
         }),
     ));
     let c = t();

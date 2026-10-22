@@ -100,7 +100,7 @@ All contributions must be submitted through GitHub using the forking workflow:
 | `src/text.rs` | Internal text helpers (`trunc`, clipped `put_str`) |
 | `src/timeaxis.rs`, `src/indicator.rs`, `src/stream.rs` | Time ticks/formatting, technical indicators, ring buffer / streaming series |
 | `src/annotation.rs`, `src/crosshair.rs`, `src/stack.rs` | Overlays, nearest-point lookup, multi-pane layout |
-| `src/<widget>.rs` | One file per widget (`line`, `bar`, `candle`, `histogram`, `heatmap`, `gauge`, `radar`, `treemap`, `boxplot`, `waterfall`, `gantt`, `depth`, `renko`, `sparkline`, `funnel`, `bullet`, `comparison`, `bubble`, `lollipop`, `slope`, `calendar`, `violin`, `rose`, `stacked_area`, `sankey`) |
+| `src/<widget>.rs` | One file per widget (`line`, `bar`, `candle`, `histogram`, `heatmap`, `gauge`, `radar`, `treemap`, `boxplot`, `waterfall`, `gantt`, `depth`, `renko`, `sparkline`, `funnel`, `bullet`, `paired_bars`, `bubble`, `lollipop`, `slope`, `calendar`, `violin`, `rose`, `stacked_area`, `sankey`) |
 | `src/accessibility.rs` | `Monochrome` wrapper / `strip_color`: render any widget without colour (`NO_COLOR` aware) |
 
 ### Macro catalog (`src/macros.rs`)
@@ -143,7 +143,7 @@ is enforced.
 
 - `tests/robustness_test.rs` – widget × area × data matrix (no panic, no writes outside area).
 - `tests/theme_test.rs` – every theme × every widget; explicit colors beat the theme.
-- `tests/snapshots_test.rs` – exact-row buffer comparisons (inline strings).
+- `tests/snapshots_test.rs` – exact-row buffer paired_barss (inline strings).
 - `tests/property_test.rs` – deterministic xorshift property tests (ticks, indicators, ring buffer).
 
 ## Development Setup

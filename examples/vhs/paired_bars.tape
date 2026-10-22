@@ -1,7 +1,7 @@
 # A VHS tape. See https://github.com/charmbracelet/vhs
 
 # for running against the tui-chart git repo https://github.com/sorinirimies/tui-chart
-Output "examples/vhs/output/comparison.gif"
+Output "examples/vhs/output/paired_bars.gif"
 Set Theme "Aardvark Blue"
 Set Width 1200
 Set Height 700
@@ -10,7 +10,7 @@ Set Padding 20
 Set PlaybackSpeed 1
 
 Hide
-Type "clear && cargo run --release --features theme --example comparison"
+Type "clear && cargo run --release --features theme --example paired_bars"
 Enter
 Sleep 5s
 Show

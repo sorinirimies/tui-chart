@@ -1,4 +1,4 @@
-//! Comparison chart: two bars per measure, "before" against "after", each measure on its own scale.
+//! PairedBars chart: two bars per measure, "before" against "after", each measure on its own scale.
 
 use crate::text::put_str;
 use crate::theme::{self, Theme};
@@ -13,7 +13,7 @@ use ratatui::{
 /// One measure: a value before and a value after.
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct ComparisonItem {
+pub struct PairedBarsItem {
     /// Measure label.
     pub label: String,
     /// The first value (the reference).
@@ -24,7 +24,7 @@ pub struct ComparisonItem {
     pub unit: String,
 }
 
-impl ComparisonItem {
+impl PairedBarsItem {
     /// Create a measure without a unit.
     pub fn new(label: impl Into<String>, before: f64, after: f64) -> Self {
         Self {
@@ -45,7 +45,7 @@ impl ComparisonItem {
 /// How the two bars of a measure sit.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub enum ComparisonLayout {
+pub enum PairedBarsLayout {
     /// The label, then both bars on one line (2 rows per measure).
     #[default]
     Inline,
@@ -53,7 +53,7 @@ pub enum ComparisonLayout {
     Stacked,
 }
 
-/// Comparison chart widget: for every measure two bars on one scale `0..max(before, after)`,
+/// PairedBars chart widget: for every measure two bars on one scale `0..max(before, after)`,
 /// so the scales may differ between measures (mixed units work). An optional legend names the
 /// two series.
 ///
@@ -61,11 +61,11 @@ pub enum ComparisonLayout {
 ///
 /// ```
 /// use ratatui::{buffer::Buffer, layout::Rect, widgets::Widget};
-/// use tui_chart::{Comparison, ComparisonItem};
+/// use tui_chart::{PairedBars, PairedBarsItem};
 ///
-/// let chart = Comparison::new([
-///     ComparisonItem::new("mean ΔE", 3.2, 1.8),
-///     ComparisonItem::new("over ΔE 7", 12.0, 4.5).unit("%"),
+/// let chart = PairedBars::new([
+///     PairedBarsItem::new("mean ΔE", 3.2, 1.8),
+///     PairedBarsItem::new("over ΔE 7", 12.0, 4.5).unit("%"),
 /// ])
 /// .legend("46 shipped", "286 in use");
 /// let area = Rect::new(0, 0, 50, 8);
@@ -73,14 +73,15 @@ pub enum ComparisonLayout {
 /// chart.render(area, &mut buf);
 /// ```
 #[derive(Debug, Clone, Default)]
-pub struct Comparison {
-    items: Vec<ComparisonItem>,
-    layout: ComparisonLayout,
+pub struct PairedBars {
+    items: Vec<PairedBarsItem>,
+    layout: PairedBarsLayout,
     legend: Option<(String, String)>,
     decimals: usize,
     max_bar: Option<u16>,
     before_color: Option<Color>,
     after_color: Option<Color>,
+    label_color: Option<Color>,
     theme: Option<Theme>,
     base: Option<Style>,
     block: Option<Block<'static>>,
@@ -94,9 +95,9 @@ fn fin(v: f64) -> f64 {
     }
 }
 
-impl Comparison {
-    /// Create a comparison chart (one decimal in the values).
-    pub fn new(items: impl IntoIterator<Item = ComparisonItem>) -> Self {
+impl PairedBars {
+    /// Create a paired_bars chart (one decimal in the values).
+    pub fn new(items: impl IntoIterator<Item = PairedBarsItem>) -> Self {
         Self {
             items: items.into_iter().collect(),
             decimals: 1,
@@ -104,8 +105,8 @@ impl Comparison {
         }
     }
 
-    /// Where the bars of a measure sit (default: [`ComparisonLayout::Inline`]).
-    pub fn layout(mut self, l: ComparisonLayout) -> Self {
+    /// Where the bars of a measure sit (default: [`PairedBarsLayout::Inline`]).
+    pub fn layout(mut self, l: PairedBarsLayout) -> Self {
         self.layout = l;
         self
     }
@@ -134,6 +135,12 @@ impl Comparison {
         self
     }
 
+    /// Color of the measure labels and legend names (default: the theme's).
+    pub fn label_color(mut self, c: Color) -> Self {
+        self.label_color = Some(c);
+        self
+    }
+
     /// Color of the "after" bars.
     pub fn after_color(mut self, c: Color) -> Self {
         self.after_color = Some(c);
@@ -152,12 +159,12 @@ impl Comparison {
     /// The height one measure takes.
     fn row_height(&self) -> u16 {
         match self.layout {
-            ComparisonLayout::Inline => 2,
-            ComparisonLayout::Stacked => 3,
+            PairedBarsLayout::Inline => 2,
+            PairedBarsLayout::Stacked => 3,
         }
     }
 
-    fn value(&self, it: &ComparisonItem, v: f64) -> String {
+    fn value(&self, it: &PairedBarsItem, v: f64) -> String {
         format!("{:.*}{}", self.decimals, fin(v), it.unit)
     }
 
@@ -169,6 +176,7 @@ impl Comparison {
         }
         let th = self.theme.as_ref();
         let text = th.map_or(Style::default(), |t| t.label_style());
+        let text = self.label_color.map_or(text, |c| text.fg(c));
         let accent = th.map_or(Color::Cyan, |t| t.accent);
         let muted = th.map_or(Color::DarkGray, |t| darken(t.foreground, 0.45));
         let before = self.before_color.unwrap_or(muted);
@@ -201,7 +209,7 @@ impl Comparison {
             };
             let (vbs, vas) = (self.value(it, it.before), self.value(it, it.after));
             match self.layout {
-                ComparisonLayout::Inline => {
+                PairedBarsLayout::Inline => {
                     let gap = 2u16;
                     let free = inner.width.saturating_sub(vb + va + gap);
                     let mut w = free / 2;
@@ -234,7 +242,7 @@ impl Comparison {
                         Style::default().fg(after),
                     );
                 }
-                ComparisonLayout::Stacked => {
+                PairedBarsLayout::Stacked => {
                     let v = vb.max(va);
                     let mut w = inner.width.saturating_sub(v);
                     if let Some(m) = self.max_bar {
@@ -288,10 +296,10 @@ fn bar(buf: &mut Buffer, x: u16, y: u16, cells: u16, color: Color) {
     }
 }
 
-widget_impls!(Comparison);
+widget_impls!(PairedBars);
 
 #[cfg(feature = "theme")]
-impl tui_nuances::Themed for Comparison {
+impl tui_nuances::Themed for PairedBars {
     fn apply_theme(self, theme: &tui_nuances::Theme) -> Self {
         self.theme(theme)
     }
@@ -302,7 +310,7 @@ mod tests {
     use super::*;
     use ratatui::widgets::Widget;
 
-    fn render(c: &Comparison, w: u16, h: u16) -> Buffer {
+    fn render(c: &PairedBars, w: u16, h: u16) -> Buffer {
         let a = Rect::new(0, 0, w, h);
         let mut buf = Buffer::empty(a);
         c.render(a, &mut buf);
@@ -322,7 +330,7 @@ mod tests {
 
     #[test]
     fn the_larger_value_gets_the_longer_bar() {
-        let c = Comparison::new([ComparisonItem::new("mean", 4.0, 1.0)])
+        let c = PairedBars::new([PairedBarsItem::new("mean", 4.0, 1.0)])
             .before_color(Color::Red)
             .after_color(Color::Green);
         let buf = render(&c, 50, 2);
@@ -334,17 +342,17 @@ mod tests {
     #[test]
     fn a_value_above_zero_always_shows_a_bar() {
         let c =
-            Comparison::new([ComparisonItem::new("m", 1000.0, 0.001)]).after_color(Color::Green);
+            PairedBars::new([PairedBarsItem::new("m", 1000.0, 0.001)]).after_color(Color::Green);
         assert_eq!(blocks(&render(&c, 50, 2), Color::Green), 1);
-        let zero = Comparison::new([ComparisonItem::new("m", 5.0, 0.0)]).after_color(Color::Green);
+        let zero = PairedBars::new([PairedBarsItem::new("m", 5.0, 0.0)]).after_color(Color::Green);
         assert_eq!(blocks(&render(&zero, 50, 2), Color::Green), 0);
     }
 
     #[test]
     fn each_measure_has_its_own_scale_and_unit() {
-        let c = Comparison::new([
-            ComparisonItem::new("a", 2.0, 1.0),
-            ComparisonItem::new("b", 90.0, 45.0).unit("%"),
+        let c = PairedBars::new([
+            PairedBarsItem::new("a", 2.0, 1.0),
+            PairedBarsItem::new("b", 90.0, 45.0).unit("%"),
         ])
         .before_color(Color::Red);
         let buf = render(&c, 50, 4);
@@ -360,8 +368,8 @@ mod tests {
 
     #[test]
     fn stacked_puts_the_bars_on_two_rows() {
-        let c = Comparison::new([ComparisonItem::new("m", 4.0, 2.0)])
-            .layout(ComparisonLayout::Stacked)
+        let c = PairedBars::new([PairedBarsItem::new("m", 4.0, 2.0)])
+            .layout(PairedBarsLayout::Stacked)
             .before_color(Color::Red)
             .after_color(Color::Green);
         let buf = render(&c, 40, 3);
@@ -376,14 +384,14 @@ mod tests {
 
     #[test]
     fn the_legend_needs_a_spare_row() {
-        let c = Comparison::new([ComparisonItem::new("m", 4.0, 2.0)]).legend("old", "new");
+        let c = PairedBars::new([PairedBarsItem::new("m", 4.0, 2.0)]).legend("old", "new");
         assert!(text(&render(&c, 40, 3)).contains("new"));
         assert!(!text(&render(&c, 40, 2)).contains("new"));
     }
 
     #[test]
     fn decimals_and_a_cap_on_the_bar() {
-        let c = Comparison::new([ComparisonItem::new("m", 4.0, 2.0)])
+        let c = PairedBars::new([PairedBarsItem::new("m", 4.0, 2.0)])
             .decimals(2)
             .max_bar_width(5)
             .before_color(Color::Red);
@@ -394,25 +402,32 @@ mod tests {
 
     #[test]
     fn degenerate_inputs_do_not_panic() {
-        let c = Comparison::new([ComparisonItem::new("x", f64::NAN, f64::INFINITY)]);
-        for l in [ComparisonLayout::Inline, ComparisonLayout::Stacked] {
+        let c = PairedBars::new([PairedBarsItem::new("x", f64::NAN, f64::INFINITY)]);
+        for l in [PairedBarsLayout::Inline, PairedBarsLayout::Stacked] {
             let c = c.clone().layout(l).legend("a", "b");
             for (w, h) in [(0, 0), (3, 1), (8, 1), (20, 2), (40, 12)] {
                 render(&c, w, h);
             }
         }
-        render(&Comparison::new([]), 20, 3);
+        render(&PairedBars::new([]), 20, 3);
         render(
-            &Comparison::new([ComparisonItem::new("n", -3.0, -1.0)]),
+            &PairedBars::new([PairedBarsItem::new("n", -3.0, -1.0)]),
             20,
             3,
         );
     }
 
     #[test]
+    fn labels_take_their_color() {
+        let c = PairedBars::new([PairedBarsItem::new("lab", 4.0, 2.0)]).label_color(Color::Magenta);
+        let buf = render(&c, 40, 2);
+        assert_eq!(buf[(0, 0)].fg, Color::Magenta);
+    }
+
+    #[test]
     fn many_measures_are_cut_to_fit() {
-        let items = (0..8).map(|i| ComparisonItem::new(format!("m{i}"), 3.0, 1.0));
-        let c = Comparison::new(items);
+        let items = (0..8).map(|i| PairedBarsItem::new(format!("m{i}"), 3.0, 1.0));
+        let c = PairedBars::new(items);
         for h in [1, 2, 3, 7, 40] {
             render(&c, 50, h);
         }

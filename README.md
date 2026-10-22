@@ -24,7 +24,7 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 | `Heatmap` | multiple color gradients, `.stretch(true)` to fill the area |
 | `Sparkline` | bars, area, line, win/loss, moving-average `.smooth(n)` |
 | `Gauge` | linear, blocks, segmented and arc dial with scale, needle and target |
-| `RadarChart` | multi-axis comparison, filled polygons, ring values, legend |
+| `RadarChart` | multi-axis paired_bars, filled polygons, ring values, legend |
 | `BoxPlot` | quartiles, whiskers, outliers, mean marker, notches, jittered points |
 | `Waterfall` | running deltas and totals |
 | `Gantt` | task timeline with progress |
@@ -33,10 +33,10 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 | `Treemap` | nested weighted rectangles with group headers and tile gutters |
 | `Funnel` | tapered stages, side labels, conversion % and drop-off (`.taper`, `.show_dropoff`) |
 | `Bullet` | value vs target over qualitative ranges |
-| `Comparison` | before/after bar pairs, each measure on its own scale, inline or stacked, with a legend |
+| `PairedBars` | before/after bar pairs, each measure on its own scale, inline or stacked, with a legend |
 | `BubbleChart` | scatter with area-scaled bubble sizes |
 | `LollipopChart` | lollipop stems and dumbbells (`LollipopItem::from`), sortable |
-| `SlopeChart` | two-state comparison with trend colors and non-overlapping labels |
+| `SlopeChart` | two-state paired_bars with trend colors and non-overlapping labels |
 | `CalendarHeatmap` | GitHub-style daily calendar with levels, month/weekday labels, legend |
 | `ViolinChart` | mirrored KDE per group with quartile box and median |
 | `RoseChart` | polar-area / Nightingale chart, area or linear scale, optional hole |
@@ -114,9 +114,9 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 
 ![Bullet](examples/vhs/output/bullet.gif)
 
-### Comparison
+### PairedBars
 
-![Comparison](examples/vhs/output/comparison.gif)
+![PairedBars](examples/vhs/output/paired_bars.gif)
 
 ### Bubble
 
@@ -282,7 +282,7 @@ cargo run --features theme --example rose
 cargo run --features theme --example stacked_area
 cargo run --features theme --example sankey
 cargo run --features theme --example bullet
-cargo run --features theme --example comparison
+cargo run --features theme --example paired_bars
 cargo run --features theme --example funnel
 cargo run --features theme --example chartstack
 cargo run --features theme --example depth
