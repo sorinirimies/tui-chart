@@ -1556,6 +1556,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tui-nuances",
+ "tui-piechart",
  "unicode-width",
 ]
 
@@ -1567,6 +1568,16 @@ checksum = "527c5d1fdb0254bad616d5f585a24236c143741a6f5c082798e38a5221fa3719"
 dependencies = [
  "ratatui",
  "serde",
+]
+
+[[package]]
+name = "tui-piechart"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5cb782dbfc50939173957a794a70ad58e445d6494c96d9231fc3e3c0812f290c"
+dependencies = [
+ "ratatui",
+ "tui-nuances",
 ]
 
 [[package]]

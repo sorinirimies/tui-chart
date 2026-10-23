@@ -4,7 +4,7 @@ version = "0.1.5"
 edition = "2021"
 authors = ["Sorin Irimies <sorinirimies@gmail.com>"]
 license = "MIT"
-description = "Terminal chart widgets for ratatui: line, bar, candlestick, histogram, heatmap, gauge, radar, treemap and more, with themes, annotations and streaming"
+description = "Terminal chart widgets for ratatui: line, bar, candlestick, histogram, heatmap, gauge, radar, treemap, pie (via tui-piechart) and more, with themes, annotations and streaming"
 repository = "https://github.com/sorinirimies/tui-chart"
 readme = "README.md"
 keywords = ["tui", "chart", "ratatui", "candlestick", "plot"]
@@ -30,11 +30,16 @@ unicode-width = "0.2"
 serde = { version = "1", features = ["derive"], optional = true }
 # Shared theme crate; switch to the crates.io version after it is published.
 tui-nuances = { version = "0.1.6", optional = true }
+# Pie charts live in their own crate (https://github.com/sorinirimies/tui-piechart)
+# and are re-exported from here so one dependency gives you everything.
+tui-piechart = { version = "1.1.0", optional = true }
 
 [features]
-default = []
+default = ["piechart"]
+# Re-export the `tui-piechart` crate (`tui_chart::piechart`, `PieChart`, `PieSlice`).
+piechart = ["dep:tui-piechart"]
 # Opt-in theming: `Theme`, `.theme(..)` builders on every widget, `Themed` impls.
-theme = ["dep:tui-nuances"]
+theme = ["dep:tui-nuances", "tui-piechart?/theme"]
 # Derive Serialize/Deserialize on data types (and on Theme when `theme` is on).
 serde = ["dep:serde", "ratatui/serde", "tui-nuances?/serde"]
 

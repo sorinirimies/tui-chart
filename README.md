@@ -139,6 +139,17 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 - Flat data renders at the lowest level (all zero) or mid-scale instead of max colour; `bounds()` swaps an inverted range.
 - At height 7 the labels are dropped so the grid still draws; the legend needs height 10+ and shows a 9-step ramp in `continuous()` mode.
 
+### PieChart
+
+Pie charts come from the companion crate [tui-piechart](https://github.com/sorinirimies/tui-piechart),
+re-exported here (default `piechart` feature) so a single `tui-chart` dependency gives you both:
+
+```rust
+use tui_chart::{PieChart, PieSlice}; // or tui_chart::piechart::*
+```
+
+Disable with `default-features = false` if you don't need it; `theme` forwards to `tui-piechart/theme`.
+
 ### ViolinChart
 
 ![ViolinChart](examples/vhs/output/violin.gif)

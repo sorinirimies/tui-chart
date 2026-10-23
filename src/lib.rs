@@ -11,6 +11,9 @@
 //! - [`BoxPlot`], [`Waterfall`], [`Gantt`], [`DepthChart`], [`RenkoChart`], [`Treemap`]
 //! - [`Funnel`], [`Bullet`], [`PairedBars`], [`BubbleChart`], [`LollipopChart`], [`SlopeChart`], [`CalendarHeatmap`], [`ViolinChart`], [`RoseChart`], [`StackedAreaChart`], [`Sankey`]
 //! - [`ChartStack`] – stack charts with a shared gutter
+//! - [`PieChart`] / [`PieSlice`] – re-exported from the
+//!   [`tui-piechart`](https://crates.io/crates/tui-piechart) crate (default `piechart` feature;
+//!   the whole crate is also available as [`piechart`])
 //!
 //! ## Accessibility
 //!
@@ -77,6 +80,12 @@
 
 #[macro_use]
 mod macros;
+/// The full [`tui-piechart`](https://docs.rs/tui-piechart) crate, re-exported.
+#[cfg(feature = "piechart")]
+pub use tui_piechart as piechart;
+#[cfg(feature = "piechart")]
+pub use tui_piechart::{PieChart, PieSlice};
+
 mod accessibility;
 mod annotation;
 mod axis;
