@@ -141,6 +141,8 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 
 ### PieChart
 
+![PieChart](examples/vhs/output/pie.gif)
+
 Pie charts come from the companion crate [tui-piechart](https://github.com/sorinirimies/tui-piechart),
 re-exported here (default `piechart` feature) so a single `tui-chart` dependency gives you both:
 
@@ -293,6 +295,7 @@ cargo run --features theme --example bubble
 cargo run --features theme --example lollipop
 cargo run --features theme --example slope
 cargo run --features theme --example calendar
+cargo run --example pie
 cargo run --features theme --example violin
 cargo run --features theme --example rose
 cargo run --features theme --example stacked_area

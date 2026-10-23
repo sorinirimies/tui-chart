@@ -183,6 +183,11 @@ path = "examples/calendar.rs"
 required-features = ["theme"]
 
 [[example]]
+name = "pie"
+path = "examples/pie.rs"
+required-features = ["piechart"]
+
+[[example]]
 name = "violin"
 path = "examples/violin.rs"
 required-features = ["theme"]
