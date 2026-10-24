@@ -11,6 +11,7 @@
 //! - [`BoxPlot`], [`Waterfall`], [`Gantt`], [`DepthChart`], [`RenkoChart`], [`Treemap`]
 //! - [`Funnel`], [`Bullet`], [`PairedBars`], [`BubbleChart`], [`LollipopChart`], [`SlopeChart`], [`CalendarHeatmap`], [`ViolinChart`], [`RoseChart`], [`StackedAreaChart`], [`Sankey`]
 //! - [`RadialBar`], [`RingStack`] – concentric progress rings
+//! - [`Oscilloscope`], [`Spectrum`], [`DotMatrix`], [`RadarScope`], [`HexMap`] – instrument panels
 //! - [`ChartStack`] – stack charts with a shared gutter
 //! - [`PieChart`] / [`PieSlice`] – re-exported from the
 //!   [`tui-piechart`](https://crates.io/crates/tui-piechart) crate (default `piechart` feature;
@@ -107,6 +108,7 @@ mod gauge_kit;
 mod heatmap;
 mod histogram;
 mod indicator;
+mod instruments;
 mod layout;
 mod line;
 mod lollipop;
@@ -152,6 +154,10 @@ pub use gauge::{Gauge, GaugeOrientation, GaugeStyle};
 pub use heatmap::{Gradient, Heatmap};
 pub use histogram::{Bin, Histogram};
 pub use indicator::{atr, bollinger, macd, rsi, stochastic, vwap};
+pub use instruments::{
+    blip_alpha, ecg_beat, hex_center, hex_extent, jitter, Blip, DotMatrix, HexMap, Oscilloscope,
+    RadarScope, Spectrum,
+};
 pub use line::{LegendPosition, LineChart, LineMode, Series};
 pub use lollipop::{LollipopChart, LollipopItem};
 pub use paired_bars::{PairedBars, PairedBarsItem, PairedBarsLayout};

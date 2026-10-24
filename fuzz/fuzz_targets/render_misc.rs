@@ -8,6 +8,14 @@ use tui_chart::*;
 
 #[derive(Arbitrary, Debug)]
 enum Input {
+    Instrument {
+        values: Vec<f64>,
+        peaks: Vec<f64>,
+        cols: u8,
+        phase: f64,
+        kind: u8,
+        size: Size,
+    },
     Radial {
         rings: Vec<(String, f64, f64)>,
         full: bool,
@@ -281,6 +289,19 @@ fuzz_target!(|i: Input| match i {
             let sweep = if full { RadialSweep::Full } else { RadialSweep::Arc };
             let rings = rings.into_iter().map(|(l, v, m)| RadialRing::new(l, v, m));
             render(RadialBar::new(rings).sweep(sweep).legend(legend), size);
+        }
+    }
+    Input::Instrument { values, peaks, cols, phase, kind, size } => {
+        let values: Vec<f64> = values.into_iter().take(256).collect();
+        match kind % 5 {
+            0 => render(Oscilloscope::new(values).phase(phase), size),
+            1 => render(Spectrum::new(values).peaks(peaks), size),
+            2 => render(DotMatrix::new(values).rows(usize::from(cols)), size),
+            3 => {
+                let b = values.chunks(2).map(|c| Blip::new(c[0], *c.get(1).unwrap_or(&0.5)));
+                render(RadarScope::new(b).phase(phase), size);
+            }
+            _ => render(HexMap::new(usize::from(cols), values).phase(phase), size),
         }
     }
     Input::Gauge { value, range, bands, target, orient, style, size } => {

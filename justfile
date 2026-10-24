@@ -87,6 +87,10 @@ example-chartstack:
 example-radial:
     cargo run --features theme --example radial
 
+# Run instruments example
+example-instruments:
+    cargo run --features theme --example instruments
+
 # Run funnel example
 example-funnel:
     cargo run --features theme --example funnel
@@ -699,6 +703,11 @@ vhs-chartstack:
 vhs-radial:
     vhs examples/vhs/radial.tape
     @echo "✅ examples/vhs/output/radial.gif"
+
+# Generate demo GIF for instruments
+vhs-instruments:
+    vhs examples/vhs/instruments.tape
+    @echo "✅ examples/vhs/output/instruments.gif"
 
 # Generate demo GIF for funnel
 vhs-funnel:

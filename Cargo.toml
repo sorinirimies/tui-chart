@@ -188,6 +188,11 @@ path = "examples/radial.rs"
 required-features = ["theme"]
 
 [[example]]
+name = "instruments"
+path = "examples/instruments.rs"
+required-features = ["theme"]
+
+[[example]]
 name = "pie"
 path = "examples/pie.rs"
 required-features = ["piechart"]

@@ -32,6 +32,7 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 | `RenkoChart` | fixed-size price bricks |
 | `Treemap` | nested weighted rectangles with group headers and tile gutters |
 | `RadialBar` / `RingStack` | concentric progress rings (270° or full), legend with percentages |
+| `Oscilloscope` / `Spectrum` / `DotMatrix` / `RadarScope` / `HexMap` | instrument panels: ECG/wave trace, equalizer with peak caps, LED dot matrix, sweeping radar scope, honeycomb heat map (animate with `.phase(t)`) |
 | `Funnel` | tapered stages, side labels, conversion % and drop-off (`.taper`, `.show_dropoff`) |
 | `Bullet` | value vs target over qualitative ranges |
 | `PairedBars` | before/after bar pairs, each measure on its own scale, inline or stacked, with a legend |
@@ -78,6 +79,10 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 ### RadialBar
 
 ![RadialBar](examples/vhs/output/radial.gif)
+
+### Instruments
+
+![Instruments](examples/vhs/output/instruments.gif)
 
 ### RadarChart
 
@@ -308,6 +313,7 @@ cargo run --features theme --example sankey
 cargo run --features theme --example bullet
 cargo run --features theme --example paired_bars
 cargo run --features theme --example funnel
+cargo run --features theme --example instruments
 cargo run --features theme --example radial
 cargo run --features theme --example chartstack
 cargo run --features theme --example depth

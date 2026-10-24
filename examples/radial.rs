@@ -63,7 +63,11 @@ fn main() -> anyhow::Result<()> {
                 .block(block);
                 f.render_widget(&chart, main);
             }
-            help(f, bar, " m mode · f full sweep · l legend · t/T theme · q quit");
+            help(
+                f,
+                bar,
+                " m mode · f full sweep · l legend · t/T theme · q quit",
+            );
         },
         |s, key| {
             match key {
