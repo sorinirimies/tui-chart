@@ -363,8 +363,6 @@ MIT
 
 ## Cyberpunk effects and shaders
 
-![cyber](examples/vhs/output/cyber.gif)
-
 `Fx`, `glow`, `scanlines`, `chamfer_block` and `bracket_block` work on any widget and need no GPU.
 
 ```rust
