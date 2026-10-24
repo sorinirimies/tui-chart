@@ -11,19 +11,15 @@ Set Framerate 12
 Set PlaybackSpeed 1
 
 Hide
-Type "clear && cargo run --release --features theme,shader --example cyber"
+Type "clear && cargo run --release --features theme --example cyber"
 Enter
 Sleep 4s
 Show
 
 Sleep 2s
-Type "b"
+Type "t"
 Sleep 2s
-Type "p"
-Sleep 2s
-Type "p"
-Sleep 2s
-Type "g"
+Type "t"
 Sleep 2s
 Type "s"
 Sleep 2s

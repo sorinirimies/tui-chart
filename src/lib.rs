@@ -120,8 +120,6 @@ mod renko;
 mod rose;
 mod sankey;
 mod scale;
-#[cfg(feature = "shader")]
-mod shader;
 mod slope;
 mod sparkline;
 mod stack;
@@ -170,8 +168,6 @@ pub use radial::{RadialBar, RadialRing, RadialSweep, RingStack};
 pub use renko::{renko_bricks, RenkoBrick, RenkoChart, RenkoStyle};
 pub use rose::{RoseChart, RoseItem};
 pub use sankey::{Sankey, SankeyLink};
-#[cfg(feature = "shader")]
-pub use shader::{ShaderBackdrop, ShaderPreset};
 pub use slope::{SlopeChart, SlopeItem};
 pub use sparkline::{Sparkline, SparklineStyle};
 pub use stack::{shared_gutter, ChartStack, StackDirection};

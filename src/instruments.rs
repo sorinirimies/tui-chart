@@ -218,7 +218,11 @@ impl Oscilloscope {
             let major = mix(p.grid, p.fg, 0.4);
             for i in 0..=10 {
                 let x = ((w - 1.0) * f64::from(i) / 10.0).round();
-                let (col, step) = if i == 5 { (major, 1) } else { (p.grid, 4) };
+                let (col, step) = if i == 5 {
+                    (major, 1)
+                } else {
+                    (darken(p.grid, 0.4), 8)
+                };
                 let mut y = 0.0;
                 while y < h {
                     g.plot(x, y, col, 0);
@@ -227,7 +231,11 @@ impl Oscilloscope {
             }
             for i in 0..=8 {
                 let y = ((h - 1.0) * f64::from(i) / 8.0).round();
-                let (col, step) = if i == 4 { (major, 1) } else { (p.grid, 4) };
+                let (col, step) = if i == 4 {
+                    (major, 1)
+                } else {
+                    (darken(p.grid, 0.4), 8)
+                };
                 let mut x = 0.0;
                 while x < w {
                     g.plot(x, y, col, 0);
