@@ -357,10 +357,6 @@ helpers and the serde path are fuzzed with `cargo-fuzz` (`fuzz/`, the Fuzz
 workflow). Locally: `just audit`, `just deny`, `just fuzz render_line`,
 `just fuzz-all`.
 
-## License
-
-MIT
-
 ## Cyberpunk effects and shaders
 
 `Fx`, `glow`, `scanlines`, `chamfer_block` and `bracket_block` work on any widget and need no GPU.
@@ -375,3 +371,7 @@ With the opt-in `shader` feature, `ShaderBackdrop` runs a WGSL fragment shader t
 Shaders cannot draw data, so charts stay on the CPU and the shader supplies the background.
 
 `cargo run --release --features theme,shader --example cyber`
+
+## License
+
+MIT
