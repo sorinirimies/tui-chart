@@ -110,6 +110,7 @@ mod heatmap;
 mod histogram;
 mod indicator;
 mod instruments;
+mod interact;
 mod layout;
 mod line;
 mod lollipop;
@@ -160,6 +161,7 @@ pub use instruments::{
     blip_alpha, ecg_beat, hex_center, hex_extent, jitter, Blip, DotMatrix, HexMap, Oscilloscope,
     RadarScope, Spectrum,
 };
+pub use interact::{Click, Hit, HitKind, HitMap, Interaction};
 pub use line::{LegendPosition, LineChart, LineMode, Series};
 pub use lollipop::{LollipopChart, LollipopItem};
 pub use paired_bars::{PairedBars, PairedBarsItem, PairedBarsLayout};

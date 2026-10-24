@@ -95,6 +95,10 @@ example-instruments:
 example-cyber:
     cargo run --features theme --example cyber
 
+# Run interactive example
+example-interactive:
+    cargo run --features theme --example interactive
+
 # Run funnel example
 example-funnel:
     cargo run --features theme --example funnel
@@ -717,6 +721,11 @@ vhs-instruments:
 vhs-cyber:
     vhs examples/vhs/cyber.tape
     @echo "✅ examples/vhs/output/cyber.gif"
+
+# Generate demo GIF for interactive
+vhs-interactive:
+    vhs examples/vhs/interactive.tape
+    @echo "✅ examples/vhs/output/interactive.gif"
 
 # Generate demo GIF for funnel
 vhs-funnel:

@@ -168,6 +168,20 @@ impl PairedBars {
         format!("{:.*}{}", self.decimals, fin(v), it.unit)
     }
 
+    /// Report the before / after bars of `it` (`at` holds their `(x, y)`).
+    fn record_pair(&self, it: &PairedBarsItem, ii: usize, at: [(u16, u16); 2], w: u16) {
+        for (k, (x, y)) in at.into_iter().enumerate() {
+            let v = if k == 0 { it.before } else { it.after };
+            crate::interact::record_point(Rect::new(x, y, w, 1), k, ii, || {
+                let side = if k == 0 { "before" } else { "after" };
+                (
+                    it.label.clone(),
+                    vec![format!("{side}: {}", self.value(it, v))],
+                )
+            });
+        }
+    }
+
     fn render_into(&self, area: Rect, buf: &mut Buffer) {
         let area = area.intersection(buf.area);
         let inner = theme::begin(&self.block, &self.theme, self.base, area, buf);
@@ -194,7 +208,7 @@ impl PairedBars {
         let va = wide.max().unwrap_or(0) as u16 + 1;
         let mut y = inner.y;
         let rows_fit = (inner.height / rh) as usize;
-        for it in self.items.iter().take(rows_fit.max(1)) {
+        for (ii, it) in self.items.iter().take(rows_fit.max(1)).enumerate() {
             if y + rh > inner.bottom() {
                 break;
             }
@@ -222,6 +236,7 @@ impl PairedBars {
                     }
                     let by = y + 1;
                     let x1 = inner.x;
+                    self.record_pair(it, ii, [(x1, by), (x1 + w + vb + gap, by)], w);
                     bar(buf, x1, by, cells(it.before, w), before);
                     put_str(
                         buf,
@@ -252,6 +267,7 @@ impl PairedBars {
                         y += rh;
                         continue;
                     }
+                    self.record_pair(it, ii, [(inner.x, y + 1), (inner.x, y + 2)], w);
                     bar(buf, inner.x, y + 1, cells(it.before, w), before);
                     put_str(
                         buf,

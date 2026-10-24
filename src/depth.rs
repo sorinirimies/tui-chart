@@ -218,6 +218,23 @@ impl DepthChart {
             } else {
                 (a, self.ask())
             };
+            if v > 0.0 && max > 0.0 {
+                let rows = ((v / max * f64::from(plot_h)).ceil() as u16).clamp(1, plot_h);
+                crate::interact::record_point(
+                    Rect::new(x, top + plot_h - rows, 1, rows),
+                    usize::from(b <= 0.0),
+                    i,
+                    || {
+                        (
+                            (if b > 0.0 { "bid" } else { "ask" }).to_string(),
+                            vec![
+                                format!("price {}", format_compact(prices[i])),
+                                format!("depth {}", format_compact(v)),
+                            ],
+                        )
+                    },
+                );
+            }
             if self.marker.is_some() {
                 if mid_col == Some(i) {
                     for r in 0..plot_h {

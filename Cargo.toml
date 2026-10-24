@@ -198,6 +198,11 @@ path = "examples/cyber.rs"
 required-features = ["theme"]
 
 [[example]]
+name = "interactive"
+path = "examples/interactive.rs"
+required-features = ["theme"]
+
+[[example]]
 name = "pie"
 path = "examples/pie.rs"
 required-features = ["piechart"]

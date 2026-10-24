@@ -8,6 +8,12 @@ use tui_chart::*;
 
 #[derive(Arbitrary, Debug)]
 enum Input {
+    Interact {
+        values: Vec<f64>,
+        events: Vec<(u8, u8, u8)>,
+        kind: u8,
+        size: Size,
+    },
     Effects {
         radius: u16,
         strength: f64,
@@ -320,6 +326,69 @@ fuzz_target!(|i: Input| match i {
         }
         tui_chart::glow(&mut buf, area, radius % 6, strength);
         tui_chart::scanlines(&mut buf, area, strength);
+    }
+    Input::Interact { values, events, kind, size } => {
+        let values: Vec<f64> = values.into_iter().take(128).collect();
+        let area = ratatui::layout::Rect::new(0, 0, u16::from(size.w % 120), u16::from(size.h % 50));
+        let mut ui = tui_chart::Interaction::default();
+        let mut hidden: Vec<usize> = vec![];
+        for round in 0..2 {
+            let mut buf = ratatui::buffer::Buffer::empty(area);
+            let hits = match kind % 6 {
+                0 => tui_chart::HitMap::capture(
+                    tui_chart::LineChart::new(vec![tui_chart::Series::new("a").values(values.clone())])
+                        .hidden(hidden.clone()),
+                    area,
+                    &mut buf,
+                ),
+                1 => tui_chart::HitMap::capture(
+                    tui_chart::BarChart::new(
+                        values.chunks(2).map(|c| tui_chart::BarGroup::new("g", c.to_vec())).collect(),
+                    )
+                    .hidden(hidden.clone()),
+                    area,
+                    &mut buf,
+                ),
+                2 => tui_chart::HitMap::capture(
+                    tui_chart::Treemap::new(
+                        values.iter().map(|v| tui_chart::TreemapItem::new("t", *v)),
+                    ),
+                    area,
+                    &mut buf,
+                ),
+                3 => tui_chart::HitMap::capture(
+                    tui_chart::RadialBar::new(
+                        values.iter().map(|v| tui_chart::RadialRing::new("r", *v, 100.0)),
+                    ),
+                    area,
+                    &mut buf,
+                ),
+                4 => tui_chart::HitMap::capture(
+                    tui_chart::Sparkline::new(values.clone()),
+                    area,
+                    &mut buf,
+                ),
+                _ => tui_chart::HitMap::capture(
+                    tui_chart::StackedAreaChart::new([tui_chart::AreaLayer::new("a", values.clone())])
+                        .hidden(hidden.clone()),
+                    area,
+                    &mut buf,
+                ),
+            };
+            for &(op, x, y) in &events {
+                let (x, y) = (u16::from(x), u16::from(y));
+                match op % 3 {
+                    0 => ui.on_move(x, y),
+                    1 => {
+                        ui.on_click(x, y, &hits);
+                    }
+                    _ => ui.on_leave(),
+                }
+                ui.render_tooltip(&hits, &mut buf, area);
+            }
+            hidden = ui.hidden();
+            let _ = round;
+        }
     }
     Input::Gauge { value, range, bands, target, orient, style, size } => {
         let mut g = Gauge::new(value)

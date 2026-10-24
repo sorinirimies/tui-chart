@@ -465,6 +465,17 @@ impl Gauge<'_> {
         if inner.width == 0 || inner.height == 0 {
             return;
         }
+        crate::interact::record_point(inner, 0, 0, || {
+            let f = crate::util::format_compact;
+            let frac = self.frac(self.value);
+            (
+                "gauge".to_string(),
+                vec![
+                    format!("{} of {} .. {}", f(self.value), f(self.min), f(self.max)),
+                    format!("{:.0}%", frac * 100.0),
+                ],
+            )
+        });
         if let Some(look) = self.style.look() {
             let frac = self.frac(self.value);
             let span = self.max - self.min;

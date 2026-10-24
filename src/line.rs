@@ -5,6 +5,7 @@ use crate::axis::Axis;
 use crate::canvas::{Canvas, Marker};
 use crate::crosshair::{self, nearest_point, Crosshair, NearestPoint};
 use crate::heatmap::Gradient;
+use crate::interact;
 use crate::layout::{self, text_width};
 use crate::theme::{self, Theme};
 use crate::util::{format_compact, format_tick, nice_bounds};
@@ -242,6 +243,7 @@ pub struct LineChart {
     legend_style: Option<Style>,
     theme: Option<Theme>,
     style: Option<Style>,
+    hidden: Vec<usize>,
 }
 
 impl LineChart {
@@ -350,6 +352,19 @@ impl LineChart {
         legend: LegendPosition
     );
 
+    /// Hide the series with these indices (axes rescale to the rest). Hidden
+    /// series stay in the legend, dimmed, so they can be toggled back; see
+    /// [`Interaction`](crate::Interaction).
+    #[must_use]
+    pub fn hidden(mut self, hidden: impl IntoIterator<Item = usize>) -> Self {
+        self.hidden = hidden.into_iter().collect();
+        self
+    }
+
+    fn is_hidden(&self, i: usize) -> bool {
+        self.hidden.contains(&i)
+    }
+
     fn has_secondary(&self) -> bool {
         self.series.iter().any(|s| s.secondary && !s.is_empty())
     }
@@ -360,7 +375,9 @@ impl LineChart {
         for v in self
             .series
             .iter()
-            .filter(|s| s.secondary == secondary)
+            .enumerate()
+            .filter(|(i, s)| s.secondary == secondary && !self.is_hidden(*i))
+            .map(|(_, s)| s)
             .flat_map(|s| s.y_values())
             .filter(|v| !positive_only || *v > 0.0)
         {
@@ -375,7 +392,9 @@ impl LineChart {
         for &(x, _) in self
             .series
             .iter()
-            .flat_map(|s| s.data.iter())
+            .enumerate()
+            .filter(|(i, _)| !self.is_hidden(*i))
+            .flat_map(|(_, s)| s.data.iter())
             .filter(|(x, y)| x.is_finite() && y.is_finite())
         {
             xs = (xs.0.min(x), xs.1.max(x));
@@ -590,6 +609,9 @@ impl LineChart {
             ))
         };
         for (i, s) in self.series.iter().enumerate() {
+            if self.is_hidden(i) {
+                continue;
+            }
             let color = self.series_color(i, s);
             let mode = s.mode.unwrap_or(self.mode);
             let sec = s.secondary && sy2.is_some();
@@ -601,6 +623,25 @@ impl LineChart {
                 }
                 let Some(p) = proj(x, y, sec) else { continue };
                 pts.push(p);
+                if interact::recording() {
+                    let cx = plot.x
+                        + p.0
+                            .div_euclid(rx as i32)
+                            .clamp(0, i32::from(plot.width) - 1) as u16;
+                    let cy = plot.y
+                        + p.1
+                            .div_euclid(ry as i32)
+                            .clamp(0, i32::from(plot.height) - 1) as u16;
+                    interact::record_point(Rect::new(cx, cy, 1, 1), i, k, || {
+                        (
+                            s.name.clone(),
+                            vec![
+                                format!("x {}", format_compact(x)),
+                                format!("y {}", format_compact(y)),
+                            ],
+                        )
+                    });
+                }
                 if let Some(&(lo, hi)) = s.band.get(k) {
                     let lo_p = proj(x, lo, sec).map_or(ph - 1, |q| q.1);
                     let hi_p = proj(x, hi, sec).map_or(ph - 1, |q| q.1);
@@ -700,6 +741,13 @@ impl LineChart {
             .filter(|(_, s)| !s.name.is_empty())
             .map(|(i, s)| (s.name.as_str(), self.series_color(i, s)))
             .collect();
+        let ids: Vec<usize> = self
+            .series
+            .iter()
+            .enumerate()
+            .filter(|(_, s)| !s.name.is_empty())
+            .map(|(i, _)| i)
+            .collect();
         let w = entries
             .iter()
             .map(|(n, _)| text_width(n) + 2)
@@ -726,8 +774,20 @@ impl LineChart {
                 }
                 _ => plot.y + row,
             };
-            buf.set_string(x, y, "●", Style::default().fg(*color));
-            buf.set_string(x + 2, y, name, label);
+            let off = self.is_hidden(ids[i]);
+            let (dot, text) = if off {
+                (
+                    "○",
+                    label.add_modifier(
+                        ratatui::style::Modifier::CROSSED_OUT | ratatui::style::Modifier::DIM,
+                    ),
+                )
+            } else {
+                ("●", label)
+            };
+            buf.set_string(x, y, dot, Style::default().fg(*color));
+            buf.set_string(x + 2, y, name, text);
+            interact::record_legend(Rect::new(x, y, w, 1), ids[i], name);
         }
     }
 }
@@ -1171,5 +1231,49 @@ mod tests {
         assert_eq!(d, vec![(0, 5), (0, 1), (0, 9), (0, 4), (1, 2), (2, 3)]);
         let unsorted = vec![(3, 1), (1, 1)];
         assert_eq!(decimate(&unsorted), unsorted);
+    }
+
+    #[test]
+    fn interaction_hits_hidden_series_and_legend() {
+        use crate::{HitKind, HitMap};
+        let two = || {
+            LineChart::new(vec![
+                Series::new("a").data([(0.0, 1.0), (1.0, 2.0), (2.0, 3.0)]),
+                Series::new("b").data([(0.0, 3.0), (1.0, 1.0), (2.0, 2.0)]),
+            ])
+        };
+        let area = Rect::new(0, 0, 40, 12);
+        let mut buf = Buffer::empty(area);
+        let hits = HitMap::capture(two(), area, &mut buf);
+        let pts = hits
+            .hits()
+            .iter()
+            .filter(|h| h.kind == HitKind::Point)
+            .count();
+        assert_eq!(pts, 6);
+        assert_eq!(
+            hits.hits()
+                .iter()
+                .filter(|h| h.kind == HitKind::Legend)
+                .count(),
+            2
+        );
+        let p = &hits.hits()[0];
+        assert_eq!(p.title, "a");
+        assert!(p.lines[0].starts_with("x "));
+        // hiding series 0 drops its points but keeps its legend entry
+        let mut buf = Buffer::empty(area);
+        let hits = HitMap::capture(two().hidden([0]), area, &mut buf);
+        assert!(hits
+            .hits()
+            .iter()
+            .all(|h| h.kind == HitKind::Legend || h.series == 1));
+        assert!(hits
+            .hits()
+            .iter()
+            .any(|h| h.kind == HitKind::Legend && h.series == 0));
+        // all hidden still renders
+        let mut buf = Buffer::empty(area);
+        two().hidden([0, 1]).render(area, &mut buf);
     }
 }

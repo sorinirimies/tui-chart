@@ -796,6 +796,29 @@ impl CandlestickChart {
                 .clamp(0.0, sub_n - 1.0) as i32
         };
 
+        if crate::interact::recording() {
+            for (i, c) in vis.iter().enumerate().filter(|(_, c)| c.is_valid()) {
+                let x = price.x + (i * slot) as u16;
+                let (t, b) = ((sub(c.high) / 2) as u16, (sub(c.low) / 2) as u16);
+                let rect =
+                    Rect::new(x, price.y + t, bw.max(1), b.max(t) - t + 1).intersection(price);
+                crate::interact::record_point(rect, 0, start + i, || {
+                    let f = crate::util::format_compact;
+                    let mut lines = vec![
+                        format!("O {}  H {}", f(c.open), f(c.high)),
+                        format!("L {}  C {}", f(c.low), f(c.close)),
+                    ];
+                    if c.volume > 0.0 {
+                        lines.push(format!("vol {}", f(c.volume)));
+                    }
+                    (
+                        c.label.clone().unwrap_or_else(|| format!("#{}", start + i)),
+                        lines,
+                    )
+                });
+            }
+        }
+
         // grid + y labels
         let y_ticks: Vec<(u16, String)> = y_marks
             .iter()

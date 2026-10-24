@@ -318,6 +318,20 @@ impl Heatmap {
                         x_ticks.push((x - plot.x + cw / 2, l.clone()));
                     }
                 }
+                crate::interact::record_point(Rect::new(x, y, cw.max(1), ch.max(1)), r, c, || {
+                    let title = match (self.row_labels.get(r), self.col_labels.get(c)) {
+                        (Some(a), Some(b)) => format!("{a} / {b}"),
+                        (Some(a), None) => a.clone(),
+                        (None, Some(b)) => b.clone(),
+                        _ => format!("row {} col {}", r + 1, c + 1),
+                    };
+                    let value = if v.is_finite() {
+                        format_compact(v)
+                    } else {
+                        "no data".to_string()
+                    };
+                    (title, vec![value])
+                });
                 let color = if v.is_finite() {
                     grad.color_at((v - lo) / span)
                 } else {

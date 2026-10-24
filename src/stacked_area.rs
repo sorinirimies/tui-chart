@@ -60,6 +60,8 @@ pub struct StackedAreaChart {
     normalize: bool,
     legend: bool,
     outline: bool,
+    hidden: Vec<usize>,
+    hidden_legend: Vec<usize>,
     marker: Marker,
     theme: Option<Theme>,
     base: Option<Style>,
@@ -74,6 +76,8 @@ impl StackedAreaChart {
             normalize: false,
             legend: true,
             outline: true,
+            hidden: vec![],
+            hidden_legend: vec![],
             marker: Marker::HalfBlock,
             theme: None,
             base: None,
@@ -97,6 +101,13 @@ impl StackedAreaChart {
         /// Dot resolution (default half blocks, which fill solid; use braille for finer edges).
         marker: Marker
     );
+    /// Hide layers by index (the stack re-flows; hidden layers stay in the
+    /// legend so they can be toggled back, see [`Interaction`](crate::Interaction)).
+    #[must_use]
+    pub fn hidden(mut self, hidden: impl IntoIterator<Item = usize>) -> Self {
+        self.hidden = hidden.into_iter().collect();
+        self
+    }
     theme_setter!(
         /// Apply a [`Theme`]; explicit layer colors win.
         theme
@@ -105,6 +116,17 @@ impl StackedAreaChart {
     block_setter!(block, 'static);
 
     fn render_into(&self, area: Rect, buf: &mut Buffer) {
+        if !self.hidden.is_empty() {
+            let mut c = self.clone();
+            for &h in &self.hidden {
+                if let Some(l) = c.layers.get_mut(h) {
+                    l.values.iter_mut().for_each(|v| *v = 0.0);
+                }
+            }
+            c.hidden.clear();
+            c.hidden_legend = self.hidden.clone();
+            return c.render_into(area, buf);
+        }
         let area = area.intersection(buf.area);
         let inner = theme::begin(&self.block, &self.theme, self.base, area, buf);
         let n = self
@@ -214,6 +236,44 @@ impl StackedAreaChart {
             }
         }
         cv.render(buf, plot);
+        if crate::interact::recording() {
+            let (rx, ry) = self.marker.resolution();
+            let (rx, ry) = (i32::from(rx), i32::from(ry));
+            for c in 0..plot.width {
+                let px = (i32::from(c) * rx + rx / 2).min(pw - 1);
+                let di = ((px as f64 / (pw - 1).max(1) as f64 * (n - 1) as f64).round() as usize)
+                    .min(n - 1);
+                for (li, l) in self.layers.iter().enumerate() {
+                    if self.hidden_legend.contains(&li) {
+                        continue;
+                    }
+                    let top = ypx(at(&tops[li], px)).max(0) / ry;
+                    let bottom = if li == 0 {
+                        i32::from(plot.height) - 1
+                    } else {
+                        ypx(at(&tops[li - 1], px)).max(0) / ry
+                    };
+                    if bottom < top {
+                        continue;
+                    }
+                    let rect = Rect::new(
+                        plot.x + c,
+                        plot.y + top as u16,
+                        1,
+                        (bottom - top + 1) as u16,
+                    )
+                    .intersection(plot);
+                    crate::interact::record_point(rect, li, di, || {
+                        let v = l.values.get(di).copied().unwrap_or(0.0);
+                        let mut lines = vec![crate::util::format_compact(clean(v))];
+                        if totals[di] > 0.0 {
+                            lines.push(format!("{:.0}% of total", clean(v) / totals[di] * 100.0));
+                        }
+                        (l.name.clone(), lines)
+                    });
+                }
+            }
+        }
         if legend {
             let mut x = plot.x;
             let y = inner.bottom() - 1;
@@ -223,8 +283,24 @@ impl StackedAreaChart {
                 if x + w > inner.right() {
                     break;
                 }
-                put_str(buf, x, y, inner.right(), "■", Style::default().fg(c));
-                put_str(buf, x + 2, y, inner.right(), &l.name, text);
+                let off = self.hidden_legend.contains(&li);
+                put_str(
+                    buf,
+                    x,
+                    y,
+                    inner.right(),
+                    if off { "□" } else { "■" },
+                    Style::default().fg(c),
+                );
+                let name_style = if off {
+                    text.add_modifier(
+                        ratatui::style::Modifier::CROSSED_OUT | ratatui::style::Modifier::DIM,
+                    )
+                } else {
+                    text
+                };
+                put_str(buf, x + 2, y, inner.right(), &l.name, name_style);
+                crate::interact::record_legend(Rect::new(x, y, w, 1), li, &l.name);
                 x += w + 1;
             }
         }

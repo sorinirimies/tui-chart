@@ -34,6 +34,7 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 | `RadialBar` / `RingStack` | concentric progress rings (270° or full), legend with percentages |
 | `Oscilloscope` / `Spectrum` / `DotMatrix` / `RadarScope` / `HexMap` | instrument panels: ECG/wave trace, equalizer with peak caps, LED dot matrix, sweeping radar scope, honeycomb heat map (animate with `.phase(t)`) |
 | `Fx` / `glow` / `scanlines` / `chamfer_block` / `bracket_block` | cyberpunk post effects for any widget: glow, scanlines, cut-corner frames |
+| `HitMap` / `Interaction` | mouse interactivity for every chart: hover tooltips, click to pin, click a legend entry to hide a series |
 | `Funnel` | tapered stages, side labels, conversion % and drop-off (`.taper`, `.show_dropoff`) |
 | `Bullet` | value vs target over qualitative ranges |
 | `PairedBars` | before/after bar pairs, each measure on its own scale, inline or stacked, with a legend |
@@ -88,6 +89,10 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 ### Cyber
 
 ![Cyber](examples/vhs/output/cyber.gif)
+
+### Interactive
+
+![Interactive](examples/vhs/output/interactive.gif)
 
 ### RadarChart
 
@@ -318,6 +323,7 @@ cargo run --features theme --example sankey
 cargo run --features theme --example bullet
 cargo run --features theme --example paired_bars
 cargo run --features theme --example funnel
+cargo run --features theme --example interactive
 cargo run --features theme --example cyber
 cargo run --features theme --example instruments
 cargo run --features theme --example radial
@@ -356,6 +362,33 @@ Security workflow), and every widget renderer, the indicators, the time-axis
 helpers and the serde path are fuzzed with `cargo-fuzz` (`fuzz/`, the Fuzz
 workflow). Locally: `just audit`, `just deny`, `just fuzz render_line`,
 `just fuzz-all`.
+
+## Interactivity
+
+Charts are stateless widgets, so interactivity is a small loop in your app (see
+`examples/interactive.rs`). It works on every chart and with any backend; it only
+needs cell coordinates.
+
+```rust
+let mut ui = Interaction::default();          // keep between frames
+let mut hits = HitMap::default();
+
+// draw: render through `capture` so the chart reports what it drew
+hits = HitMap::capture(LineChart::new(series).hidden(ui.hidden()), area, frame.buffer_mut());
+ui.render_tooltip(&hits, frame.buffer_mut(), area);
+
+// events
+ui.on_move(mouse.column, mouse.row);          // hover  -> tooltip + highlight
+ui.on_click(mouse.column, mouse.row, &hits);  // click  -> pin, or toggle a legend entry
+```
+
+- **Hover tooltips** for points, bars, candles, slices, cells, tasks, nodes ... on every chart
+  (`Hit` carries a title and value lines, so you can also render your own).
+- **Click** pins a tooltip; clicking again clears it.
+- **Legend toggling**: clicking a legend entry hides that series. Pass `ui.hidden()` to
+  `.hidden(..)` on `LineChart`, `BarChart`, `StackedAreaChart` and `RadarChart`; the axes rescale.
+- `HitMap::at`, `nearest`, `pick` and `legend_at` give raw hit-testing for custom behaviour.
+- `PieChart` lives in `tui-piechart` and does not report hits.
 
 ## Cyberpunk effects
 

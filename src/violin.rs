@@ -180,6 +180,30 @@ impl ViolinChart {
             let n = s.len();
             let mean = s.iter().sum::<f64>() / n as f64;
             let sd = (s.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / n as f64).sqrt();
+            if crate::interact::recording() {
+                let (rx, ry) = self.marker.resolution();
+                let (rx, ry) = (i32::from(rx), i32::from(ry));
+                let (x_lo, x_hi) = ((cx - half).max(0) / rx, (cx + half).max(0) / rx);
+                let (y_lo, y_hi) = (ypx(s[n - 1]).max(0) / ry, ypx(s[0]).max(0) / ry);
+                let rect = Rect::new(
+                    plot.x + x_lo as u16,
+                    plot.y + y_lo as u16,
+                    (x_hi - x_lo + 1) as u16,
+                    (y_hi - y_lo + 1) as u16,
+                )
+                .intersection(plot);
+                crate::interact::record_point(rect, 0, *i, || {
+                    let f = crate::util::format_compact;
+                    (
+                        g.label.clone(),
+                        vec![
+                            format!("n {n}  mean {}", f(mean)),
+                            format!("median {}", f(quantile(s, 0.5))),
+                            format!("range {} .. {}", f(s[0]), f(s[n - 1])),
+                        ],
+                    )
+                });
+            }
             let h = self
                 .bandwidth
                 .filter(|b| *b > 0.0)

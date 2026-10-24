@@ -444,6 +444,33 @@ impl BoxPlot {
             let mid = left + bw / 2;
             let color = self.group_color(i);
             let s = Style::default().fg(color);
+            if let Some(st) = g.stats.as_ref().filter(|st| st.valid()) {
+                let (amin, amax) = (to_a(st.min), to_a(st.max));
+                let len = (amax - amin + 1).max(1) as u16;
+                let rect = if vert {
+                    Rect::new(
+                        plot.x + left as u16,
+                        plot.y + plot.height - 1 - amax as u16,
+                        bw as u16,
+                        len,
+                    )
+                } else {
+                    Rect::new(plot.x + amin as u16, plot.y + left as u16, len, bw as u16)
+                }
+                .intersection(plot);
+                crate::interact::record_point(rect, 0, i, || {
+                    let f = crate::util::format_compact;
+                    let mut lines = vec![
+                        format!("max {}  q3 {}", f(st.max), f(st.q3)),
+                        format!("median {}", f(st.median)),
+                        format!("q1 {}  min {}", f(st.q1), f(st.min)),
+                    ];
+                    if !st.outliers.is_empty() {
+                        lines.push(format!("{} outliers", st.outliers.len()));
+                    }
+                    (g.label.clone(), lines)
+                });
+            }
 
             // label
             if vert {

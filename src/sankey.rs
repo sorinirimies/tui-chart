@@ -283,6 +283,22 @@ impl Sankey {
         for (li, &(a, b, v)) in links.iter().enumerate() {
             let (xa, xb) = (col_x(nodes[a].layer) + nw, col_x(nodes[b].layer));
             let h = (v * k).max(1.0);
+            if crate::interact::recording() && xb > xa {
+                let (y0, y1) = (src_y[li].min(dst_y[li]), src_y[li].max(dst_y[li]) + h);
+                let rect = Rect::new(
+                    plot.x + (xa / rxd as i32).max(0) as u16,
+                    plot.y + (y0 / ryd as f64).max(0.0) as u16,
+                    ((xb - xa) / rxd as i32).max(1) as u16,
+                    (((y1 - y0) / ryd as f64).ceil() as u16).max(1),
+                )
+                .intersection(plot);
+                crate::interact::record_point(rect, 1, li, || {
+                    (
+                        format!("{} → {}", nodes[a].name, nodes[b].name),
+                        vec![format!("flow {}", format_compact(v))],
+                    )
+                });
+            }
             let c = darken(color_of(a), 0.55);
             for px in xa..xb {
                 let t = (px - xa) as f64 / (xb - xa).max(1) as f64;
@@ -297,6 +313,24 @@ impl Sankey {
         for (i, nd) in nodes.iter().enumerate() {
             let x = col_x(nd.layer);
             let c = color_of(i);
+            if crate::interact::recording() {
+                let rect = Rect::new(
+                    plot.x + (x / rxd as i32).max(0) as u16,
+                    plot.y + (nd.y / ryd as f64).max(0.0) as u16,
+                    self.node_width.max(1),
+                    (((nd.h) / ryd as f64).ceil() as u16).max(1),
+                )
+                .intersection(plot);
+                crate::interact::record_point(rect, 0, i, || {
+                    (
+                        nd.name.clone(),
+                        vec![
+                            format!("in {}", format_compact(nd.inflow)),
+                            format!("out {}", format_compact(nd.outflow)),
+                        ],
+                    )
+                });
+            }
             for py in nd.y.round() as i32..(nd.y + nd.h).round().max(nd.y.round() + 1.0) as i32 {
                 for px in x..x + nw {
                     cv.set(px, py, c);

@@ -271,6 +271,18 @@ impl Waterfall {
                     buf[(x, y)].set_char('█').set_style(st);
                 }
             }
+            crate::interact::record_point(Rect::new(x0, top, bw, bot - top + 1), 0, i, || {
+                let line = if *is_total {
+                    format!("total {}", format_compact(*e))
+                } else {
+                    format!("{} → {}", format_compact(*s), format_compact(*e))
+                };
+                let mut lines = vec![line];
+                if !*is_total {
+                    lines.push(format!("change {}", format_compact(e - s)));
+                }
+                (step.label.clone(), lines)
+            });
             prev_end = Some((*e, x0 + bw));
             if self.show_values {
                 let v = if *is_total {

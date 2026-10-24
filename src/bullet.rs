@@ -194,6 +194,14 @@ impl Bullet {
             let ymid = y0 + rh / 2;
             put_str(buf, inner.x, ymid, bx, &it.label, text);
             let max = self.scale_max(it);
+            crate::interact::record_point(Rect::new(bx, y0, bw, rh), 0, i, || {
+                let mut lines = vec![format!("value {}", format_compact(fin(it.value)))];
+                if let Some(t) = it.target.filter(|t| fin(*t) > 0.0) {
+                    lines.push(format!("target {}", format_compact(fin(t))));
+                    lines.push(format!("{:.0}% of target", fin(it.value) / fin(t) * 100.0));
+                }
+                (it.label.clone(), lines)
+            });
             // qualitative ranges: lightest = worst; no ranges → one neutral band
             let nb = it.ranges.len();
             let mut shade_at = vec![bands[2]; bw as usize];

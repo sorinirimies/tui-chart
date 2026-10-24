@@ -194,6 +194,48 @@ impl RadialBar {
                     })
                 });
             }
+            if crate::interact::recording() {
+                let mut owner = vec![None; usize::from(area.width) * usize::from(area.height)];
+                for cy in 0..area.height {
+                    for cx in 0..area.width {
+                        let dx = (f64::from(cx) + 0.5) * 2.0 - c.0;
+                        let dy = (f64::from(cy) + 0.5) * 4.0 - c.1;
+                        let d = dx.hypot(dy);
+                        let turn = (dx.atan2(-dy) / std::f64::consts::TAU).rem_euclid(1.0);
+                        if (turn - sw.0).rem_euclid(1.0) > sw.1 {
+                            continue;
+                        }
+                        for i in 0..self.rings.len() {
+                            let outer = r - i as f64 * pitch;
+                            if d <= outer && d >= (outer - thick).max(0.0) - 1.0 {
+                                owner
+                                    [usize::from(cy) * usize::from(area.width) + usize::from(cx)] =
+                                    Some(i);
+                                break;
+                            }
+                        }
+                    }
+                }
+                crate::interact::record_grid(
+                    area,
+                    &owner,
+                    |i| i,
+                    |i| {
+                        let ring = &self.rings[i];
+                        (
+                            ring.label.clone(),
+                            vec![
+                                format!(
+                                    "{} / {}",
+                                    crate::util::format_compact(ring.value),
+                                    crate::util::format_compact(ring.max)
+                                ),
+                                format!("{:.0}%", ring.fraction() * 100.0),
+                            ],
+                        )
+                    },
+                );
+            }
         }
         g.blit(area, buf);
     }

@@ -3,6 +3,7 @@
 use crate::axis::Axis;
 use crate::canvas::{Canvas, Marker};
 use crate::heatmap::Gradient;
+use crate::interact;
 use crate::layout::{self, text_width};
 use crate::theme::{self, Theme};
 use crate::util::{format_compact, nice_bounds};
@@ -99,6 +100,8 @@ const LEFT_EIGHTHS: [char; 9] = [' ', '▏', '▎', '▍', '▌', '▋', '▊', 
 pub struct BarChart {
     groups: Vec<BarGroup>,
     series_names: Vec<String>,
+    hidden: Vec<usize>,
+    hidden_legend: Vec<usize>,
     colors: Vec<Color>,
     orientation: BarOrientation,
     mode: BarMode,
@@ -181,6 +184,15 @@ impl BarChart {
         S: Into<String>,
     {
         self.series_names = names.into_iter().map(Into::into).collect();
+        self
+    }
+
+    /// Hide series by index (their bars become empty; the value axis rescales).
+    /// Hidden series stay in the legend so they can be toggled back, see
+    /// [`Interaction`](crate::Interaction).
+    #[must_use]
+    pub fn hidden(mut self, hidden: impl IntoIterator<Item = usize>) -> Self {
+        self.hidden = hidden.into_iter().collect();
         self
     }
 
@@ -498,6 +510,19 @@ impl BarChart {
     }
 
     fn render_into(&self, area: Rect, buf: &mut Buffer) {
+        if !self.hidden.is_empty() {
+            let mut c = self.clone();
+            for g in &mut c.groups {
+                for &h in &self.hidden {
+                    if let Some(v) = g.values.get_mut(h) {
+                        *v = 0.0;
+                    }
+                }
+            }
+            c.hidden.clear();
+            c.hidden_legend = self.hidden.clone();
+            return c.render_into(area, buf);
+        }
         let inner = theme::begin(&self.block, &self.theme, self.style, area, buf);
         match self.orientation {
             BarOrientation::Vertical => self.render_vertical(inner, buf),
@@ -578,6 +603,11 @@ impl BarChart {
                 } else {
                     eighths[bi]
                 };
+                self.record_hits(g, gi, bi, &eighths, &negs, |a, b| {
+                    let top = i32::from(plot.bottom()) - i32::from(zc) - b;
+                    Rect::new(x, top.max(i32::from(plot.y)) as u16, bw, (b - a) as u16)
+                        .intersection(plot)
+                });
                 for r in 0..pos_cells as i32 {
                     let fill = (total - r * 8).clamp(0, 8) as usize;
                     if fill == 0 {
@@ -749,6 +779,11 @@ impl BarChart {
                 } else {
                     eighths[bi]
                 };
+                self.record_hits(g, gi, bi, &eighths, &negs, |a, b| {
+                    let left = i32::from(plot.x) + i32::from(zc) + a;
+                    Rect::new(left.max(i32::from(plot.x)) as u16, y, (b - a) as u16, bh)
+                        .intersection(plot)
+                });
                 for c in 0..pos_cells as i32 {
                     let fill = (total - c * 8).clamp(0, 8) as usize;
                     if fill == 0 {
@@ -974,6 +1009,56 @@ impl BarChart {
         }
     }
 
+    /// Report the hit rects of one bar (or its stacked segments).
+    /// `span(a, b)` maps a signed cell span along the value axis to a rect.
+    fn record_hits(
+        &self,
+        g: &BarGroup,
+        gi: usize,
+        bi: usize,
+        eighths: &[i32],
+        negs: &[i32],
+        span: impl Fn(i32, i32) -> Rect,
+    ) {
+        if !interact::recording() {
+            return;
+        }
+        let tip = |k: usize| {
+            let name = self
+                .series_names
+                .get(k)
+                .cloned()
+                .unwrap_or_else(|| format!("series {}", k + 1));
+            let mut lines = vec![format!(
+                "{}: {}",
+                name,
+                self.format_value(g.values.get(k).copied().unwrap_or(0.0))
+            )];
+            if self.mode == BarMode::Stacked {
+                lines.push(format!("total: {}", self.format_value(self.group_total(g))));
+            }
+            (g.label.clone(), lines)
+        };
+        let cells = |e: i32| (e + 7) / 8;
+        if self.mode == BarMode::Stacked {
+            let mut prev = 0;
+            for (k, &cur) in eighths.iter().enumerate() {
+                let (a, b) = (prev / 8, cells(cur));
+                prev = cur;
+                if b > a {
+                    interact::record_point(span(a, b), k, gi, || tip(k));
+                }
+            }
+        } else {
+            let a = -cells(negs.get(bi).copied().unwrap_or(0));
+            let mut b = cells(eighths.get(bi).copied().unwrap_or(0));
+            if b <= a {
+                b = a + 1;
+            }
+            interact::record_point(span(a, b), bi, gi, || tip(bi));
+        }
+    }
+
     fn draw_legend(&self, buf: &mut Buffer, plot: Rect) {
         let w = self
             .series_names
@@ -993,13 +1078,21 @@ impl BarChart {
             for x in plot.right() - w..plot.right() {
                 buf.set_string(x, y, " ", Style::default());
             }
-            buf.set_string(plot.right() - w, y, "■", Style::default().fg(self.color(i)));
+            let off = self.hidden_legend.contains(&i);
+            let mut text = Style::default().fg(self.label_color());
+            if off {
+                text = text.add_modifier(
+                    ratatui::style::Modifier::CROSSED_OUT | ratatui::style::Modifier::DIM,
+                );
+            }
             buf.set_string(
-                plot.right() - w + 2,
+                plot.right() - w,
                 y,
-                name,
-                Style::default().fg(self.label_color()),
+                if off { "□" } else { "■" },
+                Style::default().fg(self.color(i)),
             );
+            buf.set_string(plot.right() - w + 2, y, name, text);
+            interact::record_legend(Rect::new(plot.right() - w, y, w, 1), i, name);
         }
     }
 }
@@ -1153,5 +1246,45 @@ mod tests {
         let g = BarGroup::new("x", [1.0, 2.0]);
         assert_eq!(g.label, "x");
         assert_eq!(g.values, vec![1.0, 2.0]);
+    }
+
+    #[test]
+    fn interaction_hits_for_all_modes_and_hidden() {
+        use crate::{HitKind, HitMap};
+        let groups = || {
+            vec![
+                BarGroup::new("a", [3.0, 2.0]),
+                BarGroup::new("b", [-1.0, 5.0]),
+            ]
+        };
+        let area = Rect::new(0, 0, 40, 14);
+        for orient in [BarOrientation::Vertical, BarOrientation::Horizontal] {
+            for mode in [BarMode::Grouped, BarMode::Stacked] {
+                let chart = || {
+                    BarChart::new(groups())
+                        .series_names(["x", "y"])
+                        .orientation(orient)
+                        .mode(mode)
+                };
+                let mut buf = Buffer::empty(area);
+                let hits = HitMap::capture(chart(), area, &mut buf);
+                let pts: Vec<_> = hits
+                    .hits()
+                    .iter()
+                    .filter(|h| h.kind == HitKind::Point)
+                    .collect();
+                assert!(pts.len() >= 3, "{orient:?} {mode:?}: {}", pts.len());
+                assert!(pts.iter().all(|h| h.rect.right() <= area.right()));
+                assert!(pts
+                    .iter()
+                    .any(|h| h.title == "b" && h.lines[0].contains("y: 5")));
+                let mut buf = Buffer::empty(area);
+                let hidden = HitMap::capture(chart().hidden([1]), area, &mut buf);
+                assert!(hidden
+                    .hits()
+                    .iter()
+                    .any(|h| h.kind == HitKind::Legend && h.series == 1));
+            }
+        }
     }
 }

@@ -59,6 +59,7 @@ pub struct RadarChart<'a> {
     fill: bool,
     show_labels: bool,
     legend: bool,
+    hidden: Vec<usize>,
     theme: Option<Theme>,
     base: Option<Style>,
     marker: Marker,
@@ -76,6 +77,7 @@ impl<'a> RadarChart<'a> {
             fill: false,
             show_labels: true,
             legend: true,
+            hidden: vec![],
             theme: None,
             base: None,
             marker: Marker::Braille,
@@ -122,6 +124,14 @@ impl<'a> RadarChart<'a> {
         /// Series-name legend on the bottom row (default on, shown when it fits).
         legend: bool
     );
+
+    /// Hide series by index; they stay in the legend so they can be toggled
+    /// back, see [`Interaction`](crate::Interaction).
+    #[must_use]
+    pub fn hidden(mut self, hidden: impl IntoIterator<Item = usize>) -> Self {
+        self.hidden = hidden.into_iter().collect();
+        self
+    }
 
     block_setter!(block, 'a);
 
@@ -194,6 +204,9 @@ impl<'a> RadarChart<'a> {
         }
         let mut polys: Vec<(Color, Vec<(i32, i32)>)> = vec![];
         for (si, s) in self.series.iter().enumerate() {
+            if self.hidden.contains(&si) {
+                continue;
+            }
             let color = self.series_color(si, s);
             let pts: Vec<(i32, i32)> = (0..n)
                 .map(|i| {
@@ -206,6 +219,29 @@ impl<'a> RadarChart<'a> {
                     pt(i, r * (v / max).clamp(0.0, 1.0))
                 })
                 .collect();
+            if crate::interact::recording() {
+                let (rx, ry) = self.marker.resolution();
+                for (i, &(x, y)) in pts.iter().enumerate() {
+                    let rect = Rect::new(
+                        plot.x + (x.max(0) / i32::from(rx)) as u16,
+                        plot.y + (y.max(0) / i32::from(ry)) as u16,
+                        1,
+                        1,
+                    )
+                    .intersection(plot);
+                    crate::interact::record_point(rect, si, i, || {
+                        let v = s.values.get(i).copied().unwrap_or(0.0);
+                        (
+                            s.name.clone(),
+                            vec![format!(
+                                "{}: {}",
+                                self.axes[i],
+                                crate::util::format_compact(v)
+                            )],
+                        )
+                    });
+                }
+            }
             polys.push((color, pts));
         }
         if self.fill {
@@ -270,8 +306,28 @@ impl<'a> RadarChart<'a> {
                 if x + 2 + name.chars().count() as u16 > full.right() {
                     break;
                 }
-                crate::text::put_str(buf, x, y, full.right(), "●", Style::default().fg(c));
-                crate::text::put_str(buf, x + 1, y, full.right(), &name, Style::default().fg(fg));
+                let off = self.hidden.contains(&si);
+                let name_style = if off {
+                    Style::default().fg(fg).add_modifier(
+                        ratatui::style::Modifier::CROSSED_OUT | ratatui::style::Modifier::DIM,
+                    )
+                } else {
+                    Style::default().fg(fg)
+                };
+                crate::text::put_str(
+                    buf,
+                    x,
+                    y,
+                    full.right(),
+                    if off { "○" } else { "●" },
+                    Style::default().fg(c),
+                );
+                crate::text::put_str(buf, x + 1, y, full.right(), &name, name_style);
+                crate::interact::record_legend(
+                    Rect::new(x, y, 2 + name.chars().count() as u16, 1),
+                    si,
+                    &se.name,
+                );
                 x += 3 + name.chars().count() as u16;
             }
         }

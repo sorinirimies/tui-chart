@@ -220,6 +220,22 @@ impl SlopeChart {
             let s = format!("{} {}", it.label, format_compact(it.start));
             let s: String = s.chars().take(side_w as usize).collect();
             let x = inner.x + side_w - s.chars().count() as u16;
+
+            crate::interact::record_point(
+                Rect::new(inner.x, y as u16, side_w + 1, 1),
+                0,
+                i,
+                || {
+                    let f = format_compact;
+                    (
+                        it.label.clone(),
+                        vec![
+                            format!("{} → {}", f(it.start), f(it.end)),
+                            format!("change {}", f(it.end - it.start)),
+                        ],
+                    )
+                },
+            );
             put_str(buf, x, y as u16, cv_x, &s, Style::default().fg(c));
             buf[(cv_x - 1, y as u16)]
                 .set_char('●')
@@ -231,6 +247,22 @@ impl SlopeChart {
             let s = format!("{} {}", format_compact(it.end), it.label);
             let s: String = s.chars().take(side_w as usize).collect();
             let x = cv_x + cv_w + 1;
+
+            crate::interact::record_point(
+                Rect::new(cv_x + cv_w, y as u16, side_w + 1, 1),
+                0,
+                i,
+                || {
+                    let f = format_compact;
+                    (
+                        it.label.clone(),
+                        vec![
+                            format!("{} → {}", f(it.start), f(it.end)),
+                            format!("change {}", f(it.end - it.start)),
+                        ],
+                    )
+                },
+            );
             buf[(cv_x + cv_w, y as u16)]
                 .set_char('●')
                 .set_style(Style::default().fg(c));

@@ -247,6 +247,28 @@ impl Treemap {
                 .color
                 .unwrap_or_else(|| self.auto_color(idx, weights[idx], range));
             let is_group = !it.children.is_empty();
+            if !is_group {
+                let total: f64 = weights.iter().sum();
+                crate::interact::record_point(
+                    r,
+                    0,
+                    (usize::from(r.y) << 16) | usize::from(r.x),
+                    || {
+                        let share = if total > 0.0 {
+                            weights[idx] / total * 100.0
+                        } else {
+                            0.0
+                        };
+                        (
+                            it.label.clone(),
+                            vec![
+                                format!("value {}", format_compact(weights[idx])),
+                                format!("share {share:.0}%"),
+                            ],
+                        )
+                    },
+                );
+            }
             // groups get a dark header strip; leaves fill with their color
             let color = if is_group { self.header_color() } else { color };
             let bg = Style::default().bg(color).fg(text_color(color));

@@ -266,6 +266,31 @@ impl RenkoChart {
             if x0 >= plot.right() {
                 break;
             }
+            if crate::interact::recording() {
+                let (low, high, up) = if pf {
+                    cols[idx]
+                } else {
+                    let b = self.bricks[idx];
+                    (b.low(), b.high(), b.is_up())
+                };
+                let row = |p: f64| ((hi - p) / span * h).clamp(0.0, h - 1.0) as u16;
+                let (t, b) = (row(high), row(low));
+                crate::interact::record_point(
+                    Rect::new(x0, plot.y + t, if pf { 1 } else { cw }, b.max(t) - t + 1)
+                        .intersection(plot),
+                    usize::from(!up),
+                    idx,
+                    || {
+                        (
+                            format!("{} #{}", if up { "up" } else { "down" }, idx + 1),
+                            vec![
+                                format!("low {}", format_tick(low, step)),
+                                format!("high {}", format_tick(high, step)),
+                            ],
+                        )
+                    },
+                );
+            }
             for r in 0..plot.height {
                 let p = row_price(r);
                 let y = plot.y + r;

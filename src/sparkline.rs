@@ -198,6 +198,17 @@ impl<'a> Sparkline<'a> {
         }
         let norm = |v: f64| ((v - lo) / (hi - lo)).clamp(0.0, 1.0);
         let n_last = pts.last().map(|p| p.0);
+        if crate::interact::recording() {
+            for &(i, v) in &pts {
+                let rect = Rect::new(area.x + i as u16, area.y, 1, area.height);
+                crate::interact::record_point(rect, 0, start + i, || {
+                    (
+                        format!("#{}", start + i),
+                        vec![crate::util::format_compact(v)],
+                    )
+                });
+            }
+        }
         let base = self
             .color
             .unwrap_or_else(|| self.theme.as_ref().map_or(Color::Cyan, |t| t.accent));

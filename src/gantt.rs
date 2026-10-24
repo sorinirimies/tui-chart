@@ -236,6 +236,16 @@ impl Gantt {
             }
             let color = t.color.unwrap_or_else(|| self.task_color(i));
             let (a, b) = (col(t.start.min(t.end)), col(t.start.max(t.end)));
+            crate::interact::record_point(Rect::new(a, y, b - a + 1, 1), 0, i, || {
+                let f = crate::util::format_compact;
+                (
+                    t.label.clone(),
+                    vec![
+                        format!("{} → {}", f(t.start), f(t.end)),
+                        format!("progress {:.0}%", t.progress.clamp(0.0, 1.0) * 100.0),
+                    ],
+                )
+            });
             let len = (b - a + 1) as f64;
             let done = (t.progress.clamp(0.0, 1.0) * len).round() as u16;
             for (k, x) in (a..=b).enumerate() {

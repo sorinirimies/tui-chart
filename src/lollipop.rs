@@ -189,6 +189,9 @@ impl LollipopChart {
             if y >= inner.y + plot_h {
                 break;
             }
+            crate::interact::record_point(Rect::new(inner.x, y, inner.width, 1), 0, i, || {
+                (r.label.clone(), vec![crate::util::format_compact(r.value)])
+            });
             let c = r.color.unwrap_or_else(|| pick(&self.theme, 0));
             let stem = Style::default().fg(darken(c, 0.25));
             let label: String = r.label.chars().take(lw as usize).collect();

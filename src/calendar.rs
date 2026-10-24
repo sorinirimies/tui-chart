@@ -242,6 +242,20 @@ impl CalendarHeatmap {
                     Style::default().fg(self.color_for(v, lo, hi))
                 };
                 let (glyph, width) = if missing { ('·', 1) } else { (self.cell, gw) };
+                crate::interact::record_point(
+                    Rect::new(x, top + r as u16 * ch, width.max(1), ch),
+                    0,
+                    idx as usize,
+                    || {
+                        let day = format!("day {}", idx + 1);
+                        let value = if missing {
+                            "no data".to_string()
+                        } else {
+                            crate::util::format_compact(v)
+                        };
+                        (day, vec![value])
+                    },
+                );
                 for dy in 0..ch {
                     for dx in 0..width {
                         buf[(x + dx, top + r as u16 * ch + dy)]

@@ -216,6 +216,21 @@ impl Funnel {
                 }
             }
 
+            let wmax = top_w.max(bot_w);
+            let hx = ((center - wmax / 2.0).floor().max(fx as f64)) as u16;
+            let hw = (wmax.ceil() as u16).min(fx + fw - hx).max(1);
+            crate::interact::record_point(Rect::new(hx, y0 as u16, hw, bar_h.max(1)), 0, i, || {
+                let mut lines = vec![format!("value {}", format_compact(vals[i]))];
+                lines.push(format!("of first {:.0}%", conv[i] * 100.0));
+                if i > 0 && vals[i - 1] > 0.0 {
+                    lines.push(format!(
+                        "drop-off {:.0}%",
+                        (1.0 - vals[i] / vals[i - 1]) * 100.0
+                    ));
+                }
+                (st.label.clone(), lines)
+            });
+
             // value / percent / drop-off (side) or centered label (narrow)
             let mid = y0 as u16 + bar_h.saturating_sub(1) / 2;
             if side {

@@ -158,7 +158,7 @@ impl BubbleChart {
                     .as_ref()
                     .map_or(PALETTE[si % PALETTE.len()], |t| t.color(si))
             });
-            for &(x, y, z) in &s.points {
+            for (pi, &(x, y, z)) in s.points.iter().enumerate() {
                 if !(x.is_finite() && y.is_finite() && z.is_finite()) {
                     continue;
                 }
@@ -170,6 +170,26 @@ impl BubbleChart {
                     0
                 }
                 .max(1);
+                if crate::interact::recording() {
+                    let (rx, ry) = self.marker.resolution();
+                    let (rx, ry) = (i32::from(rx), i32::from(ry));
+                    let (x_lo, x_hi) = ((cx - r).max(0) / rx, (cx + r).max(0) / rx);
+                    let (y_lo, y_hi) = ((cy - r).max(0) / ry, (cy + r).max(0) / ry);
+                    let rect = Rect::new(
+                        plot.x + x_lo as u16,
+                        plot.y + y_lo as u16,
+                        (x_hi - x_lo + 1) as u16,
+                        (y_hi - y_lo + 1) as u16,
+                    )
+                    .intersection(plot);
+                    crate::interact::record_point(rect, si, pi, || {
+                        let f = crate::util::format_compact;
+                        (
+                            s.name.clone(),
+                            vec![format!("x {}  y {}", f(x), f(y)), format!("size {}", f(z))],
+                        )
+                    });
+                }
                 for dy in -r..=r {
                     for dx in -r..=r {
                         // dots are not square on every marker; scale x by the aspect

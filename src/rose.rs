@@ -191,6 +191,11 @@ impl RoseChart {
             .map(|(i, it)| it.color.unwrap_or_else(|| pick(&self.theme, i)))
             .collect();
 
+        let mut owner: Vec<Option<usize>> = if crate::interact::recording() {
+            vec![None; usize::from(plot.width) * usize::from(plot.height)]
+        } else {
+            Vec::new()
+        };
         for py in 0..ph {
             for px in 0..pw {
                 let dx = px as f64 + 0.5 - cx;
@@ -207,6 +212,13 @@ impl RoseChart {
                 }
                 let reach = rad * scale(vals[k]);
                 if r <= reach {
+                    if !owner.is_empty() {
+                        let cell = (py / ryd as i32) as usize * usize::from(plot.width)
+                            + (px / rxd as i32) as usize;
+                        if let Some(o) = owner.get_mut(cell).filter(|o| o.is_none()) {
+                            *o = Some(k);
+                        }
+                    }
                     let c = if r > reach - 1.5 {
                         colors[k]
                     } else {
@@ -216,6 +228,22 @@ impl RoseChart {
                 }
             }
         }
+        let total: f64 = vals.iter().sum();
+        crate::interact::record_grid(
+            plot,
+            &owner,
+            |_| 0,
+            |k| {
+                let f = crate::util::format_compact;
+                (
+                    self.items[k].label.clone(),
+                    vec![
+                        format!("value {}", f(vals[k])),
+                        format!("share {:.0}%", vals[k] / total * 100.0),
+                    ],
+                )
+            },
+        );
         // dotted reference rings, drawn only on empty dots
         for ring in 1..=self.rings {
             let rr = rad * ring as f64 / self.rings as f64;
