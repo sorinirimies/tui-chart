@@ -91,6 +91,10 @@ example-radial:
 example-instruments:
     cargo run --features theme --example instruments
 
+# Run cyber example
+example-cyber:
+    cargo run --features theme --example cyber
+
 # Run funnel example
 example-funnel:
     cargo run --features theme --example funnel
@@ -708,6 +712,11 @@ vhs-radial:
 vhs-instruments:
     vhs examples/vhs/instruments.tape
     @echo "✅ examples/vhs/output/instruments.gif"
+
+# Generate demo GIF for cyber
+vhs-cyber:
+    vhs examples/vhs/cyber.tape
+    @echo "✅ examples/vhs/output/cyber.gif"
 
 # Generate demo GIF for funnel
 vhs-funnel:

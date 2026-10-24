@@ -101,6 +101,7 @@ mod candle;
 mod canvas;
 mod crosshair;
 mod depth;
+mod effects;
 mod funnel;
 mod gantt;
 mod gauge;
@@ -119,6 +120,8 @@ mod renko;
 mod rose;
 mod sankey;
 mod scale;
+#[cfg(feature = "shader")]
+mod shader;
 mod slope;
 mod sparkline;
 mod stack;
@@ -148,6 +151,7 @@ pub use candle::{
 pub use canvas::{Canvas, Marker, OverlapPolicy};
 pub use crosshair::{nearest_point, Crosshair, NearestPoint};
 pub use depth::DepthChart;
+pub use effects::{bracket_block, chamfer_block, glow, scanlines, Fx};
 pub use funnel::{Funnel, FunnelStage};
 pub use gantt::{Gantt, Task};
 pub use gauge::{Gauge, GaugeOrientation, GaugeStyle};
@@ -166,6 +170,8 @@ pub use radial::{RadialBar, RadialRing, RadialSweep, RingStack};
 pub use renko::{renko_bricks, RenkoBrick, RenkoChart, RenkoStyle};
 pub use rose::{RoseChart, RoseItem};
 pub use sankey::{Sankey, SankeyLink};
+#[cfg(feature = "shader")]
+pub use shader::{ShaderBackdrop, ShaderPreset};
 pub use slope::{SlopeChart, SlopeItem};
 pub use sparkline::{Sparkline, SparklineStyle};
 pub use stack::{shared_gutter, ChartStack, StackDirection};

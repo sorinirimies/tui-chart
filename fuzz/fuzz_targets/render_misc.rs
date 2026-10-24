@@ -8,6 +8,12 @@ use tui_chart::*;
 
 #[derive(Arbitrary, Debug)]
 enum Input {
+    Effects {
+        radius: u16,
+        strength: f64,
+        glyphs: Vec<(u8, u8, u8)>,
+        size: Size,
+    },
     Instrument {
         values: Vec<f64>,
         peaks: Vec<f64>,
@@ -303,6 +309,17 @@ fuzz_target!(|i: Input| match i {
             }
             _ => render(HexMap::new(usize::from(cols), values).phase(phase), size),
         }
+    }
+    Input::Effects { radius, strength, glyphs, size } => {
+        let area = ratatui::layout::Rect::new(0, 0, u16::from(size.w % 80), u16::from(size.h % 40));
+        let mut buf = ratatui::buffer::Buffer::empty(area);
+        for (x, y, c) in glyphs {
+            if let Some(cell) = buf.cell_mut((u16::from(x), u16::from(y))) {
+                cell.set_char('#').set_fg(ratatui::style::Color::Rgb(c, c, c));
+            }
+        }
+        tui_chart::glow(&mut buf, area, radius % 6, strength);
+        tui_chart::scanlines(&mut buf, area, strength);
     }
     Input::Gauge { value, range, bands, target, orient, style, size } => {
         let mut g = Gauge::new(value)

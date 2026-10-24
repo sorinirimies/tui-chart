@@ -33,6 +33,7 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 | `Treemap` | nested weighted rectangles with group headers and tile gutters |
 | `RadialBar` / `RingStack` | concentric progress rings (270° or full), legend with percentages |
 | `Oscilloscope` / `Spectrum` / `DotMatrix` / `RadarScope` / `HexMap` | instrument panels: ECG/wave trace, equalizer with peak caps, LED dot matrix, sweeping radar scope, honeycomb heat map (animate with `.phase(t)`) |
+| `Fx` / `glow` / `scanlines` / `chamfer_block` / `bracket_block` | cyberpunk post effects for any widget; with feature `shader`, `ShaderBackdrop` runs a GPU (WGSL) background via tui-shader |
 | `Funnel` | tapered stages, side labels, conversion % and drop-off (`.taper`, `.show_dropoff`) |
 | `Bullet` | value vs target over qualitative ranges |
 | `PairedBars` | before/after bar pairs, each measure on its own scale, inline or stacked, with a legend |
@@ -83,6 +84,10 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 ### Instruments
 
 ![Instruments](examples/vhs/output/instruments.gif)
+
+### Cyber
+
+![Cyber](examples/vhs/output/cyber.gif)
 
 ### RadarChart
 
@@ -313,6 +318,7 @@ cargo run --features theme --example sankey
 cargo run --features theme --example bullet
 cargo run --features theme --example paired_bars
 cargo run --features theme --example funnel
+cargo run --features theme --example cyber
 cargo run --features theme --example instruments
 cargo run --features theme --example radial
 cargo run --features theme --example chartstack
@@ -354,3 +360,20 @@ workflow). Locally: `just audit`, `just deny`, `just fuzz render_line`,
 ## License
 
 MIT
+
+## Cyberpunk effects and shaders
+
+![cyber](examples/vhs/output/cyber.gif)
+
+`Fx`, `glow`, `scanlines`, `chamfer_block` and `bracket_block` work on any widget and need no GPU.
+
+```rust
+Fx::new(Spectrum::new(bars).block(chamfer_block(" EQ "))).glow(1, 0.5).scanlines(0.3)
+```
+
+With the opt-in `shader` feature, `ShaderBackdrop` runs a WGSL fragment shader through
+[tui-shader](https://github.com/pemattern/tui-shader) behind a chart (presets: `Grid`, `Aurora`,
+`Plasma`, or your own via `ShaderBackdrop::custom`). It needs a GPU adapter and pulls in `wgpu`.
+Shaders cannot draw data, so charts stay on the CPU and the shader supplies the background.
+
+`cargo run --release --features theme,shader --example cyber`
