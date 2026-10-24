@@ -2074,7 +2074,7 @@ dependencies = [
 
 [[package]]
 name = "tui-chart"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "crossterm 0.29.0",
