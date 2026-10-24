@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0](https://github.com/sorinirimies/tui-chart/releases/tag/v0.5.0) - 2026-10-24
+
+### Features
+
+- Mouse interactivity for every chart (HitMap, Interaction, tooltips, legend toggling) ([7521260](https://github.com/sorinirimies/tui-chart/commit/7521260cbfae62e758b226753d76d7d0c3e97e14))
+
 ## [0.4.0](https://github.com/sorinirimies/tui-chart/releases/tag/v0.4.0) - 2026-10-24
 
 ### Features
@@ -143,6 +149,8 @@ This reverts commit 84cc5e27f0e8118c92869d129f38a03b2ff85756. ([aa58de9](https:/
 - Depend on tui-nuances 0.1.6 ([8927821](https://github.com/sorinirimies/tui-chart/commit/89278213e38ec0b99efab66b73724508f10e610b))
 - Depend on tui-nuances 0.1.6 from crates.io ([4069a83](https://github.com/sorinirimies/tui-chart/commit/4069a8395f6b99831381fe6b0fc9110255a67494))
 
+
+[0.5.0]: https://github.com/sorinirimies/tui-chart/compare/v0.4.0...v0.5.0
 
 [0.4.0]: https://github.com/sorinirimies/tui-chart/compare/v0.3.0...v0.4.0
 
