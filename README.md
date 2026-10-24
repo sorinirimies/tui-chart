@@ -280,6 +280,7 @@ frame.render_widget(Monochrome::auto(Heatmap::new(data)), area);
 |---|---|
 | `theme` | `Theme`, `.theme(..)` on every widget, `Themed`/`ThemeProvider`/`ThemeSwitcher` re-exports (adds the `tui-nuances` dependency; off by default) |
 | `serde` | `Serialize`/`Deserialize` for data types (and `Theme` with `theme`) (`Candle`, `BarGroup`, `Bin`, `BoxStats`, `Task`, `Annotation`, `TradeMarker`, ...) |
+| `shader` | `ShaderBackdrop` / `ShaderPreset`: GPU (WGSL) backgrounds via `tui-shader`; needs a GPU adapter and pulls in `wgpu` (off by default) |
 
 ## Usage
 
