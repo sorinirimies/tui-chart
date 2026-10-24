@@ -23,7 +23,7 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 | `Histogram` | auto-binned distribution, KDE overlay, mean/median markers (`.stats`) |
 | `Heatmap` | multiple color gradients, `.stretch(true)` to fill the area |
 | `Sparkline` | bars, area, line, win/loss, moving-average `.smooth(n)` |
-| `Gauge` | linear, blocks, segmented and arc dial with scale, needle and target |
+| `Gauge` | 16 styles: linear, bullet, segmented, arc, dial, meter, reticle, ring, chevron, smooth, dots, LED, battery, level, thermometer, signal; bands, target, scale |
 | `RadarChart` | multi-axis paired_bars, filled polygons, ring values, legend |
 | `BoxPlot` | quartiles, whiskers, outliers, mean marker, notches, jittered points |
 | `Waterfall` | running deltas and totals |
@@ -31,6 +31,7 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 | `DepthChart` | order book bids/asks |
 | `RenkoChart` | fixed-size price bricks |
 | `Treemap` | nested weighted rectangles with group headers and tile gutters |
+| `RadialBar` / `RingStack` | concentric progress rings (270° or full), legend with percentages |
 | `Funnel` | tapered stages, side labels, conversion % and drop-off (`.taper`, `.show_dropoff`) |
 | `Bullet` | value vs target over qualitative ranges |
 | `PairedBars` | before/after bar pairs, each measure on its own scale, inline or stacked, with a legend |
@@ -73,6 +74,10 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 ### Gauge
 
 ![Gauge](examples/vhs/output/gauge.gif)
+
+### RadialBar
+
+![RadialBar](examples/vhs/output/radial.gif)
 
 ### RadarChart
 
@@ -303,6 +308,7 @@ cargo run --features theme --example sankey
 cargo run --features theme --example bullet
 cargo run --features theme --example paired_bars
 cargo run --features theme --example funnel
+cargo run --features theme --example radial
 cargo run --features theme --example chartstack
 cargo run --features theme --example depth
 cargo run --features theme --example gantt

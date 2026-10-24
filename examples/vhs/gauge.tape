@@ -20,6 +20,34 @@ Type "s"
 Sleep 1.5s
 Type "s"
 Sleep 1.5s
+Type "s"
+Sleep 1.5s
+Type "s"
+Sleep 1.5s
+Type "s"
+Sleep 1.5s
+Type "s"
+Sleep 1.5s
+Type "s"
+Sleep 1.5s
+Type "s"
+Sleep 1.5s
+Type "s"
+Sleep 1.5s
+Type "s"
+Sleep 1.5s
+Type "s"
+Sleep 1.5s
+Type "s"
+Sleep 1.5s
+Type "s"
+Sleep 1.5s
+Type "s"
+Sleep 1.5s
+Type "s"
+Sleep 1.5s
+Type "s"
+Sleep 1.5s
 Up
 Sleep 0.5s
 Up

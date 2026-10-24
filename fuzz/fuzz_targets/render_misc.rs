@@ -8,6 +8,13 @@ use tui_chart::*;
 
 #[derive(Arbitrary, Debug)]
 enum Input {
+    Radial {
+        rings: Vec<(String, f64, f64)>,
+        full: bool,
+        legend: bool,
+        stack: bool,
+        size: Size,
+    },
     Bars {
         groups: Vec<(String, Vec<f64>)>,
         horizontal: bool,
@@ -263,6 +270,19 @@ fuzz_target!(|i: Input| match i {
         }
         render(r, size);
     }
+    Input::Radial { rings, full, legend, stack, size } => {
+        let rings: Vec<_> = rings.into_iter().take(32).collect();
+        if stack {
+            render(
+                RingStack::new(rings.into_iter().map(|(l, v, _)| (l, v))).legend(legend),
+                size,
+            );
+        } else {
+            let sweep = if full { RadialSweep::Full } else { RadialSweep::Arc };
+            let rings = rings.into_iter().map(|(l, v, m)| RadialRing::new(l, v, m));
+            render(RadialBar::new(rings).sweep(sweep).legend(legend), size);
+        }
+    }
     Input::Gauge { value, range, bands, target, orient, style, size } => {
         let mut g = Gauge::new(value)
             .range(range.0, range.1)
@@ -272,11 +292,7 @@ fuzz_target!(|i: Input| match i {
             } else {
                 GaugeOrientation::Vertical
             })
-            .style(match style % 3 {
-                0 => GaugeStyle::Linear,
-                1 => GaugeStyle::Bullet,
-                _ => GaugeStyle::Arc,
-            })
+            .style(GaugeStyle::ALL[usize::from(style) % GaugeStyle::ALL.len()])
             .color(Color::Green);
         if let Some(t) = target {
             g = g.target(t);

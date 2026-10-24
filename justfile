@@ -83,6 +83,10 @@ example-sparkline:
 example-chartstack:
     cargo run --features theme --example chartstack
 
+# Run radial example
+example-radial:
+    cargo run --features theme --example radial
+
 # Run funnel example
 example-funnel:
     cargo run --features theme --example funnel
@@ -140,7 +144,7 @@ example-waterfall:
     cargo run --features theme --example waterfall
 
 # Run all examples (sequentially)
-examples: example-themes example-bars example-boxplot example-candlestick example-chartstack example-bubble example-lollipop example-slope example-calendar example-violin example-rose example-stacked_area example-sankey example-bullet example-paired_bars example-funnel example-depth example-gantt example-gauge example-heatmap example-histogram example-line example-radar example-renko example-showcase example-sparkline example-stream example-treemap example-waterfall
+examples: example-themes example-bars example-boxplot example-candlestick example-chartstack example-bubble example-lollipop example-slope example-calendar example-violin example-rose example-stacked_area example-sankey example-bullet example-paired_bars example-funnel example-radial example-depth example-gantt example-gauge example-heatmap example-histogram example-line example-radar example-renko example-showcase example-sparkline example-stream example-treemap example-waterfall
 
 # Run themes example
 example-themes:
@@ -690,6 +694,11 @@ vhs-sparkline:
 vhs-chartstack:
     vhs examples/vhs/chartstack.tape
     @echo "✅ examples/vhs/output/chartstack.gif"
+
+# Generate demo GIF for radial
+vhs-radial:
+    vhs examples/vhs/radial.tape
+    @echo "✅ examples/vhs/output/radial.gif"
 
 # Generate demo GIF for funnel
 vhs-funnel:

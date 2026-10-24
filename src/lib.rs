@@ -10,6 +10,7 @@
 //! - [`Histogram`], [`Heatmap`], [`Sparkline`], [`Gauge`], [`RadarChart`]
 //! - [`BoxPlot`], [`Waterfall`], [`Gantt`], [`DepthChart`], [`RenkoChart`], [`Treemap`]
 //! - [`Funnel`], [`Bullet`], [`PairedBars`], [`BubbleChart`], [`LollipopChart`], [`SlopeChart`], [`CalendarHeatmap`], [`ViolinChart`], [`RoseChart`], [`StackedAreaChart`], [`Sankey`]
+//! - [`RadialBar`], [`RingStack`] – concentric progress rings
 //! - [`ChartStack`] – stack charts with a shared gutter
 //! - [`PieChart`] / [`PieSlice`] – re-exported from the
 //!   [`tui-piechart`](https://crates.io/crates/tui-piechart) crate (default `piechart` feature;
@@ -91,6 +92,7 @@ mod annotation;
 mod axis;
 mod bar;
 mod boxplot;
+mod braille;
 mod bubble;
 mod bullet;
 mod calendar;
@@ -101,6 +103,7 @@ mod depth;
 mod funnel;
 mod gantt;
 mod gauge;
+mod gauge_kit;
 mod heatmap;
 mod histogram;
 mod indicator;
@@ -109,6 +112,7 @@ mod line;
 mod lollipop;
 mod paired_bars;
 mod radar;
+mod radial;
 mod renko;
 mod rose;
 mod sankey;
@@ -152,6 +156,7 @@ pub use line::{LegendPosition, LineChart, LineMode, Series};
 pub use lollipop::{LollipopChart, LollipopItem};
 pub use paired_bars::{PairedBars, PairedBarsItem, PairedBarsLayout};
 pub use radar::{RadarChart, RadarSeries};
+pub use radial::{RadialBar, RadialRing, RadialSweep, RingStack};
 pub use renko::{renko_bricks, RenkoBrick, RenkoChart, RenkoStyle};
 pub use rose::{RoseChart, RoseItem};
 pub use sankey::{Sankey, SankeyLink};

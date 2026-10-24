@@ -35,6 +35,87 @@ pub enum GaugeStyle {
     Arc,
     /// Discrete blocks (htop / battery style); lit blocks take the band color.
     Segmented,
+    /// Full-circle-ish dial (270°): banded ring, ticks, needle and value readout.
+    Dial,
+    /// Half-circle meter with a needle and the readout underneath.
+    Meter,
+    /// Sci-fi reticle: ring with tick marks, inner dashed ring and crosshair.
+    Reticle,
+    /// Full ring (360°) filling clockwise, value in the hole.
+    Ring,
+    /// Row of chevron cells (`❯`), lit up to the value.
+    Chevron,
+    /// Smooth sub-cell bar with a rounded end.
+    Smooth,
+    /// Row of round dots, lit up to the value.
+    Dots,
+    /// LED strip: lit segments take the band color, unlit ones are dim.
+    Led,
+    /// Battery outline with a terminal nub and a charge fill.
+    Battery,
+    /// Vertical liquid level in a tank, with a wavy surface.
+    Level,
+    /// Vertical thermometer with a bulb.
+    Thermometer,
+    /// Rising signal bars (like a phone's reception indicator).
+    Signal,
+}
+
+impl GaugeStyle {
+    /// Every gauge style.
+    pub const ALL: [GaugeStyle; 16] = [
+        GaugeStyle::Linear,
+        GaugeStyle::Bullet,
+        GaugeStyle::Arc,
+        GaugeStyle::Segmented,
+        GaugeStyle::Dial,
+        GaugeStyle::Meter,
+        GaugeStyle::Reticle,
+        GaugeStyle::Ring,
+        GaugeStyle::Chevron,
+        GaugeStyle::Smooth,
+        GaugeStyle::Dots,
+        GaugeStyle::Led,
+        GaugeStyle::Battery,
+        GaugeStyle::Level,
+        GaugeStyle::Thermometer,
+        GaugeStyle::Signal,
+    ];
+
+    fn look(self) -> Option<crate::gauge_kit::Look> {
+        use crate::gauge_kit::Look;
+        Some(match self {
+            GaugeStyle::Dial => Look::Dial,
+            GaugeStyle::Meter => Look::Meter,
+            GaugeStyle::Reticle => Look::Reticle,
+            GaugeStyle::Ring => Look::Ring,
+            GaugeStyle::Chevron => Look::Chevron,
+            GaugeStyle::Smooth => Look::Smooth,
+            GaugeStyle::Dots => Look::Dots,
+            GaugeStyle::Led => Look::Led,
+            GaugeStyle::Battery => Look::Battery,
+            GaugeStyle::Level => Look::Level,
+            GaugeStyle::Thermometer => Look::Thermometer,
+            GaugeStyle::Signal => Look::Signal,
+            _ => return None,
+        })
+    }
+
+    /// A good `(width, height)` in cells for this style.
+    pub const fn preferred_size(self) -> (u16, u16) {
+        match self {
+            GaugeStyle::Meter => (22, 7),
+            GaugeStyle::Level => (8, 8),
+            GaugeStyle::Thermometer => (5, 8),
+            GaugeStyle::Signal => (14, 6),
+            GaugeStyle::Arc
+            | GaugeStyle::Dial
+            | GaugeStyle::Reticle
+            | GaugeStyle::Ring
+            | GaugeStyle::Segmented => (20, 10),
+            _ => (36, 1),
+        }
+    }
 }
 
 /// Gauge showing a value inside `[min, max]`.
@@ -384,6 +465,32 @@ impl Gauge<'_> {
         if inner.width == 0 || inner.height == 0 {
             return;
         }
+        if let Some(look) = self.style.look() {
+            let frac = self.frac(self.value);
+            let span = self.max - self.min;
+            let bands = self
+                .bands
+                .iter()
+                .map(|(v, c)| (self.frac(*v), *c))
+                .filter(|_| span > 0.0)
+                .collect();
+            let readout = self
+                .label
+                .clone()
+                .unwrap_or_else(|| format!("{:.0}%", frac * 100.0));
+            crate::gauge_kit::Painter {
+                look,
+                frac,
+                readout,
+                label: None,
+                bands,
+                color: self.bar_color(),
+                track: self.track(),
+                fg: self.fg(),
+            }
+            .render(inner, buf);
+            return;
+        }
         match self.style {
             GaugeStyle::Arc => self.draw_arc(inner, buf),
             _ => self.draw_linear(inner, buf),
@@ -495,5 +602,58 @@ mod tests {
             run(Gauge::new(5.0).style(s).label("long label"), 3, 2);
             run(Gauge::new(5.0).style(s), 0, 0);
         }
+    }
+
+    #[test]
+    fn every_style_renders_at_every_size() {
+        for s in GaugeStyle::ALL {
+            for (w, h) in [(0, 0), (1, 1), (3, 2), (8, 3), (22, 7), (40, 12)] {
+                for v in [f64::NAN, -5.0, 0.0, 50.0, 100.0, 1e9] {
+                    run(Gauge::new(v).style(s).block(Block::bordered()), w, h);
+                    run(
+                        Gauge::new(v)
+                            .style(s)
+                            .label("x")
+                            .bands([(50.0, Color::Green), (100.0, Color::Red)]),
+                        w,
+                        h,
+                    );
+                }
+            }
+            run(Gauge::new(5.0).style(s).range(3.0, 3.0), 20, 8);
+        }
+    }
+
+    #[test]
+    fn new_styles_draw_and_react_to_value() {
+        let lit = |b: &Buffer| {
+            b.content()
+                .iter()
+                .map(|c| (c.symbol().to_string(), c.fg))
+                .collect::<Vec<_>>()
+        };
+        for s in GaugeStyle::ALL.iter().skip(4) {
+            let (w, h) = s.preferred_size();
+            let (w, h) = (w.max(12), h.max(3));
+            let lo = run(Gauge::new(10.0).style(*s).color(Color::Red), w, h);
+            let hi = run(Gauge::new(90.0).style(*s).color(Color::Red), w, h);
+            assert!(
+                lo.content().iter().any(|c| c.symbol() != " "),
+                "{s:?} blank"
+            );
+            assert_ne!(lit(&lo), lit(&hi), "{s:?} ignores value");
+        }
+    }
+
+    #[test]
+    fn bands_color_new_styles() {
+        let b = run(
+            Gauge::new(95.0)
+                .style(GaugeStyle::Led)
+                .bands([(50.0, Color::Green), (100.0, Color::Red)]),
+            30,
+            1,
+        );
+        assert!(b.content().iter().any(|c| c.fg == Color::Red));
     }
 }

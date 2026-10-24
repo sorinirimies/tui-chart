@@ -53,20 +53,33 @@ fn main() -> anyhow::Result<()> {
                 .label(format!("{:.0}%", s.value))
                 .theme(s.theme.clone())
                 .block(Block::bordered().title(format!(" Gauge · {:?} ", s.style)));
-            // Linear styles look best as a slim bar; the arc wants the full area.
+            // Linear styles look best as a slim bar; radial and vertical ones want room.
+            let (pw, ph) = s.style.preferred_size();
             let area = match (s.style, s.vertical) {
-                (GaugeStyle::Arc, _) => main,
-                (_, false) => {
+                (GaugeStyle::Linear | GaugeStyle::Bullet | GaugeStyle::Segmented, false) => {
                     let h = main.height.min(5);
                     Layout::vertical([Constraint::Length(h)])
                         .flex(Flex::Center)
                         .areas::<1>(main)[0]
                 }
-                (_, true) => {
+                (GaugeStyle::Linear | GaugeStyle::Bullet | GaugeStyle::Segmented, true) => {
                     let w = main.width.min(11);
                     Layout::horizontal([Constraint::Length(w)])
                         .flex(Flex::Center)
                         .areas::<1>(main)[0]
+                }
+                (GaugeStyle::Arc, _) => main,
+                _ => {
+                    let (w, h) = (
+                        main.width.min(pw * 2 + 2),
+                        main.height.min(ph * 2 + 2).max(3),
+                    );
+                    let [r] = Layout::vertical([Constraint::Length(h)])
+                        .flex(Flex::Center)
+                        .areas(main);
+                    Layout::horizontal([Constraint::Length(w.max(pw + 2))])
+                        .flex(Flex::Center)
+                        .areas::<1>(r)[0]
                 }
             };
             f.render_widget(&g, area);
@@ -82,12 +95,11 @@ fn main() -> anyhow::Result<()> {
                 KeyCode::Char('T') => s.theme = s.theme.prev(),
                 KeyCode::Char('q') | KeyCode::Esc => return true,
                 KeyCode::Char('s') => {
-                    s.style = match s.style {
-                        GaugeStyle::Linear => GaugeStyle::Bullet,
-                        GaugeStyle::Bullet => GaugeStyle::Arc,
-                        GaugeStyle::Arc => GaugeStyle::Segmented,
-                        GaugeStyle::Segmented => GaugeStyle::Linear,
-                    }
+                    let i = GaugeStyle::ALL
+                        .iter()
+                        .position(|x| *x == s.style)
+                        .unwrap_or(0);
+                    s.style = GaugeStyle::ALL[(i + 1) % GaugeStyle::ALL.len()];
                 }
                 KeyCode::Char('k') => s.marker = s.marker.next(),
                 KeyCode::Char('o') => s.vertical = !s.vertical,
