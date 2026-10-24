@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0](https://github.com/sorinirimies/tui-chart/releases/tag/v0.2.0) - 2026-10-24
+
+### Features
+
+- Re-export tui-piechart (default 'piechart' feature) so one dependency covers charts and pies ([0dfc667](https://github.com/sorinirimies/tui-chart/commit/0dfc66755eb9b5e35f68a535ff98e8a3f04f2f64))
+- **examples:** Pie chart demo, tape and gif; embed in README ([d2dbd7e](https://github.com/sorinirimies/tui-chart/commit/d2dbd7e8ed646a9927550547f426da9e7f42b557))
+- **gauge:** 12 new styles (dial, meter, reticle, ring, chevron, smooth, dots, led, battery, level, thermometer, signal); add RadialBar and RingStack ([38e5cba](https://github.com/sorinirimies/tui-chart/commit/38e5cba46380523b25e17d2c109a4bfb9a7acc73))
+- Oscilloscope, Spectrum, DotMatrix, RadarScope and HexMap instrument widgets ([3d674a9](https://github.com/sorinirimies/tui-chart/commit/3d674a9f2bc997db8dd14c46d4bbbb6d5b3565b5))
+
+### Miscellaneous
+
+- **just:** Release recipes skip the bump confirmation prompt ([26846b5](https://github.com/sorinirimies/tui-chart/commit/26846b5a750b56542605953d15e2619e0082fabf))
+
 ## [0.1.5](https://github.com/sorinirimies/tui-chart/releases/tag/v0.1.5) - 2026-10-22
 
 ### Bug Fixes
@@ -112,6 +125,8 @@ This reverts commit 84cc5e27f0e8118c92869d129f38a03b2ff85756. ([aa58de9](https:/
 - Depend on tui-nuances 0.1.6 ([8927821](https://github.com/sorinirimies/tui-chart/commit/89278213e38ec0b99efab66b73724508f10e610b))
 - Depend on tui-nuances 0.1.6 from crates.io ([4069a83](https://github.com/sorinirimies/tui-chart/commit/4069a8395f6b99831381fe6b0fc9110255a67494))
 
+
+[0.2.0]: https://github.com/sorinirimies/tui-chart/compare/v0.1.5...v0.2.0
 
 [0.1.5]: https://github.com/sorinirimies/tui-chart/compare/v0.1.4...v0.1.5
 
