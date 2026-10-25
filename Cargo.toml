@@ -29,7 +29,7 @@ ratatui = { version = "0.30", default-features = false }
 unicode-width = "0.2"
 serde = { version = "1", features = ["derive"], optional = true }
 # Shared theme crate; switch to the crates.io version after it is published.
-tui-nuances = { version = "0.1.6", optional = true }
+tui-nuances = { version = "0.1.7", optional = true }
 # Pie charts live in their own crate (https://github.com/sorinirimies/tui-piechart)
 # and are re-exported from here so one dependency gives you everything.
 tui-piechart = { version = "1.4.0", optional = true }

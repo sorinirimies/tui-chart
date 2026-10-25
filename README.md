@@ -4,7 +4,7 @@
 [![Security](https://github.com/sorinirimies/tui-chart/actions/workflows/security.yml/badge.svg)](https://github.com/sorinirimies/tui-chart/actions/workflows/security.yml)
 [![Fuzz](https://github.com/sorinirimies/tui-chart/actions/workflows/fuzz.yml/badge.svg)](https://github.com/sorinirimies/tui-chart/actions/workflows/fuzz.yml)
 [![Crates.io](https://img.shields.io/crates/v/tui-chart?style=flat-square&logo=rust&color=orange)](https://crates.io/crates/tui-chart)
-[![Downloads](https://img.shields.io/crates/d/tui-chart)](https://crates.io/crates/tui-chart)
+[![tui-chart installs](https://img.shields.io/crates/d/tui-chart?label=tui-chart%20installs&logo=rust&color=orange)](https://crates.io/crates/tui-chart)
 [![Documentation](https://docs.rs/tui-chart/badge.svg)](https://docs.rs/tui-chart)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
