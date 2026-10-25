@@ -181,6 +181,7 @@ mod tests {
     fn buf_with_dot() -> (Buffer, Rect) {
         let a = Rect::new(0, 0, 9, 5);
         let mut b = Buffer::empty(a);
+        b.set_style(a, ratatui::style::Style::default().bg(Color::Rgb(0, 0, 0)));
         b[(4, 2)].set_char('█').set_fg(Color::Rgb(255, 0, 255));
         (b, a)
     }
@@ -191,9 +192,18 @@ mod tests {
         b[(5, 2)].set_char('x');
         glow(&mut b, a, 2, 1.0);
         assert!(matches!(b[(3, 2)].bg, Color::Rgb(r, 0, _) if r > 0));
-        assert_eq!(b[(5, 2)].bg, Color::Reset);
-        assert_eq!(b[(0, 0)].bg, Color::Reset);
+        assert_eq!(b[(5, 2)].bg, Color::Rgb(0, 0, 0));
+        assert_eq!(b[(0, 0)].bg, Color::Rgb(0, 0, 0));
         assert!(matches!(b[(4, 1)].bg, Color::Rgb(..)));
+    }
+
+    #[test]
+    fn glow_leaves_unset_backgrounds_alone() {
+        let a = Rect::new(0, 0, 5, 3);
+        let mut b = Buffer::empty(a);
+        b[(2, 1)].set_char('█').set_fg(Color::Rgb(255, 0, 255));
+        glow(&mut b, a, 2, 1.0);
+        assert_eq!(b[(1, 1)].bg, Color::Reset);
     }
 
     #[test]
