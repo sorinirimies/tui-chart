@@ -66,6 +66,10 @@ fn main() -> anyhow::Result<()> {
                     tui_chart::scanlines(buf, area, 0.15);
                 }
             };
+            f.render_widget(
+                ratatui::widgets::Block::new().style(s.theme.surface_style()),
+                main,
+            );
             let buf = f.buffer_mut();
             spec.render(l, buf);
             radar.render(r, buf);

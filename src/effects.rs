@@ -65,11 +65,12 @@ pub fn glow(buf: &mut Buffer, area: Rect, radius: u16, strength: f64) {
                 if !blank(cell.symbol()) {
                     continue;
                 }
-                let base = if cell.bg == Color::Reset {
-                    Color::Black
-                } else {
-                    cell.bg
-                };
+                // Without an explicit background there is nothing to blend with
+                // (the terminal colour is unknown), so leave the cell alone.
+                if cell.bg == Color::Reset {
+                    continue;
+                }
+                let base = cell.bg;
                 let a = strength.clamp(0.0, 1.0) * (1.0 - dist / (f64::from(radius) + 1.0)) * 0.5;
                 cell.bg = mix(base, fg, a);
             }

@@ -16,10 +16,10 @@ Enter
 Sleep 4s
 Show
 
+Sleep 3s
+Type "g"
 Sleep 2s
-Type "t"
-Sleep 2s
-Type "t"
+Type "g"
 Sleep 2s
 Type "s"
 Sleep 2s
