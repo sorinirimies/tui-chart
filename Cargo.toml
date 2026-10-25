@@ -35,10 +35,10 @@ tui-nuances = { version = "0.1.7", optional = true }
 tui-piechart = { version = "1.4.0", optional = true }
 
 [features]
-default = ["piechart"]
+default = ["piechart", "theme"]
 # Re-export the `tui-piechart` crate (`tui_chart::piechart`, `PieChart`, `PieSlice`).
 piechart = ["dep:tui-piechart"]
-# Opt-in theming: `Theme`, `.theme(..)` builders on every widget, `Themed` impls.
+# Theming via tui-nuances (on by default; disable with `default-features = false`): `Theme`, `.theme(..)` builders on every widget, `Themed` impls.
 theme = ["dep:tui-nuances", "tui-piechart?/theme"]
 # Derive Serialize/Deserialize on data types (and on Theme when `theme` is on).
 serde = ["dep:serde", "ratatui/serde", "tui-nuances?/serde"]
