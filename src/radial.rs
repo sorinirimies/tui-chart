@@ -112,6 +112,7 @@ pub struct RadialBar {
     rings: Vec<RadialRing>,
     sweep: RadialSweep,
     legend: bool,
+    hidden: Vec<usize>,
     track: Option<Color>,
     theme: Option<Theme>,
     base: Option<Style>,
@@ -125,6 +126,7 @@ impl RadialBar {
             rings: rings.into_iter().collect(),
             sweep: RadialSweep::Arc,
             legend: true,
+            hidden: Vec::new(),
             track: None,
             theme: None,
             base: None,
@@ -150,6 +152,14 @@ impl RadialBar {
     );
     base_style_setter!(base);
     block_setter!(block, 'static);
+
+    /// Hide rings by index. They keep their slot and legend entry (dimmed),
+    /// so they can be toggled back, see [`Interaction`](crate::Interaction).
+    #[must_use]
+    pub fn hidden(mut self, hidden: impl IntoIterator<Item = usize>) -> Self {
+        self.hidden = hidden.into_iter().collect();
+        self
+    }
 
     fn ring_color(&self, r: &RadialRing, i: usize) -> Color {
         r.color.unwrap_or_else(|| {
@@ -184,7 +194,11 @@ impl RadialBar {
             for (i, ring) in self.rings.iter().enumerate() {
                 let outer = r - i as f64 * pitch;
                 let inner = (outer - thick).max(0.0);
-                let frac = ring.fraction();
+                let frac = if self.hidden.contains(&i) {
+                    0.0
+                } else {
+                    ring.fraction()
+                };
                 let color = self.ring_color(ring, i);
                 g.ring(c, (inner, outer), sw, |pos| {
                     Some(if frac >= 1.0 || pos < frac {
@@ -205,7 +219,7 @@ impl RadialBar {
                         if (turn - sw.0).rem_euclid(1.0) > sw.1 {
                             continue;
                         }
-                        for i in 0..self.rings.len() {
+                        for i in (0..self.rings.len()).filter(|i| !self.hidden.contains(i)) {
                             let outer = r - i as f64 * pitch;
                             if d <= outer && d >= (outer - thick).max(0.0) - 1.0 {
                                 owner
@@ -252,9 +266,25 @@ impl RadialBar {
                 break;
             }
             let color = self.ring_color(ring, i);
-            buf.set_string(area.x, y, "■", Style::default().fg(color));
+            let off = self.hidden.contains(&i);
+            let text = if off {
+                text.add_modifier(Modifier::DIM | Modifier::CROSSED_OUT)
+            } else {
+                text
+            };
+            buf.set_string(
+                area.x,
+                y,
+                if off { "□" } else { "■" },
+                Style::default().fg(color),
+            );
             let label = truncate(&ring.label, label_w);
             buf.set_string(area.x + 2, y, &label, text);
+            crate::interact::record_legend(
+                Rect::new(area.x, y, 2 + text_width(&label) as u16, 1),
+                i,
+                &ring.label,
+            );
             let pct = format!("{:.0}%", ring.fraction() * 100.0);
             let px = area.right().saturating_sub(pct.len() as u16);
             if px > area.x + 2 + text_width(&label) as u16 {
@@ -345,6 +375,13 @@ impl RingStack {
     /// Ring colors by position (the theme / palette fills in the rest).
     pub fn colors(mut self, colors: impl IntoIterator<Item = Color>) -> Self {
         self.colors = colors.into_iter().collect();
+        self
+    }
+
+    /// Hide rings by index, see [`RadialBar::hidden`].
+    #[must_use]
+    pub fn hidden(mut self, hidden: impl IntoIterator<Item = usize>) -> Self {
+        self.inner = self.inner.hidden(hidden);
         self
     }
 

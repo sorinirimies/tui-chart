@@ -82,6 +82,8 @@
 
 #[macro_use]
 mod macros;
+#[cfg(feature = "piechart")]
+pub use pie::Pie;
 /// The full [`tui-piechart`](https://docs.rs/tui-piechart) crate, re-exported.
 #[cfg(feature = "piechart")]
 pub use tui_piechart as piechart;
@@ -115,6 +117,8 @@ mod layout;
 mod line;
 mod lollipop;
 mod paired_bars;
+#[cfg(feature = "piechart")]
+mod pie;
 mod radar;
 mod radial;
 mod renko;
@@ -150,7 +154,7 @@ pub use candle::{
 pub use canvas::{Canvas, Marker, OverlapPolicy};
 pub use crosshair::{nearest_point, Crosshair, NearestPoint};
 pub use depth::DepthChart;
-pub use effects::{bracket_block, chamfer_block, glow, scanlines, Fx};
+pub use effects::{bracket_block, chamfer_block, glow, scanlines, Fx, FxExt};
 pub use funnel::{Funnel, FunnelStage};
 pub use gantt::{Gantt, Task};
 pub use gauge::{Gauge, GaugeOrientation, GaugeStyle};
@@ -161,7 +165,7 @@ pub use instruments::{
     blip_alpha, ecg_beat, hex_center, hex_extent, jitter, Blip, DotMatrix, HexMap, Oscilloscope,
     RadarScope, Spectrum,
 };
-pub use interact::{Click, Hit, HitKind, HitMap, Interaction};
+pub use interact::{Click, Hit, HitKind, HitMap, Interaction, View};
 pub use line::{LegendPosition, LineChart, LineMode, Series};
 pub use lollipop::{LollipopChart, LollipopItem};
 pub use paired_bars::{PairedBars, PairedBarsItem, PairedBarsLayout};

@@ -100,6 +100,28 @@ pub fn scanlines(buf: &mut Buffer, area: Rect, strength: f64) {
     }
 }
 
+/// `.glow(..)` / `.scanlines(..)` on any widget, so effects read like any other builder call:
+///
+/// ```
+/// use tui_chart::{FxExt, Spectrum};
+///
+/// let chart = Spectrum::new([0.2, 0.9, 0.5]).glow(1, 0.25).scanlines(0.15);
+/// # let _ = chart;
+/// ```
+pub trait FxExt: Widget + Sized {
+    /// Wrap in an [`Fx`] with a [`glow`] of `radius` cells and `strength`.
+    fn glow(self, radius: u16, strength: f64) -> Fx<Self> {
+        Fx::new(self).glow(radius, strength)
+    }
+
+    /// Wrap in an [`Fx`] with [`scanlines`] of `strength`.
+    fn scanlines(self, strength: f64) -> Fx<Self> {
+        Fx::new(self).scanlines(strength)
+    }
+}
+
+impl<W: Widget> FxExt for W {}
+
 /// Wraps a widget and applies post effects after it renders.
 #[derive(Debug, Clone)]
 pub struct Fx<W> {

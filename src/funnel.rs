@@ -61,6 +61,7 @@ pub struct Funnel {
     show_percent: bool,
     show_dropoff: bool,
     taper: bool,
+    hidden: Vec<usize>,
     block: Option<Block<'static>>,
 }
 
@@ -74,6 +75,7 @@ impl Funnel {
             show_percent: true,
             show_dropoff: true,
             taper: true,
+            hidden: Vec::new(),
             block: None,
         }
     }
@@ -101,6 +103,14 @@ impl Funnel {
     base_style_setter!(base);
 
     block_setter!(block, 'static);
+
+    /// Hide stages by index. The label stays (dimmed) so the stage can be
+    /// toggled back, see [`Interaction`](crate::Interaction).
+    #[must_use]
+    pub fn hidden(mut self, hidden: impl IntoIterator<Item = usize>) -> Self {
+        self.hidden = hidden.into_iter().collect();
+        self
+    }
 
     /// Conversion of each stage relative to the first (0..=1; 0 if the first is 0).
     pub fn conversions(&self) -> Vec<f64> {
@@ -137,8 +147,9 @@ impl Funnel {
         let vals: Vec<f64> = self
             .stages
             .iter()
-            .map(|s| {
-                if s.value.is_finite() {
+            .enumerate()
+            .map(|(i, s)| {
+                if s.value.is_finite() && !self.hidden.contains(&i) {
                     s.value.max(0.0)
                 } else {
                     0.0
@@ -146,7 +157,10 @@ impl Funnel {
             })
             .collect();
         let max = vals.iter().copied().fold(0.0, f64::max);
-        let conv = self.conversions();
+        let conv: Vec<f64> = vals
+            .iter()
+            .map(|v| if vals[0] > 0.0 { v / vals[0] } else { 0.0 })
+            .collect();
 
         // Columns: [labels] [funnel] [value + percent + drop-off]. Side columns
         // are dropped on narrow areas, falling back to centered labels.
@@ -173,6 +187,7 @@ impl Funnel {
                 break;
             }
             let h = (rows_each as u32).min(inner.bottom() as u32 - y0) as u16;
+            let off = self.hidden.contains(&i);
             let color = st.color.unwrap_or_else(|| {
                 self.theme
                     .as_ref()
@@ -193,7 +208,7 @@ impl Funnel {
             } else {
                 h - 1
             };
-            for r in 0..bar_h {
+            for r in 0..if off { 0 } else { bar_h } {
                 let t = (r as f64 + 0.5) / bar_h as f64;
                 let w = top_w + (bot_w - top_w) * t;
                 let (l, rt) = (center - w / 2.0, center + w / 2.0);
@@ -219,22 +234,46 @@ impl Funnel {
             let wmax = top_w.max(bot_w);
             let hx = ((center - wmax / 2.0).floor().max(fx as f64)) as u16;
             let hw = (wmax.ceil() as u16).min(fx + fw - hx).max(1);
-            crate::interact::record_point(Rect::new(hx, y0 as u16, hw, bar_h.max(1)), 0, i, || {
-                let mut lines = vec![format!("value {}", format_compact(vals[i]))];
-                lines.push(format!("of first {:.0}%", conv[i] * 100.0));
-                if i > 0 && vals[i - 1] > 0.0 {
-                    lines.push(format!(
-                        "drop-off {:.0}%",
-                        (1.0 - vals[i] / vals[i - 1]) * 100.0
-                    ));
-                }
-                (st.label.clone(), lines)
-            });
+            if !off {
+                crate::interact::record_point(
+                    Rect::new(hx, y0 as u16, hw, bar_h.max(1)),
+                    0,
+                    i,
+                    || {
+                        let mut lines = vec![format!("value {}", format_compact(vals[i]))];
+                        lines.push(format!("of first {:.0}%", conv[i] * 100.0));
+                        if i > 0 && vals[i - 1] > 0.0 {
+                            lines.push(format!(
+                                "drop-off {:.0}%",
+                                (1.0 - vals[i] / vals[i - 1]) * 100.0
+                            ));
+                        }
+                        (st.label.clone(), lines)
+                    },
+                );
+            }
 
             // value / percent / drop-off (side) or centered label (narrow)
             let mid = y0 as u16 + bar_h.saturating_sub(1) / 2;
             if side {
-                put_str(buf, inner.x, mid, fx, &st.label, text);
+                let lab = if off {
+                    text.add_modifier(
+                        ratatui::style::Modifier::DIM | ratatui::style::Modifier::CROSSED_OUT,
+                    )
+                } else {
+                    text
+                };
+                put_str(buf, inner.x, mid, fx, &st.label, lab);
+                crate::interact::record_legend(
+                    Rect::new(
+                        inner.x,
+                        mid,
+                        (st.label.chars().count() as u16).min(fx - inner.x),
+                        1,
+                    ),
+                    i,
+                    &st.label,
+                );
                 let mut stat = format_compact(vals[i]);
                 if self.show_percent {
                     stat.push_str(&format!("  {:>3.0}%", conv[i] * 100.0));
@@ -269,7 +308,19 @@ impl Funnel {
                 } else {
                     text
                 };
+                let style = if off {
+                    text.add_modifier(
+                        ratatui::style::Modifier::DIM | ratatui::style::Modifier::CROSSED_OUT,
+                    )
+                } else {
+                    style
+                };
                 put_str(buf, lx, mid, inner.right(), &label, style);
+                crate::interact::record_legend(
+                    Rect::new(lx, mid, lw.min(inner.right().saturating_sub(lx)), 1),
+                    i,
+                    &st.label,
+                );
             }
         }
     }

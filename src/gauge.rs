@@ -179,6 +179,18 @@ impl<'a> Gauge<'a> {
         self.bands.sort_by(|a, b| a.0.total_cmp(&b.0));
         self
     }
+    /// Traffic-light zones: green up to 60 %, amber up to 85 %, red above
+    /// (of the `min..max` range). Replaces any bands set before.
+    #[must_use]
+    pub fn zones(self) -> Self {
+        let (lo, hi) = (self.min, self.max);
+        let at = |f: f64| lo + (hi - lo) * f;
+        self.bands([
+            (at(0.6), Color::Green),
+            (at(0.85), Color::Yellow),
+            (hi, Color::Red),
+        ])
+    }
     opt_setter!(
         /// Target marker value.
         target: f64

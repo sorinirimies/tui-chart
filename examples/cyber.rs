@@ -12,7 +12,8 @@ use ratatui::{
 };
 use std::time::Duration;
 use tui_chart::{
-    bracket_block, chamfer_block, jitter, Blip, Oscilloscope, RadarScope, Spectrum, Theme,
+    bracket_block, chamfer_block, jitter, Blip, Gauge, Oscilloscope, RadarScope, Spectrum, Theme,
+    Treemap, TreemapItem,
 };
 
 struct State {
@@ -73,8 +74,29 @@ fn main() -> anyhow::Result<()> {
             let buf = f.buffer_mut();
             spec.render(l, buf);
             radar.render(r, buf);
-            scope.render(bottom, buf);
-            for area in [l, r, bottom] {
+            let [b_l, b_r] =
+                Layout::horizontal([Constraint::Percentage(60), Constraint::Percentage(40)])
+                    .areas(bottom);
+            let [g_area, t_area] =
+                Layout::vertical([Constraint::Length(3), Constraint::Min(3)]).areas(b_r);
+            scope.render(b_l, buf);
+            let load = 50.0 + 45.0 * (s.t * 0.6).sin();
+            Gauge::new(load)
+                .range(0.0, 100.0)
+                .zones()
+                .label(format!("LOAD {load:.0}%"))
+                .theme(s.theme.clone())
+                .block(bracket_block(" CORE "))
+                .render(g_area, buf);
+            Treemap::new([
+                TreemapItem::new("net", 40.0),
+                TreemapItem::new("gpu", 25.0),
+                TreemapItem::new("io", 15.0),
+                TreemapItem::new("cpu", 20.0),
+            ])
+            .chamfered(true)
+            .render(t_area, buf);
+            for area in [l, r, b_l, b_r] {
                 post(buf, area);
             }
             help(f, bar, " g glow · s scanlines · t theme · q quit");

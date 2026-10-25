@@ -1,6 +1,7 @@
 //! Mouse interactivity: hover tooltips, click to pin, click a legend entry to
 //! hide a series. Works on every chart through `HitMap` + `Interaction`.
 //!
+//! Wheel (or + / -) zooms the line and candle charts, [ ] pan.
 //! Keys: Tab next chart · arrows / hjkl move the pointer (no mouse needed) · space click · r reset · q quit
 
 #[path = "common/mod.rs"]
@@ -21,10 +22,10 @@ use ratatui::{
     widgets::{Block, Paragraph},
     Frame,
 };
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use tui_chart::*;
 
-const PAGES: [&str; 8] = [
+const PAGES: [&str; 11] = [
     "Line",
     "Bar",
     "Candles",
@@ -33,11 +34,16 @@ const PAGES: [&str; 8] = [
     "Treemap",
     "Heatmap",
     "Funnel",
+    "Pie",
+    "Radial",
+    "Instruments",
 ];
 
 struct App {
     page: usize,
     ui: Interaction,
+    view: View,
+    plot: Cell<Rect>,
     hits: RefCell<HitMap>,
     data: Data,
     status: String,
@@ -95,8 +101,13 @@ fn draw_page(app: &App, area: Rect, buf: &mut Buffer) -> HitMap {
                 .zip(names)
                 .map(|(v, n)| Series::new(n).data(v.iter().copied()))
                 .collect();
+            let (x0, x1) = app.view.range(0.0, 39.0);
             HitMap::capture(
-                LineChart::new(series).hidden(hidden).block(block),
+                LineChart::new(series)
+                    .x_axis(Axis::new().bounds(x0, x1))
+                    .y_axis(Axis::new().bounds(0.0, 35.0))
+                    .hidden(hidden)
+                    .block(block),
                 area,
                 buf,
             )
@@ -121,7 +132,7 @@ fn draw_page(app: &App, area: Rect, buf: &mut Buffer) -> HitMap {
             buf,
         ),
         2 => HitMap::capture(
-            CandlestickChart::new(d.candles.clone()).block(block),
+            CandlestickChart::new(app.view.slice(&d.candles).to_vec()).block(block),
             area,
             buf,
         ),
@@ -164,14 +175,52 @@ fn draw_page(app: &App, area: Rect, buf: &mut Buffer) -> HitMap {
             buf,
         ),
         6 => HitMap::capture(Heatmap::new(d.heat.clone()).block(block), area, buf),
-        _ => HitMap::capture(
+        7 => HitMap::capture(
             Funnel::new([
                 FunnelStage::new("Visits", 10_000.0),
                 FunnelStage::new("Signups", 2_400.0),
                 FunnelStage::new("Trials", 900.0),
                 FunnelStage::new("Paid", 310.0),
             ])
+            .hidden(hidden)
             .block(block),
+            area,
+            buf,
+        ),
+        8 => HitMap::capture(
+            Pie::new(
+                PieChart::new(vec![
+                    PieSlice::new("Rust", 45.0, Color::Red),
+                    PieSlice::new("Go", 30.0, Color::Blue),
+                    PieSlice::new("Zig", 15.0, Color::Green),
+                    PieSlice::new("C", 10.0, Color::Yellow),
+                ])
+                .hole(0.45)
+                .block(block),
+            )
+            .hidden(hidden),
+            area,
+            buf,
+        ),
+        9 => HitMap::capture(
+            RadialBar::new([
+                RadialRing::new("Move", 420.0, 600.0),
+                RadialRing::new("Exercise", 25.0, 30.0),
+                RadialRing::new("Stand", 9.0, 12.0),
+            ])
+            .hidden(hidden)
+            .block(block),
+            area,
+            buf,
+        ),
+        _ => HitMap::capture(
+            Spectrum::new((0..24).map(|i| jitter(0.9, i, 3.0)).collect::<Vec<_>>())
+                .peaks(
+                    (0..24)
+                        .map(|i| jitter(0.9, i, 3.0).max(0.4))
+                        .collect::<Vec<_>>(),
+                )
+                .block(block),
             area,
             buf,
         ),
@@ -179,6 +228,12 @@ fn draw_page(app: &App, area: Rect, buf: &mut Buffer) -> HitMap {
 }
 
 impl App {
+    /// Zoom the x axis around column `x` (pointer column if known).
+    fn scroll(&mut self, fallback: u16, steps: i32) {
+        let x = self.ui.position().map_or(fallback, |p| p.0);
+        self.view.on_scroll(x, self.plot.get(), steps);
+    }
+
     /// Move the pointer with the keyboard (starts mid-screen).
     fn nudge(&mut self, dx: i32, dy: i32, size: (u16, u16)) {
         let (x, y) = self.ui.position().unwrap_or((size.0 / 3, size.1 / 3));
@@ -190,6 +245,7 @@ impl App {
 
 fn ui(f: &mut Frame, app: &App) {
     let [main, bar] = Layout::vertical([Constraint::Min(5), Constraint::Length(2)]).areas(f.area());
+    app.plot.set(main);
     let hits = draw_page(app, main, f.buffer_mut());
     app.ui.render_tooltip(&hits, f.buffer_mut(), main);
     if let Some((x, y)) = app.ui.position() {
@@ -200,7 +256,7 @@ fn ui(f: &mut Frame, app: &App) {
     *app.hits.borrow_mut() = hits;
     f.render_widget(
         Paragraph::new(format!(
-            " {}\n Tab next · mouse/arrows hover · click/space pin · legend toggles · r reset · q quit",
+            " {}\n Tab next · mouse/arrows hover · click/space pin · legend toggles · wheel/+- zoom · [ ] pan · r reset · q quit",
             app.status
         ))
         .style(Style::default().fg(Color::DarkGray)),
@@ -214,6 +270,8 @@ fn main() -> anyhow::Result<()> {
     let mut app = App {
         page: 0,
         ui: Interaction::default(),
+        view: View::default(),
+        plot: Cell::new(Rect::default()),
         hits: RefCell::new(HitMap::default()),
         data: data(),
         status: String::new(),
@@ -227,11 +285,17 @@ fn main() -> anyhow::Result<()> {
                     KeyCode::Char('q') | KeyCode::Esc => return Ok(()),
                     KeyCode::Tab => {
                         app.page = (app.page + 1) % PAGES.len();
-                        app.ui.reset();
+                        {
+                            app.ui.reset();
+                            app.view.reset();
+                        }
                     }
                     KeyCode::BackTab => {
                         app.page = (app.page + PAGES.len() - 1) % PAGES.len();
-                        app.ui.reset();
+                        {
+                            app.ui.reset();
+                            app.view.reset();
+                        }
                     }
                     KeyCode::Left | KeyCode::Char('h') => app.nudge(-2, 0, size),
                     KeyCode::Right | KeyCode::Char('l') => app.nudge(2, 0, size),
@@ -242,12 +306,27 @@ fn main() -> anyhow::Result<()> {
                         let click = app.ui.on_click(x, y, &app.hits.borrow());
                         app.status = format!("{click:?}");
                     }
-                    KeyCode::Char('r') => app.ui.reset(),
+                    KeyCode::Char('+' | '=') => app.scroll(30, 1),
+                    KeyCode::Char('-') => app.scroll(30, -1),
+                    KeyCode::Char('[') => app.view.pan(-0.25),
+                    KeyCode::Char(']') => app.view.pan(0.25),
+                    KeyCode::Char('r') => {
+                        app.ui.reset();
+                        app.view.reset();
+                    }
                     _ => {}
                 },
                 Event::Mouse(m) => match m.kind {
                     MouseEventKind::Moved | MouseEventKind::Drag(_) => {
                         app.ui.on_move(m.column, m.row);
+                    }
+                    MouseEventKind::ScrollUp => {
+                        app.ui.on_move(m.column, m.row);
+                        app.scroll(m.column, 1);
+                    }
+                    MouseEventKind::ScrollDown => {
+                        app.ui.on_move(m.column, m.row);
+                        app.scroll(m.column, -1);
                     }
                     MouseEventKind::Down(MouseButton::Left) => {
                         let click = app.ui.on_click(m.column, m.row, &app.hits.borrow());

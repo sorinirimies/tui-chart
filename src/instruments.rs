@@ -260,6 +260,19 @@ impl Oscilloscope {
                     )
                 })
                 .collect();
+            if crate::interact::recording() {
+                for cx in 0..inner.width {
+                    let i = ((f64::from(cx) + 0.5) / f64::from(inner.width) * (n - 1) as f64)
+                        .round() as usize;
+                    let i = i.min(n - 1);
+                    let cy = (pts[i].1 / 4.0).max(0.0) as u16;
+                    let rect = Rect::new(inner.x + cx, inner.y + cy, 1, 1).intersection(inner);
+                    crate::interact::record_point(rect, 0, i, || {
+                        let s = self.samples[(i + shift) % n];
+                        (format!("sample {i}"), vec![format!("{s:.2}")])
+                    });
+                }
+            }
             let halo = darken(p.primary, 0.6);
             for pair in pts.windows(2) {
                 for dy in [-1.0, 1.0] {
@@ -368,6 +381,18 @@ impl Spectrum {
                 .get(i)
                 .map(|p| ((unit(*p) * rows as f64).ceil() as usize).clamp(1, rows) - 1);
             let bx = x0 + (i * (bw + gap)) as u16;
+            crate::interact::record_point(
+                Rect::new(bx, inner.y, bw as u16, inner.height),
+                0,
+                i,
+                || {
+                    let mut lines = vec![format!("{:.0}%", unit(*v) * 100.0)];
+                    if let Some(pk) = self.peaks.get(i) {
+                        lines.push(format!("peak {:.0}%", unit(*pk) * 100.0));
+                    }
+                    (format!("#{i}"), lines)
+                },
+            );
             for r in 0..rows {
                 let frac = (r as f64 + 0.5) / rows as f64;
                 let col = zone_color(frac);
@@ -459,6 +484,12 @@ impl DotMatrix {
         let soft = Style::default().fg(mix(p.grid, p.primary, 0.55));
         for (i, v) in self.values.iter().take(shown).enumerate() {
             let f = unit(*v);
+            crate::interact::record_point(
+                Rect::new(x0 + (i * pitch) as u16, inner.y, 1, inner.height),
+                0,
+                i,
+                || (format!("#{i}"), vec![format!("{:.0}%", f * 100.0)]),
+            );
             for k in 0..rows {
                 let cov = (f * rows as f64 - k as f64).clamp(0.0, 1.0);
                 let (ch, st) = if cov >= 0.99 {
@@ -590,7 +621,7 @@ impl RadarScope {
             );
         }
         g.line(c, polar(c.0, c.1, r, sweep), p.primary, 3);
-        for b in &self.blips {
+        for (ri, b) in self.blips.iter().enumerate() {
             let a = if self.fade {
                 blip_alpha(sweep, b.bearing.rem_euclid(1.0))
             } else {
@@ -600,6 +631,25 @@ impl RadarScope {
                 continue;
             }
             let (x, y) = polar(c.0, c.1, r * unit(b.range), b.bearing);
+            let (bi, rect) = (
+                ri,
+                Rect::new(
+                    inner.x + (x.max(0.0) / 2.0) as u16,
+                    inner.y + (y.max(0.0) / 4.0) as u16,
+                    1,
+                    1,
+                )
+                .intersection(inner),
+            );
+            crate::interact::record_point(rect, 0, bi, || {
+                (
+                    format!("contact #{bi}"),
+                    vec![
+                        format!("bearing {:.0}°", b.bearing.rem_euclid(1.0) * 360.0),
+                        format!("range {:.0}%", unit(b.range) * 100.0),
+                    ],
+                )
+            });
             let col = darken(p.danger, 1.0 - a);
             for dy in -1..=1 {
                 for dx in -1..=1 {
@@ -692,6 +742,20 @@ impl HexMap {
             let (cx, cy) = hex_center(row, col, s);
             let (cx, cy) = (cx + ox, cy + oy);
             let r = s * 0.9;
+            let hw = ((3f64.sqrt() * s / 4.0).round() as u16).max(1);
+            let rect = Rect::new(
+                (inner.x + (cx / 2.0).max(0.0) as u16).saturating_sub(hw / 2),
+                inner.y + (cy / 4.0).max(0.0) as u16,
+                hw,
+                1,
+            )
+            .intersection(inner);
+            crate::interact::record_point(rect, 0, i, || {
+                (
+                    format!("hex ({row}, {col})"),
+                    vec![format!("{:.0}%", v * 100.0)],
+                )
+            });
             for py in (cy - r).floor() as i64..=(cy + r).ceil() as i64 {
                 for px in (cx - r).floor() as i64..=(cx + r).ceil() as i64 {
                     if in_hex(px as f64 + 0.5 - cx, py as f64 + 0.5 - cy, r) {

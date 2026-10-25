@@ -53,6 +53,12 @@ reports_hits! {
     waterfall: Waterfall::new().delta("Sales", 50.0).delta("Costs", -20.0).total("Net"),
     funnel: Funnel::new([FunnelStage::new("Visits", 1000.0), FunnelStage::new("Signups", 240.0)]),
     treemap: Treemap::new([TreemapItem::new("a", 5.0), TreemapItem::new("b", 3.0)]),
+    pie: Pie::new(PieChart::new(vec![PieSlice::new("a", 3.0, ratatui::style::Color::Red), PieSlice::new("b", 5.0, ratatui::style::Color::Blue)])),
+    oscilloscope: Oscilloscope::ecg(2, 120),
+    spectrum: Spectrum::new([0.2, 0.8, 0.5]).peaks([0.3, 0.9, 0.6]),
+    dot_matrix: DotMatrix::new([0.1, 0.4, 0.9]).rows(8),
+    radar_scope: RadarScope::new([Blip::new(0.1, 0.6), Blip::new(0.7, 0.3)]).phase(0.3),
+    hex_map: HexMap::new(4, (0..12).map(|i| f64::from(i) / 12.0)),
     paired: PairedBars::new([PairedBarsItem::new("mean", 3.2, 1.8), PairedBarsItem::new("over", 12.0, 4.5)]),
     bullet: Bullet::new([BulletItem::new("Revenue", 270.0).target(300.0)]),
     rose: RoseChart::new([RoseItem::new("N", 4.0), RoseItem::new("E", 9.0), RoseItem::new("S", 2.0)]),
@@ -124,4 +130,94 @@ fn capture_does_not_leak_between_renders() {
     // plain render records nothing and stays cheap
     Gauge::new(0.5).render(area, &mut buf);
     assert!(HitMap::capture(ratatui::widgets::Clear, area, &mut buf).is_empty());
+}
+
+#[test]
+fn funnel_and_radial_toggle_via_legend() {
+    let area = Rect::new(0, 0, 70, 16);
+    let funnel = || {
+        Funnel::new([
+            FunnelStage::new("Visits", 1000.0),
+            FunnelStage::new("Signups", 400.0),
+            FunnelStage::new("Paid", 100.0),
+        ])
+    };
+    let mut buf = Buffer::empty(area);
+    let h = HitMap::capture(funnel(), area, &mut buf);
+    assert_eq!(
+        h.hits()
+            .iter()
+            .filter(|x| x.kind == HitKind::Legend)
+            .count(),
+        3
+    );
+    let mut buf = Buffer::empty(area);
+    let h = HitMap::capture(funnel().hidden([1]), area, &mut buf);
+    assert!(h
+        .hits()
+        .iter()
+        .all(|x| x.series != 1 || x.kind == HitKind::Legend));
+    assert_eq!(
+        h.hits().iter().filter(|x| x.kind == HitKind::Point).count(),
+        2
+    );
+
+    let rings = || {
+        RadialBar::new([
+            RadialRing::new("CPU", 72.0, 100.0),
+            RadialRing::new("RAM", 48.0, 100.0),
+        ])
+    };
+    let mut buf = Buffer::empty(area);
+    let h = HitMap::capture(rings().hidden([0]), area, &mut buf);
+    assert!(h
+        .hits()
+        .iter()
+        .any(|x| x.kind == HitKind::Legend && x.series == 0));
+    assert!(h
+        .hits()
+        .iter()
+        .all(|x| x.series != 0 || x.kind == HitKind::Legend));
+}
+
+#[test]
+fn view_zoom_applies_to_data() {
+    let mut v = View::default();
+    v.on_scroll(30, Rect::new(0, 0, 60, 10), 3);
+    let data: Vec<u32> = (0..200).collect();
+    let part = v.slice(&data);
+    assert!(part.len() < 200 && part.contains(&100));
+}
+
+#[test]
+fn cyber_builders() {
+    use ratatui::style::Color;
+    let area = Rect::new(0, 0, 40, 10);
+    let render = |w: Treemap| {
+        let mut b = Buffer::empty(area);
+        w.render(area, &mut b);
+        b.content()
+            .iter()
+            .map(|c| c.symbol().to_string())
+            .collect::<String>()
+    };
+    let items = || [TreemapItem::new("a", 5.0), TreemapItem::new("b", 3.0)];
+    assert!(!render(Treemap::new(items())).contains('▟'));
+    let cut = render(Treemap::new(items()).chamfered(true));
+    assert!(cut.contains('▟') && cut.contains('▛'));
+
+    // zones: 0.7 of the range is amber
+    let g = Gauge::new(70.0).range(0.0, 100.0).zones();
+    let mut b = Buffer::empty(area);
+    g.render(area, &mut b);
+    assert!(b.content().iter().any(|c| c.fg == Color::Yellow));
+
+    // builder-style effects behave like Fx
+    let mut a = Buffer::empty(area);
+    let mut c = Buffer::empty(area);
+    Spectrum::new([0.5, 0.9]).glow(1, 0.3).render(area, &mut a);
+    Fx::new(Spectrum::new([0.5, 0.9]))
+        .glow(1, 0.3)
+        .render(area, &mut c);
+    assert_eq!(a, c);
 }

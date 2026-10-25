@@ -323,6 +323,128 @@ pub enum Click {
     Nothing,
 }
 
+/// Zoom / pan state for the x axis: a window `lo..hi` of the full `0..=1` span.
+///
+/// Feed it scroll events and apply the window to your data, or to an axis:
+///
+/// ```
+/// use ratatui::layout::Rect;
+/// use tui_chart::View;
+///
+/// let mut view = View::default();
+/// let plot = Rect::new(0, 0, 80, 20);
+/// view.on_scroll(40, plot, 1);            // wheel up at the middle: zoom in
+/// let (x0, x1) = view.range(0.0, 100.0);  // -> LineChart x_axis bounds
+/// assert!(x0 > 0.0 && x1 < 100.0);
+/// let data: Vec<u32> = (0..100).collect();
+/// assert!(view.slice(&data).len() < 100); // -> candles / bars
+/// view.reset();
+/// assert!(!view.is_zoomed());
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct View {
+    lo: f64,
+    hi: f64,
+    min_span: f64,
+}
+
+impl Default for View {
+    fn default() -> Self {
+        Self {
+            lo: 0.0,
+            hi: 1.0,
+            min_span: 0.02,
+        }
+    }
+}
+
+impl View {
+    /// Smallest visible fraction (default `0.02`).
+    #[must_use]
+    pub fn min_span(mut self, span: f64) -> Self {
+        self.min_span = span.clamp(1e-6, 1.0);
+        self
+    }
+
+    /// Visible window as fractions `(lo, hi)` of the full span.
+    pub fn window(&self) -> (f64, f64) {
+        (self.lo, self.hi)
+    }
+
+    /// `true` when zoomed in.
+    pub fn is_zoomed(&self) -> bool {
+        self.hi - self.lo < 1.0 - 1e-9
+    }
+
+    /// Back to the full span.
+    pub fn reset(&mut self) {
+        self.lo = 0.0;
+        self.hi = 1.0;
+    }
+
+    /// Zoom by `steps` (`> 0` in, `< 0` out) keeping the fraction `anchor`
+    /// (`0..=1` of the full span) under the pointer.
+    pub fn zoom(&mut self, anchor: f64, steps: i32) {
+        let span = self.hi - self.lo;
+        let anchor = if anchor.is_finite() {
+            anchor.clamp(0.0, 1.0)
+        } else {
+            0.5
+        };
+        let new = (span * 0.8f64.powi(steps.clamp(-50, 50))).clamp(self.min_span, 1.0);
+        // fraction of the window under the pointer stays put
+        let rel = ((anchor - self.lo) / span).clamp(0.0, 1.0);
+        self.lo = anchor - rel * new;
+        self.hi = self.lo + new;
+        self.clamp();
+    }
+
+    /// Scroll wheel at cell column `x` over the plot `area`; `steps > 0` zooms in.
+    pub fn on_scroll(&mut self, x: u16, area: Rect, steps: i32) {
+        let w = f64::from(area.width.max(1));
+        let rel = (f64::from(x.saturating_sub(area.x)) + 0.5) / w;
+        let anchor = self.lo + rel.clamp(0.0, 1.0) * (self.hi - self.lo);
+        self.zoom(anchor, steps);
+    }
+
+    /// Pan by a fraction of the *visible* window (`> 0` moves right).
+    pub fn pan(&mut self, frac: f64) {
+        if frac.is_finite() {
+            let d = frac * (self.hi - self.lo);
+            self.lo += d;
+            self.hi += d;
+            self.clamp();
+        }
+    }
+
+    fn clamp(&mut self) {
+        let span = (self.hi - self.lo).clamp(self.min_span, 1.0);
+        self.lo = self.lo.clamp(0.0, 1.0 - span);
+        self.hi = self.lo + span;
+    }
+
+    /// Map a data range onto the window, e.g. for `Axis::bounds`.
+    pub fn range(&self, min: f64, max: f64) -> (f64, f64) {
+        let span = max - min;
+        (min + self.lo * span, min + self.hi * span)
+    }
+
+    /// Index window over `len` items (at least one when `len > 0`).
+    pub fn indices(&self, len: usize) -> std::ops::Range<usize> {
+        if len == 0 {
+            return 0..0;
+        }
+        let a = ((self.lo * len as f64).floor() as usize).min(len - 1);
+        let b = ((self.hi * len as f64).ceil() as usize).clamp(a + 1, len);
+        a..b
+    }
+
+    /// The visible part of `data`.
+    pub fn slice<'a, T>(&self, data: &'a [T]) -> &'a [T] {
+        &data[self.indices(data.len())]
+    }
+}
+
 /// Pointer state: hover position, selection and hidden series.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Interaction {
@@ -622,5 +744,31 @@ mod tests {
         ui.on_leave();
         assert!(ui.position().is_none());
         ui.render_tooltip(&h2, &mut buf, Rect::new(0, 0, 0, 0));
+    }
+
+    #[test]
+    fn view_zoom_pan_and_slice() {
+        let mut v = View::default();
+        assert!(!v.is_zoomed());
+        v.zoom(0.5, 2);
+        let (lo, hi) = v.window();
+        assert!((hi - lo - 0.64).abs() < 1e-9 && (lo + hi - 1.0).abs() < 1e-9);
+        // zoom keeps the anchor fixed
+        let mut v = View::default();
+        v.zoom(0.25, 3);
+        let (lo, hi) = v.window();
+        assert!(lo <= 0.25 && 0.25 <= hi);
+        v.pan(100.0);
+        assert_eq!(v.window().1, 1.0);
+        v.pan(f64::NAN);
+        v.zoom(f64::NAN, 1000);
+        assert!(v.window().1 - v.window().0 >= 0.02 - 1e-9);
+        v.zoom(0.5, -1000);
+        assert_eq!(v.window(), (0.0, 1.0));
+        assert_eq!(v.slice::<u8>(&[]).len(), 0);
+        assert_eq!(View::default().indices(7), 0..7);
+        let mut v = View::default().min_span(0.5);
+        v.zoom(0.5, 50);
+        assert!((5..=6).contains(&v.indices(10).len()));
     }
 }

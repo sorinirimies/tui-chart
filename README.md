@@ -382,21 +382,30 @@ ui.on_move(mouse.column, mouse.row);          // hover  -> tooltip + highlight
 ui.on_click(mouse.column, mouse.row, &hits);  // click  -> pin, or toggle a legend entry
 ```
 
-- **Hover tooltips** for points, bars, candles, slices, cells, tasks, nodes ... on every chart
-  (`Hit` carries a title and value lines, so you can also render your own).
+- **Hover tooltips** for points, bars, candles, slices, cells, tasks, nodes ... on every chart,
+  including `Pie` (a wrapper for `PieChart`) and the instruments.
 - **Click** pins a tooltip; clicking again clears it.
 - **Legend toggling**: clicking a legend entry hides that series. Pass `ui.hidden()` to
-  `.hidden(..)` on `LineChart`, `BarChart`, `StackedAreaChart` and `RadarChart`; the axes rescale.
+  `.hidden(..)` on `LineChart`, `BarChart`, `StackedAreaChart`, `RadarChart`, `RadialBar`,
+  `RingStack`, `Funnel` and `Pie`; the axes rescale.
+- **Zoom / pan**: `View` turns the scroll wheel into an axis window (`view.range(..)`) or a data
+  slice (`view.slice(..)`).
 - `HitMap::at`, `nearest`, `pick` and `legend_at` give raw hit-testing for custom behaviour.
-- `PieChart` lives in `tui-piechart` and does not report hits.
+
+See the [interactivity guide](docs/interactivity.md) for a full mouse loop.
 
 ## Cyberpunk effects
 
-`Fx`, `glow`, `scanlines`, `chamfer_block` and `bracket_block` work on the rendered buffer, so no GPU is needed.
+`glow`, `scanlines`, `chamfer_block` and `bracket_block` work on the rendered buffer, so no GPU is needed.
+`FxExt` adds `.glow(..)` / `.scanlines(..)` to any widget; `Gauge::zones()` gives green / amber / red
+bands and `Treemap::chamfered(true)` cuts the cell corners.
 
 ```rust
-Fx::new(Spectrum::new(bars).block(chamfer_block(" EQ "))).glow(1, 0.25).scanlines(0.3)
+use tui_chart::FxExt;
+Spectrum::new(bars).block(chamfer_block(" EQ ")).glow(1, 0.25).scanlines(0.3)
 ```
+
+`glow` blends against explicit backgrounds only; give the area a background (e.g. the theme surface) first.
 
 `cargo run --release --features theme --example cyber`
 

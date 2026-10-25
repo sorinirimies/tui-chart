@@ -24,10 +24,17 @@ Space
 Sleep 1.5s
 Right 20
 Up 6
+Left 2
 Sleep 1s
 Space
 Sleep 1.5s
 Space
+Sleep 1s
+Type "+++"
+Sleep 1.5s
+Type "]"
+Sleep 1.5s
+Type "r"
 Sleep 1s
 Tab
 Sleep 0.5s

@@ -334,7 +334,7 @@ fuzz_target!(|i: Input| match i {
         let mut hidden: Vec<usize> = vec![];
         for round in 0..2 {
             let mut buf = ratatui::buffer::Buffer::empty(area);
-            let hits = match kind % 6 {
+            let hits = match kind % 9 {
                 0 => tui_chart::HitMap::capture(
                     tui_chart::LineChart::new(vec![tui_chart::Series::new("a").values(values.clone())])
                         .hidden(hidden.clone()),
@@ -368,6 +368,30 @@ fuzz_target!(|i: Input| match i {
                     area,
                     &mut buf,
                 ),
+                6 => tui_chart::HitMap::capture(
+                    tui_chart::Pie::new(tui_chart::PieChart::new(
+                        values
+                            .iter()
+                            .map(|v| tui_chart::PieSlice::new("p", *v, ratatui::style::Color::Red))
+                            .collect(),
+                    ))
+                    .hidden(hidden.clone()),
+                    area,
+                    &mut buf,
+                ),
+                7 => tui_chart::HitMap::capture(
+                    tui_chart::Funnel::new(
+                        values.iter().map(|v| tui_chart::FunnelStage::new("f", *v)),
+                    )
+                    .hidden(hidden.clone()),
+                    area,
+                    &mut buf,
+                ),
+                8 => tui_chart::HitMap::capture(
+                    tui_chart::Spectrum::new(values.clone()),
+                    area,
+                    &mut buf,
+                ),
                 _ => tui_chart::HitMap::capture(
                     tui_chart::StackedAreaChart::new([tui_chart::AreaLayer::new("a", values.clone())])
                         .hidden(hidden.clone()),
@@ -387,6 +411,18 @@ fuzz_target!(|i: Input| match i {
                 ui.render_tooltip(&hits, &mut buf, area);
             }
             hidden = ui.hidden();
+            let mut view = tui_chart::View::default();
+            for &(op, x, _) in &events {
+                match op % 4 {
+                    0 => view.on_scroll(u16::from(x), area, i32::from(x as i8)),
+                    1 => view.pan(f64::from(x as i8) / 16.0),
+                    2 => view.zoom(f64::from(x) / 255.0, i32::from(x as i8)),
+                    _ => view.reset(),
+                }
+                let (a, b) = view.window();
+                assert!((0.0..=1.0).contains(&a) && (0.0..=1.0).contains(&b) && a <= b);
+                let _ = view.slice(&values);
+            }
             let _ = round;
         }
     }
