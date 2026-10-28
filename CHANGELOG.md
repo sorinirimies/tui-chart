@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1](https://github.com/sorinirimies/tui-chart/releases/tag/v0.6.1) - 2026-10-28
+
+### Features
+
+- Enable the tui-nuances theme feature by default ([19a16fe](https://github.com/sorinirimies/tui-chart/commit/19a16fed02279629ae4cd9a7a0e10a3fc3ba5e02))
+
+### CI
+
+- Automerge green PRs (workflow_run) + dependabot for actions ([fffaae7](https://github.com/sorinirimies/tui-chart/commit/fffaae7ecc9aac78ef8952e1f8d8f521291c075b))
+- Automerge major dependabot bumps too ([97461e2](https://github.com/sorinirimies/tui-chart/commit/97461e200284a0d50ed9616de0f8e6ea960881b5))
+- **gitea:** Nightly workflow-action bumps ([e02a030](https://github.com/sorinirimies/tui-chart/commit/e02a0306bebf948501db48333f08781a4d2243d2))
+- **deps:** Bump clechasseur/rs-clippy-check from 4 to 5 (#3) ([9047323](https://github.com/sorinirimies/tui-chart/commit/9047323e869e134af3d1920429b10c469ef8371c))
+- **deps:** Bump actions/checkout from 4 to 7 (#5) ([3f3a9ff](https://github.com/sorinirimies/tui-chart/commit/3f3a9ffe6b8fa342dc12c105842f7e099816614a))
+- **deps:** Bump softprops/action-gh-release from 2 to 3 (#6) ([d1d01a0](https://github.com/sorinirimies/tui-chart/commit/d1d01a0fab60a9666c3aff6a001750824d297f21))
+- **deps:** Bump actions/upload-artifact from 4 to 7 (#2) ([53c0077](https://github.com/sorinirimies/tui-chart/commit/53c0077fefed04ff0c60f0f87fd6f31d16f413d3))
+- Automerge uses GH_PAT so workflow-file PRs can merge ([0f4003d](https://github.com/sorinirimies/tui-chart/commit/0f4003d6b1c05c99bcafc46be443118e50d3664c))
+- Stop dependabot bumping the MSRV toolchain pin ([98c5919](https://github.com/sorinirimies/tui-chart/commit/98c5919019e755c3708b15f8f89e3e3cce85af53))
+
+### Miscellaneous
+
+- Bump tui-nuances to 0.1.7 ([0a169a1](https://github.com/sorinirimies/tui-chart/commit/0a169a172ceb510df78c09a3f6ef4e18056fb3d0))
+- **deps:** Update Cargo.lock ([d2eee1c](https://github.com/sorinirimies/tui-chart/commit/d2eee1cd61399b65fcb429c6a9b77eb361d3b2c8))
+- **deps:** Bump tui-nuances to 0.1.10 ([671d55b](https://github.com/sorinirimies/tui-chart/commit/671d55bc4d90c464481752e10ed6f9ab0ee703c3))
+
 ## [0.6.0](https://github.com/sorinirimies/tui-chart/releases/tag/v0.6.0) - 2026-10-25
 
 ### Features
@@ -169,6 +193,8 @@ This reverts commit 84cc5e27f0e8118c92869d129f38a03b2ff85756. ([aa58de9](https:/
 - Depend on tui-nuances 0.1.6 ([8927821](https://github.com/sorinirimies/tui-chart/commit/89278213e38ec0b99efab66b73724508f10e610b))
 - Depend on tui-nuances 0.1.6 from crates.io ([4069a83](https://github.com/sorinirimies/tui-chart/commit/4069a8395f6b99831381fe6b0fc9110255a67494))
 
+
+[0.6.1]: https://github.com/sorinirimies/tui-chart/compare/v0.6.0...v0.6.1
 
 [0.6.0]: https://github.com/sorinirimies/tui-chart/compare/v0.5.1...v0.6.0
 
