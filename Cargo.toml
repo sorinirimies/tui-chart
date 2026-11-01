@@ -14,7 +14,6 @@ exclude = [
     ".gitea/**",
     ".github/**",
     ".zed/**",
-    "AGENTS.md",
     "fuzz/**",
     "scripts/**",
     "examples/vhs/**",
