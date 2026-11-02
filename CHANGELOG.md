@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.3](https://github.com/sorinirimies/tui-chart/releases/tag/v0.6.3) - 2026-11-02
+
+### Bug Fixes
+
+- **ci:** Drop git-cliff remote lookup that 404s on Gitea ([b3dacab](https://github.com/sorinirimies/tui-chart/commit/b3dacab00afcf31148ef52bf0b78a352e3f573ee))
+- **ci:** Pin rs-clippy-check to v6.1.1 (no floating v6 tag) ([900e94e](https://github.com/sorinirimies/tui-chart/commit/900e94e97eac3e023ebce10ec0e4cb26dc3eb0af))
+
+### Documentation
+
+- Move agent rules from .zed/rules.md to AGENTS.md ([1115e96](https://github.com/sorinirimies/tui-chart/commit/1115e963914c2edbd4864e2221f19c51d7653577))
+- This repo's agent rules as a project skill in .agents/skills ([c05faf8](https://github.com/sorinirimies/tui-chart/commit/c05faf84f9d1074e342a1f304525dec860e047b1))
+- Drop the per-repo agent rules skill; the shared skills cover it ([5de9440](https://github.com/sorinirimies/tui-chart/commit/5de944031267fd3927d37dc20d6398c891fc1925))
+
+### CI
+
+- **deps:** Bump workflow actions ([729fa76](https://github.com/sorinirimies/tui-chart/commit/729fa76a30b2b16de084f2f07240dcfdf20128a9))
+
+### Miscellaneous
+
+- Remove AGENTS.md ([6accf71](https://github.com/sorinirimies/tui-chart/commit/6accf71591667628e811a66930bdd97de1b8ecf3))
+
 ## [0.6.1](https://github.com/sorinirimies/tui-chart/releases/tag/v0.6.1) - 2026-10-28
 
 ### Features
@@ -193,6 +214,8 @@ This reverts commit 84cc5e27f0e8118c92869d129f38a03b2ff85756. ([aa58de9](https:/
 - Depend on tui-nuances 0.1.6 ([8927821](https://github.com/sorinirimies/tui-chart/commit/89278213e38ec0b99efab66b73724508f10e610b))
 - Depend on tui-nuances 0.1.6 from crates.io ([4069a83](https://github.com/sorinirimies/tui-chart/commit/4069a8395f6b99831381fe6b0fc9110255a67494))
 
+
+[0.6.3]: https://github.com/sorinirimies/tui-chart/compare/v0.6.1...v0.6.3
 
 [0.6.1]: https://github.com/sorinirimies/tui-chart/compare/v0.6.0...v0.6.1
 
