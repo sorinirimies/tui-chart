@@ -1,10 +1,6 @@
 # git-cliff configuration — https://git-cliff.org/docs/configuration
 # Sections are ordered via the hidden <!-- NN --> prefix on each group.
 
-[remote.github]
-owner = "sorinirimies"
-repo = "tui-chart"
-
 [changelog]
 header = """
 # Changelog
@@ -16,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 """
 body = """
 {%- macro remote_url() -%}
-  https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}
+  https://github.com/sorinirimies/tui-chart
 {%- endmacro -%}
 
 {% if version -%}
@@ -36,7 +32,7 @@ body = """
 """
 footer = """
 {%- macro remote_url() -%}
-  https://github.com/{{ remote.github.owner }}/{{ remote.github.repo }}
+  https://github.com/sorinirimies/tui-chart
 {%- endmacro -%}
 
 {% for release in releases %}
