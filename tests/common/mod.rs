@@ -1,5 +1,5 @@
 //! Shared helpers for the matrix-style integration tests.
-#![allow(dead_code)]
+#![allow(dead_code)] // Shared by several test binaries; each uses only part of it.
 
 use ratatui::{buffer::Buffer, layout::Rect, style::Color, widgets::Widget};
 use tui_chart::*;

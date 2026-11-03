@@ -90,7 +90,6 @@ macro_rules! block_setter {
 }
 
 #[cfg(test)]
-#[cfg_attr(not(feature = "theme"), allow(dead_code))]
 mod tests {
     use ratatui::{buffer::Buffer, layout::Rect, style::Style, widgets::Widget};
 

@@ -129,11 +129,9 @@ pub(crate) fn begin(
 /// `None`) so the widgets fall back to their built-in default colors.
 #[cfg(not(feature = "theme"))]
 #[derive(Debug, Clone, PartialEq)]
-#[allow(dead_code)]
 pub(crate) enum Theme {}
 
 #[cfg(not(feature = "theme"))]
-#[allow(dead_code)]
 pub(crate) struct ThemeFields {
     pub background: Option<Color>,
     pub foreground: Color,
@@ -146,14 +144,12 @@ pub(crate) struct ThemeFields {
     pub bull: Color,
     pub bear: Color,
     pub neutral: Color,
-    pub progress: Color,
     pub crosshair: Color,
     pub tooltip_fg: Color,
     pub tooltip_bg: Color,
 }
 
 #[cfg(not(feature = "theme"))]
-#[allow(dead_code)]
 impl Theme {
     pub fn color(&self, _i: usize) -> Color {
         match *self {}
@@ -181,7 +177,6 @@ impl std::ops::Deref for Theme {
 }
 
 #[cfg(not(feature = "theme"))]
-#[allow(dead_code)]
 pub(crate) trait ChartThemeExt {
     fn gradient(&self) -> Gradient;
 }

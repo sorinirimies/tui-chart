@@ -1,5 +1,5 @@
 //! Shared helpers: capped arbitrary inputs mapped onto tui-chart types.
-#![allow(dead_code)]
+#![allow(dead_code)] // Shared by several fuzz targets; each uses only part of it.
 
 use arbitrary::Arbitrary;
 use ratatui::{buffer::Buffer, layout::Rect, style::Color, widgets::Widget};

@@ -1,5 +1,5 @@
 //! Shared helpers for the examples: tiny RNG and a terminal event loop.
-#![allow(dead_code)]
+#![allow(dead_code)] // Shared by several examples; each uses only part of it.
 
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use ratatui::{
