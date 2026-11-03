@@ -72,11 +72,7 @@ pub struct Bullet {
 }
 
 fn fin(v: f64) -> f64 {
-    if v.is_finite() {
-        v
-    } else {
-        0.0
-    }
+    if v.is_finite() { v } else { 0.0 }
 }
 
 impl Bullet {
@@ -120,11 +116,7 @@ impl Bullet {
                 .map(fin)
                 .fold(0.0, f64::max)
         });
-        if m > 0.0 {
-            m
-        } else {
-            1.0
-        }
+        if m > 0.0 { m } else { 1.0 }
     }
 
     fn render_into(&self, area: Rect, buf: &mut Buffer) {

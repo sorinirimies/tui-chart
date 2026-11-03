@@ -4,7 +4,7 @@
 #[path = "common/mod.rs"]
 mod common;
 
-use common::{help, run, Rng};
+use common::{Rng, help, run};
 use crossterm::event::KeyCode;
 use ratatui::{
     layout::{Constraint, Layout},
@@ -60,9 +60,11 @@ fn main() -> anyhow::Result<()> {
             };
             let panes = ChartStack::new(dir).weights(WEIGHTS[s.weights]).split(main);
 
-            let area = LineChart::new(vec![Series::new("price")
-                .data(s.price.clone())
-                .color(Color::Cyan)])
+            let area = LineChart::new(vec![
+                Series::new("price")
+                    .data(s.price.clone())
+                    .color(Color::Cyan),
+            ])
             .mode(LineMode::Area)
             .y_axis(Axis::new().grid(true))
             .theme(s.theme.clone())

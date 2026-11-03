@@ -150,12 +150,12 @@ impl<'a> Pie<'a> {
         if let Some(l) = legend {
             for y in l.top()..l.bottom() {
                 for x in l.left()..l.right() {
-                    if let Some(i) = owner(&scratch[(x, y)]) {
-                        if rects.iter().all(|(j, _)| *j != i) {
-                            let label = self.chart.slice_list()[i].label().chars().count() as u16;
-                            let w = (2 + label).min(l.right() - x);
-                            rects.push((i, Rect::new(x, y, w, 1)));
-                        }
+                    if let Some(i) = owner(&scratch[(x, y)])
+                        && rects.iter().all(|(j, _)| *j != i)
+                    {
+                        let label = self.chart.slice_list()[i].label().chars().count() as u16;
+                        let w = (2 + label).min(l.right() - x);
+                        rects.push((i, Rect::new(x, y, w, 1)));
                     }
                 }
             }
@@ -197,14 +197,16 @@ mod tests {
     fn slices_and_legend_are_reported() {
         let (h, _) = capture(Pie::new(chart()));
         for s in 0..3 {
-            assert!(h
-                .hits()
-                .iter()
-                .any(|x| x.kind == HitKind::Point && x.series == s));
-            assert!(h
-                .hits()
-                .iter()
-                .any(|x| x.kind == HitKind::Legend && x.series == s));
+            assert!(
+                h.hits()
+                    .iter()
+                    .any(|x| x.kind == HitKind::Point && x.series == s)
+            );
+            assert!(
+                h.hits()
+                    .iter()
+                    .any(|x| x.kind == HitKind::Legend && x.series == s)
+            );
         }
         let big = h
             .hits()
@@ -217,14 +219,17 @@ mod tests {
     #[test]
     fn hidden_slice_drops_out_and_is_dimmed() {
         let (h, buf) = capture(Pie::new(chart()).hidden([1]));
-        assert!(h
-            .hits()
-            .iter()
-            .all(|x| x.series != 1 || x.kind == HitKind::Legend));
+        assert!(
+            h.hits()
+                .iter()
+                .all(|x| x.series != 1 || x.kind == HitKind::Legend)
+        );
         let leg = h.hits().iter().find(|x| x.series == 1).unwrap();
-        assert!(buf[(leg.rect.x, leg.rect.y)]
-            .modifier
-            .contains(Modifier::CROSSED_OUT));
+        assert!(
+            buf[(leg.rect.x, leg.rect.y)]
+                .modifier
+                .contains(Modifier::CROSSED_OUT)
+        );
     }
 
     #[test]

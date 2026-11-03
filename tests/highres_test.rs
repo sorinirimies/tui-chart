@@ -124,9 +124,11 @@ fn waterfall_connector_marker() {
 fn line_area_fill_uses_marker() {
     let a = Rect::new(0, 0, 40, 12);
     let mk = |m| {
-        LineChart::new(vec![Series::new("s")
-            .data((0..30).map(|i| (i as f64, (i as f64 / 4.0).sin() + 2.0)))
-            .mode(LineMode::Area)])
+        LineChart::new(vec![
+            Series::new("s")
+                .data((0..30).map(|i| (i as f64, (i as f64 / 4.0).sin() + 2.0)))
+                .mode(LineMode::Area),
+        ])
         .marker(m)
     };
     let braille = render(mk(Marker::Braille), a);

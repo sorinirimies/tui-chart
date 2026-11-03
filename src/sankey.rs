@@ -407,10 +407,12 @@ mod tests {
     #[test]
     fn node_colors_apply() {
         let c = Sankey::new(links()).node_color("Salary", Color::Red);
-        assert!(render(&c, 80, 20)
-            .content()
-            .iter()
-            .any(|c| c.fg == Color::Red));
+        assert!(
+            render(&c, 80, 20)
+                .content()
+                .iter()
+                .any(|c| c.fg == Color::Red)
+        );
     }
 
     #[test]

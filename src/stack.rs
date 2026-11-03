@@ -199,9 +199,11 @@ mod tests {
 
     #[test]
     fn empty_and_tiny() {
-        assert!(ChartStack::vertical()
-            .split(Rect::new(0, 0, 5, 5))
-            .is_empty());
+        assert!(
+            ChartStack::vertical()
+                .split(Rect::new(0, 0, 5, 5))
+                .is_empty()
+        );
         assert!(ChartStack::vertical().is_empty());
         let r = ChartStack::vertical()
             .weights([1, 1, 1])
@@ -220,9 +222,10 @@ mod tests {
         let g = shared_gutter([4, 7, 5]);
         assert_eq!(g, 7);
         let p = s.split_aligned(Rect::new(0, 0, 30, 12), g);
-        assert!(p
-            .iter()
-            .all(|(l, c)| l.width == 7 && c.x == 7 && c.width == 23));
+        assert!(
+            p.iter()
+                .all(|(l, c)| l.width == 7 && c.x == 7 && c.width == 23)
+        );
         let p = s.split_aligned(Rect::new(0, 0, 3, 12), g);
         assert_eq!(p[0].1.width, 0);
         assert_eq!(shared_gutter([]), 0);

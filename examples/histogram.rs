@@ -4,7 +4,7 @@
 #[path = "common/mod.rs"]
 mod common;
 
-use common::{help, run, Rng};
+use common::{Rng, help, run};
 use crossterm::event::KeyCode;
 use ratatui::{
     layout::{Constraint, Layout},

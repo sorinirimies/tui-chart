@@ -1,10 +1,10 @@
 //! Bubble chart: scatter plot where each point has a size.
 
+use crate::PALETTE;
 use crate::canvas::{Canvas, Marker};
 use crate::text::put_str;
 use crate::theme::{self, Theme};
 use crate::util::{format_tick, nice_bounds, nice_ticks};
-use crate::PALETTE;
 use ratatui::{
     buffer::Buffer,
     layout::Rect,

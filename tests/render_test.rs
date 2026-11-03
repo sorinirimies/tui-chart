@@ -55,9 +55,11 @@ fn line_chart_has_axes_labels_and_title() {
 
 #[test]
 fn line_chart_endpoints_reach_corners() {
-    let chart = LineChart::new(vec![Series::new("s")
-        .data([(0.0, 0.0), (1.0, 1.0)])
-        .color(Color::Red)])
+    let chart = LineChart::new(vec![
+        Series::new("s")
+            .data([(0.0, 0.0), (1.0, 1.0)])
+            .color(Color::Red),
+    ])
     .legend(LegendPosition::None)
     .x_axis(Axis::new().bounds(0.0, 1.0))
     .y_axis(Axis::new().bounds(0.0, 1.0));

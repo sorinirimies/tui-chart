@@ -88,11 +88,7 @@ pub struct PairedBars {
 }
 
 fn fin(v: f64) -> f64 {
-    if v.is_finite() {
-        v.max(0.0)
-    } else {
-        0.0
-    }
+    if v.is_finite() { v.max(0.0) } else { 0.0 }
 }
 
 impl PairedBars {
@@ -290,14 +286,14 @@ impl PairedBars {
             }
             y += rh;
         }
-        if let Some((b, a)) = &self.legend {
-            if y < inner.bottom() {
-                let mut x = inner.x;
-                for (name, color) in [(b, before), (a, after)] {
-                    put_str(buf, x, y, inner.right(), "■ ", Style::default().fg(color));
-                    put_str(buf, x + 2, y, inner.right(), name, text);
-                    x += 2 + name.chars().count() as u16 + 3;
-                }
+        if let Some((b, a)) = &self.legend
+            && y < inner.bottom()
+        {
+            let mut x = inner.x;
+            for (name, color) in [(b, before), (a, after)] {
+                put_str(buf, x, y, inner.right(), "■ ", Style::default().fg(color));
+                put_str(buf, x + 2, y, inner.right(), name, text);
+                x += 2 + name.chars().count() as u16 + 3;
             }
         }
     }

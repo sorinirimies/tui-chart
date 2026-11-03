@@ -1,5 +1,6 @@
 //! Vertical / horizontal, grouped / stacked bar charts.
 
+use crate::PALETTE;
 use crate::axis::Axis;
 use crate::canvas::{Canvas, Marker};
 use crate::heatmap::Gradient;
@@ -7,7 +8,6 @@ use crate::interact;
 use crate::layout::{self, text_width};
 use crate::theme::{self, Theme};
 use crate::util::{format_compact, nice_bounds};
-use crate::PALETTE;
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -305,11 +305,7 @@ impl BarChart {
 
     /// Non-finite values are ignored; this keeps only the positive part.
     fn clean(v: f64) -> f64 {
-        if v.is_finite() && v > 0.0 {
-            v
-        } else {
-            0.0
-        }
+        if v.is_finite() && v > 0.0 { v } else { 0.0 }
     }
 
     fn group_total(&self, g: &BarGroup) -> f64 {
@@ -321,11 +317,7 @@ impl BarChart {
 
     /// Negative magnitude of a value (0 for non-negative / non-finite).
     fn neg(v: f64) -> f64 {
-        if v.is_finite() && v < 0.0 {
-            -v
-        } else {
-            0.0
-        }
+        if v.is_finite() && v < 0.0 { -v } else { 0.0 }
     }
 
     /// Largest negative magnitude of a group (stacked: summed).
@@ -1275,15 +1267,18 @@ mod tests {
                     .collect();
                 assert!(pts.len() >= 3, "{orient:?} {mode:?}: {}", pts.len());
                 assert!(pts.iter().all(|h| h.rect.right() <= area.right()));
-                assert!(pts
-                    .iter()
-                    .any(|h| h.title == "b" && h.lines[0].contains("y: 5")));
+                assert!(
+                    pts.iter()
+                        .any(|h| h.title == "b" && h.lines[0].contains("y: 5"))
+                );
                 let mut buf = Buffer::empty(area);
                 let hidden = HitMap::capture(chart().hidden([1]), area, &mut buf);
-                assert!(hidden
-                    .hits()
-                    .iter()
-                    .any(|h| h.kind == HitKind::Legend && h.series == 1));
+                assert!(
+                    hidden
+                        .hits()
+                        .iter()
+                        .any(|h| h.kind == HitKind::Legend && h.series == 1)
+                );
             }
         }
     }

@@ -1,3 +1,4 @@
+//! Integration tests: bar test.
 use ratatui::{buffer::Buffer, layout::Rect, style::Color, widgets::Widget};
 use tui_chart::{BarChart, BarGroup, BarMode, BarOrientation};
 

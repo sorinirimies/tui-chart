@@ -81,11 +81,7 @@ pub fn rsi(candles: &[Candle], period: usize) -> Series1 {
         }
         if i >= period {
             let v = if al == 0.0 {
-                if ag == 0.0 {
-                    50.0
-                } else {
-                    100.0
-                }
+                if ag == 0.0 { 50.0 } else { 100.0 }
             } else {
                 100.0 - 100.0 / (1.0 + ag / al)
             };
@@ -158,11 +154,7 @@ pub fn vwap(candles: &[Candle]) -> Series1 {
                 pv += tp * c.volume;
                 v += c.volume;
             }
-            if v > 0.0 {
-                finite(pv / v)
-            } else {
-                None
-            }
+            if v > 0.0 { finite(pv / v) } else { None }
         })
         .collect()
 }

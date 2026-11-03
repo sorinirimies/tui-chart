@@ -64,11 +64,7 @@ impl TreemapItem {
         } else {
             self.children.iter().map(|c| c.weight()).sum()
         };
-        if v.is_finite() && v > 0.0 {
-            v
-        } else {
-            0.0
-        }
+        if v.is_finite() && v > 0.0 { v } else { 0.0 }
     }
 }
 

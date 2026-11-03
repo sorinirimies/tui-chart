@@ -1,16 +1,19 @@
 [package]
 name = "tui-chart"
 version = "0.6.3"
-edition = "2021"
+edition = "2024"
 authors = ["Sorin Irimies <sorinirimies@gmail.com>"]
 license = "MIT"
 description = "Terminal chart widgets for ratatui: line, bar, candlestick, histogram, heatmap, gauge, radar, treemap, pie (via tui-piechart) and more, with themes, annotations and streaming"
 repository = "https://github.com/sorinirimies/tui-chart"
+homepage = "https://github.com/sorinirimies/tui-chart"
+documentation = "https://docs.rs/tui-chart"
 readme = "README.md"
 keywords = ["tui", "chart", "ratatui", "candlestick", "plot"]
 categories = ["command-line-interface", "visualization", "rendering"]
-rust-version = "1.88.0"
+rust-version = "1.88"
 exclude = [
+    ".cargo/**",
     ".gitea/**",
     ".github/**",
     ".zed/**",
@@ -158,6 +161,19 @@ required-features = ["theme"]
 name = "themes"
 path = "examples/themes.rs"
 required-features = ["theme"]
+
+[package.metadata.docs.rs]
+all-features = true
+
+[lints.rust]
+unsafe_code = "forbid"
+missing_debug_implementations = "warn"
+missing_docs = "warn"
+
+[lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+unwrap_used = "warn"
 
 [profile.dev]
 opt-level = 1

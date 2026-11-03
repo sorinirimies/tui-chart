@@ -215,10 +215,10 @@ pub fn draw_annotations(
                 }
             }
             AnnotationKind::Label(x, y) => {
-                if let (Some(c), Some(r), Some(t)) = (x_cell(x), y_cell(y), text) {
-                    if (0..w).contains(&c) {
-                        put_text(buf, plot, c, r, t, a.style);
-                    }
+                if let (Some(c), Some(r), Some(t)) = (x_cell(x), y_cell(y), text)
+                    && (0..w).contains(&c)
+                {
+                    put_text(buf, plot, c, r, t, a.style);
                 }
             }
         }

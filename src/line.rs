@@ -1,15 +1,15 @@
 //! Line, step, area and scatter charts.
 
-use crate::annotation::{draw_annotations, Annotation};
+use crate::PALETTE;
+use crate::annotation::{Annotation, draw_annotations};
 use crate::axis::Axis;
 use crate::canvas::{Canvas, Marker};
-use crate::crosshair::{self, nearest_point, Crosshair, NearestPoint};
+use crate::crosshair::{self, Crosshair, NearestPoint, nearest_point};
 use crate::heatmap::Gradient;
 use crate::interact;
 use crate::layout::{self, text_width};
 use crate::theme::{self, Theme};
 use crate::util::{format_compact, format_tick, nice_bounds};
-use crate::PALETTE;
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -472,19 +472,19 @@ impl LineChart {
                     (Some(a), Some(b)) => (a, b),
                     _ => (f64::NAN, f64::NAN),
                 });
-            if let Some((i, d)) = nearest_point(pts, target, (1.0, 1.0)) {
-                if best.is_none_or(|(bd, _)| d < bd) {
-                    let (px, py) = s.data[i];
-                    best = Some((
-                        d,
-                        NearestPoint {
-                            series: si,
-                            index: i,
-                            x: px,
-                            y: py,
-                        },
-                    ));
-                }
+            if let Some((i, d)) = nearest_point(pts, target, (1.0, 1.0))
+                && best.is_none_or(|(bd, _)| d < bd)
+            {
+                let (px, py) = s.data[i];
+                best = Some((
+                    d,
+                    NearestPoint {
+                        series: si,
+                        index: i,
+                        x: px,
+                        y: py,
+                    },
+                ));
             }
         }
         best.map(|b| b.1)
@@ -667,12 +667,12 @@ impl LineChart {
         }
         canvas.render(buf, plot);
 
-        if let Some(ch) = &self.crosshair {
-            if let (Some(c), Some(r)) = (x_cell(ch.x), y_cell(ch.y)) {
-                let themed = self.theme.as_ref().map(|t| ch.with_theme(t));
-                let ch = themed.as_ref().unwrap_or(ch);
-                crosshair::draw(buf, plot, ch, c, r, &self.tooltip_lines(ch));
-            }
+        if let Some(ch) = &self.crosshair
+            && let (Some(c), Some(r)) = (x_cell(ch.x), y_cell(ch.y))
+        {
+            let themed = self.theme.as_ref().map(|t| ch.with_theme(t));
+            let ch = themed.as_ref().unwrap_or(ch);
+            crosshair::draw(buf, plot, ch, c, r, &self.tooltip_lines(ch));
         }
 
         layout::draw_axes(buf, &a, self.x_axis.style, self.y_axis.style);
@@ -1125,7 +1125,7 @@ mod tests {
             Series::new("a").values([1.0, 2.0]),
             Series::new("b").values([100.0, 900.0]).secondary_axis(true),
         ]);
-        assert!(c.bounds().1 .1 < 10.0);
+        assert!(c.bounds().1.1 < 10.0);
         let b2 = c.y2_bounds().unwrap();
         assert!(b2.1 >= 900.0);
         let area = Rect::new(0, 0, 40, 10);
@@ -1137,14 +1137,16 @@ mod tests {
 
     #[test]
     fn err_band_extend_bounds() {
-        let c = LineChart::new(vec![Series::new("a")
-            .values([1.0, 2.0])
-            .y_err([10.0, 10.0])]);
-        assert!(c.bounds().1 .1 >= 12.0);
-        let c = LineChart::new(vec![Series::new("a")
-            .values([1.0, 2.0])
-            .band([(-5.0, 1.0), (0.0, 3.0)])]);
-        assert!(c.bounds().1 .0 <= -5.0);
+        let c = LineChart::new(vec![
+            Series::new("a").values([1.0, 2.0]).y_err([10.0, 10.0]),
+        ]);
+        assert!(c.bounds().1.1 >= 12.0);
+        let c = LineChart::new(vec![
+            Series::new("a")
+                .values([1.0, 2.0])
+                .band([(-5.0, 1.0), (0.0, 3.0)]),
+        ]);
+        assert!(c.bounds().1.0 <= -5.0);
     }
 
     #[test]
@@ -1208,20 +1210,22 @@ mod tests {
             .theme(&th)
             .crosshair(Some(Crosshair::new(1.0, 2.0)))
             .render(area, &mut buf);
-        assert!(buf
-            .content()
-            .iter()
-            .any(|c| c.symbol() == "┼" && c.fg == th.crosshair));
+        assert!(
+            buf.content()
+                .iter()
+                .any(|c| c.symbol() == "┼" && c.fg == th.crosshair)
+        );
         let mut buf = Buffer::empty(area);
         let own = Style::default().fg(Color::Red);
         chart()
             .theme(&th)
             .crosshair(Some(Crosshair::new(1.0, 2.0).style(own)))
             .render(area, &mut buf);
-        assert!(buf
-            .content()
-            .iter()
-            .any(|c| c.symbol() == "┼" && c.fg == Color::Red));
+        assert!(
+            buf.content()
+                .iter()
+                .any(|c| c.symbol() == "┼" && c.fg == Color::Red)
+        );
     }
 
     #[test]
@@ -1264,14 +1268,16 @@ mod tests {
         // hiding series 0 drops its points but keeps its legend entry
         let mut buf = Buffer::empty(area);
         let hits = HitMap::capture(two().hidden([0]), area, &mut buf);
-        assert!(hits
-            .hits()
-            .iter()
-            .all(|h| h.kind == HitKind::Legend || h.series == 1));
-        assert!(hits
-            .hits()
-            .iter()
-            .any(|h| h.kind == HitKind::Legend && h.series == 0));
+        assert!(
+            hits.hits()
+                .iter()
+                .all(|h| h.kind == HitKind::Legend || h.series == 1)
+        );
+        assert!(
+            hits.hits()
+                .iter()
+                .any(|h| h.kind == HitKind::Legend && h.series == 0)
+        );
         // all hidden still renders
         let mut buf = Buffer::empty(area);
         two().hidden([0, 1]).render(area, &mut buf);

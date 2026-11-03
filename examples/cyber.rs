@@ -12,8 +12,8 @@ use ratatui::{
 };
 use std::time::Duration;
 use tui_chart::{
-    bracket_block, chamfer_block, jitter, Blip, Gauge, Oscilloscope, RadarScope, Spectrum, Theme,
-    Treemap, TreemapItem,
+    Blip, Gauge, Oscilloscope, RadarScope, Spectrum, Theme, Treemap, TreemapItem, bracket_block,
+    chamfer_block, jitter,
 };
 
 struct State {

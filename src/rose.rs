@@ -335,10 +335,11 @@ mod tests {
         let b = render(&RoseChart::new(items()), 60, 24);
         let t: String = b.content().iter().map(|c| c.symbol()).collect();
         assert!(t.contains("W 16") && t.contains("E 9"));
-        assert!(b
-            .content()
-            .iter()
-            .any(|c| c.symbol() != " " && c.fg == crate::PALETTE[0]));
+        assert!(
+            b.content()
+                .iter()
+                .any(|c| c.symbol() != " " && c.fg == crate::PALETTE[0])
+        );
     }
 
     #[test]

@@ -4,7 +4,7 @@
 #[path = "common/mod.rs"]
 mod common;
 
-use common::{help, run, Rng};
+use common::{Rng, help, run};
 use crossterm::event::KeyCode;
 use ratatui::{
     layout::{Constraint, Layout},
@@ -26,7 +26,7 @@ fn main() -> anyhow::Result<()> {
     let mut rng = Rng::new(11);
     let mut prices = vec![100.0];
     for _ in 0..300 {
-        let l = *prices.last().unwrap();
+        let l = *prices.last().expect("seeded with one value, never empty");
         prices.push(l + rng.gauss() * 0.8);
     }
     let state = State {
@@ -78,7 +78,7 @@ fn main() -> anyhow::Result<()> {
             if s.paused {
                 return;
             }
-            let l = *s.prices.last().unwrap();
+            let l = *s.prices.last().expect("seeded with one value, never empty");
             let n = l + s.rng.gauss() * 0.8;
             s.prices.push(n);
             if s.prices.len() > 600 {

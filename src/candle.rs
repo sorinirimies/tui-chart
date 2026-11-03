@@ -309,10 +309,10 @@ pub fn heikin_ashi(candles: &[Candle]) -> Vec<Candle> {
 
 fn hline_row(buf: &mut Buffer, area: Rect, row: u16, ch: char, style: Style) {
     for x in area.x..area.right() {
-        if let Some(cell) = buf.cell_mut((x, area.y + row)) {
-            if cell.symbol() == " " || cell.symbol() == "·" || cell.symbol() == "░" {
-                cell.set_char(ch).set_style(style);
-            }
+        if let Some(cell) = buf.cell_mut((x, area.y + row))
+            && (cell.symbol() == " " || cell.symbol() == "·" || cell.symbol() == "░")
+        {
+            cell.set_char(ch).set_style(style);
         }
     }
 }
@@ -859,10 +859,10 @@ impl CandlestickChart {
                         break;
                     }
                     for r in (sub(*u) / 2)..=(sub(*l) / 2) {
-                        if let Some(cell) = buf.cell_mut((x, price.y + r as u16)) {
-                            if cell.symbol() == " " || cell.symbol() == "·" {
-                                cell.set_char('░').set_style(st);
-                            }
+                        if let Some(cell) = buf.cell_mut((x, price.y + r as u16))
+                            && (cell.symbol() == " " || cell.symbol() == "·")
+                        {
+                            cell.set_char('░').set_style(st);
                         }
                     }
                 }
@@ -1065,10 +1065,10 @@ impl CandlestickChart {
             };
             let st = Style::default().fg(col).add_modifier(Modifier::BOLD);
             buf.set_string(x, price.y + row, g.to_string(), st);
-            if let Some(l) = &m.label {
-                if x + 1 + text_width(l) < price.right() {
-                    buf.set_string(x + 1, price.y + row, l, Style::default().fg(col));
-                }
+            if let Some(l) = &m.label
+                && x + 1 + text_width(l) < price.right()
+            {
+                buf.set_string(x + 1, price.y + row, l, Style::default().fg(col));
             }
         }
         if let Some((row, text, col)) = last_tag {

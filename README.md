@@ -344,7 +344,7 @@ cargo run --features theme --example treemap
 cargo run --features theme --example waterfall
 ```
 
-Render timing: `cargo run --release --example bench`. Or `just example-<name>` / `just examples`. Demo GIFs: `just vhs-all` (or `just vhs-<name>`) (needs [vhs](https://github.com/charmbracelet/vhs) and nushell).
+Render timing: `cargo run --release --example bench`. Or `just example <name>` / `just examples`. Demo GIFs: `just vhs-all` (or `just vhs <name>`) (needs [vhs](https://github.com/charmbracelet/vhs) and nushell).
 
 ## Development
 

@@ -68,3 +68,5 @@ fuzz/artifacts/
 fuzz/corpus/*
 fuzz/Cargo.lock
 .tmpf/
+/dist/
+/fuzz/corpus/

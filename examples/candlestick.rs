@@ -4,7 +4,7 @@
 #[path = "common/mod.rs"]
 mod common;
 
-use common::{help, run, Rng};
+use common::{Rng, help, run};
 use crossterm::event::KeyCode;
 use ratatui::{
     layout::{Constraint, Layout},
@@ -12,7 +12,7 @@ use ratatui::{
     widgets::Block,
 };
 use std::time::Duration;
-use tui_chart::{ema, sma, Axis, Candle, CandleStyle, CandlestickChart, Overlay, Theme};
+use tui_chart::{Axis, Candle, CandleStyle, CandlestickChart, Overlay, Theme, ema, sma};
 
 struct State {
     theme: Theme,

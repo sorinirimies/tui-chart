@@ -171,11 +171,7 @@ impl<'a> RadarChart<'a> {
                     .flat_map(|s| s.values.iter().copied())
                     .filter(|v| v.is_finite())
                     .fold(0.0, f64::max);
-                if m > 0.0 {
-                    m
-                } else {
-                    1.0
-                }
+                if m > 0.0 { m } else { 1.0 }
             });
         let mut cv = Canvas::new(plot.width, plot.height, self.marker);
         let (pw, ph) = (cv.px_w() as f64, cv.px_h() as f64);
@@ -351,10 +347,11 @@ impl<'a> RadarChart<'a> {
                 let y = ey.clamp(area.y as i32, area.bottom() as i32 - 1);
                 for (j, ch) in l.chars().enumerate() {
                     let xx = x + j as i32;
-                    if xx >= area.x as i32 && xx < area.right() as i32 {
-                        if let Some(c) = buf.cell_mut((xx as u16, y as u16)) {
-                            c.set_char(ch).set_fg(fg);
-                        }
+                    if xx >= area.x as i32
+                        && xx < area.right() as i32
+                        && let Some(c) = buf.cell_mut((xx as u16, y as u16))
+                    {
+                        c.set_char(ch).set_fg(fg);
                     }
                 }
             }
@@ -399,14 +396,16 @@ mod tests {
     #[test]
     fn draws_series_and_labels() {
         let b = run(chart(), 40, 20);
-        assert!(b
-            .content()
-            .iter()
-            .any(|c| c.fg == Color::Red && c.symbol() != " "));
-        assert!(b
-            .content()
-            .iter()
-            .any(|c| c.fg == Color::DarkGray && c.symbol() != " "));
+        assert!(
+            b.content()
+                .iter()
+                .any(|c| c.fg == Color::Red && c.symbol() != " ")
+        );
+        assert!(
+            b.content()
+                .iter()
+                .any(|c| c.fg == Color::DarkGray && c.symbol() != " ")
+        );
         let t: String = b.content().iter().map(|c| c.symbol()).collect();
         assert!(t.contains("Atk") && t.contains("Hp"));
     }

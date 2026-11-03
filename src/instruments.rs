@@ -14,7 +14,7 @@
     clippy::too_many_lines
 )]
 
-use crate::braille::{polar, Braille};
+use crate::braille::{Braille, polar};
 use crate::theme::{self, Theme};
 use crate::util::{darken, mix};
 use ratatui::{
@@ -863,10 +863,11 @@ mod tests {
         let (a, b) = (draw(s(0.26), 40, 20), draw(s(0.8), 40, 20));
         assert!(painted(&a) > 50);
         assert_ne!(a, b);
-        assert!(a
-            .content()
-            .iter()
-            .any(|c| c.fg != Color::Reset && c.symbol() != " "));
+        assert!(
+            a.content()
+                .iter()
+                .any(|c| c.fg != Color::Reset && c.symbol() != " ")
+        );
         let steady = draw(s(0.8).fade(false), 40, 20);
         assert_ne!(steady, b);
     }

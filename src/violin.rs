@@ -127,7 +127,7 @@ impl ViolinChart {
         let lo = data.iter().map(|d| d.2[0]).fold(f64::MAX, f64::min);
         let hi = data
             .iter()
-            .map(|d| *d.2.last().unwrap())
+            .map(|d| d.2.last().copied().unwrap_or(f64::MIN))
             .fold(f64::MIN, f64::max);
         let (lo, hi) = nice_bounds(lo, hi, 5);
         let span = (hi - lo).max(f64::EPSILON);
@@ -209,11 +209,7 @@ impl ViolinChart {
                 .filter(|b| *b > 0.0)
                 .unwrap_or_else(|| {
                     let bw = 1.06 * sd * (n as f64).powf(-0.2);
-                    if bw > 0.0 {
-                        bw
-                    } else {
-                        span / 20.0
-                    }
+                    if bw > 0.0 { bw } else { span / 20.0 }
                 })
                 .max(span * 1e-6);
             // cap work for huge inputs

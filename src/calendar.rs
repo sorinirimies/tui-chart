@@ -172,11 +172,7 @@ impl CalendarHeatmap {
         // weekday of the first day, Monday = 0
         let wd = |d: i64| {
             let m = (d + 3).rem_euclid(7);
-            if self.monday_first {
-                m
-            } else {
-                (m + 1) % 7
-            }
+            if self.monday_first { m } else { (m + 1) % 7 }
         };
         let off = wd(self.start_day) as usize;
         let weeks = (off + self.values.len()).div_ceil(7);
@@ -276,12 +272,12 @@ impl CalendarHeatmap {
                     let first_idx = (w * 7).saturating_sub(off) as i64;
                     (!crowded).then(|| civil_from_days(self.start_day + first_idx).1)
                 });
-                if let Some(m) = month {
-                    if x >= last_label_end {
-                        let name = MONTHS[(m as usize - 1) % 12];
-                        put_str(buf, x, inner.y, inner.right(), name, text);
-                        last_label_end = x + 4;
-                    }
+                if let Some(m) = month
+                    && x >= last_label_end
+                {
+                    let name = MONTHS[(m as usize - 1) % 12];
+                    put_str(buf, x, inner.y, inner.right(), name, text);
+                    last_label_end = x + 4;
                 }
             }
         }

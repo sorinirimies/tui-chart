@@ -249,20 +249,20 @@ impl Waterfall {
             let st = Style::default().fg(color);
             let (ra, rb) = (row(*s), row(*e));
             let (top, bot) = (ra.min(rb), ra.max(rb));
-            if self.connectors {
-                if let Some((lvl, px)) = prev_end {
-                    let y = row(lvl);
-                    if let (Some(m), true) = (self.marker, x0 > px) {
-                        let mut cv = Canvas::new(x0 - px, 1, m);
-                        let py = cv.px_h() / 2;
-                        for dx in 0..cv.px_w() {
-                            cv.set(dx, py, dim.fg.unwrap_or(Color::Reset));
-                        }
-                        cv.render(buf, Rect::new(px, y, x0 - px, 1));
-                    } else {
-                        for x in px..x0 {
-                            buf[(x, y)].set_char('┄').set_style(dim);
-                        }
+            if self.connectors
+                && let Some((lvl, px)) = prev_end
+            {
+                let y = row(lvl);
+                if let (Some(m), true) = (self.marker, x0 > px) {
+                    let mut cv = Canvas::new(x0 - px, 1, m);
+                    let py = cv.px_h() / 2;
+                    for dx in 0..cv.px_w() {
+                        cv.set(dx, py, dim.fg.unwrap_or(Color::Reset));
+                    }
+                    cv.render(buf, Rect::new(px, y, x0 - px, 1));
+                } else {
+                    for x in px..x0 {
+                        buf[(x, y)].set_char('┄').set_style(dim);
                     }
                 }
             }

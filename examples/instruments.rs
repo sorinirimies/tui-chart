@@ -4,14 +4,14 @@
 #[path = "common/mod.rs"]
 mod common;
 
-use common::{help, run, Rng};
+use common::{Rng, help, run};
 use crossterm::event::KeyCode;
 use ratatui::{
     layout::{Constraint, Layout},
     widgets::Block,
 };
 use std::time::Duration;
-use tui_chart::{jitter, Blip, DotMatrix, HexMap, Oscilloscope, RadarScope, Spectrum, Theme};
+use tui_chart::{Blip, DotMatrix, HexMap, Oscilloscope, RadarScope, Spectrum, Theme, jitter};
 
 struct State {
     theme: Theme,

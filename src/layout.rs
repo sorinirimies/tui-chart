@@ -155,10 +155,10 @@ pub(crate) fn draw_grid(
 }
 
 fn put_grid(buf: &mut Buffer, x: u16, y: u16, style: Style, ch: char) {
-    if let Some(cell) = buf.cell_mut((x, y)) {
-        if cell.symbol() == " " {
-            cell.set_char(ch).set_style(style);
-        }
+    if let Some(cell) = buf.cell_mut((x, y))
+        && cell.symbol() == " "
+    {
+        cell.set_char(ch).set_style(style);
     }
 }
 

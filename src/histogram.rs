@@ -547,12 +547,16 @@ mod tests {
         let k = h.kde_curve(30, None);
         assert_eq!(k.len(), 30);
         assert!(k.iter().all(|p| p.1.is_finite() && p.1 >= 0.0));
-        assert!(Histogram::new(Vec::<f64>::new())
-            .kde_curve(10, None)
-            .is_empty());
-        assert!(Histogram::new([3.0; 5])
-            .kde_curve(5, None)
-            .iter()
-            .all(|p| p.1.is_finite()));
+        assert!(
+            Histogram::new(Vec::<f64>::new())
+                .kde_curve(10, None)
+                .is_empty()
+        );
+        assert!(
+            Histogram::new([3.0; 5])
+                .kde_curve(5, None)
+                .iter()
+                .all(|p| p.1.is_finite())
+        );
     }
 }

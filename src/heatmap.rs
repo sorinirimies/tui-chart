@@ -237,11 +237,7 @@ impl Heatmap {
         let vals = self.data.iter().flatten().filter(|v| v.is_finite());
         let lo = vals.clone().cloned().fold(f64::INFINITY, f64::min);
         let hi = vals.cloned().fold(f64::NEG_INFINITY, f64::max);
-        if lo.is_finite() {
-            (lo, hi)
-        } else {
-            (0.0, 1.0)
-        }
+        if lo.is_finite() { (lo, hi) } else { (0.0, 1.0) }
     }
 
     fn render_inner(&self, area: Rect, buf: &mut Buffer) {
@@ -313,10 +309,10 @@ impl Heatmap {
                     break;
                 }
                 let x = x as u16;
-                if r == 0 {
-                    if let Some(l) = self.col_labels.get(c) {
-                        x_ticks.push((x - plot.x + cw / 2, l.clone()));
-                    }
+                if r == 0
+                    && let Some(l) = self.col_labels.get(c)
+                {
+                    x_ticks.push((x - plot.x + cw / 2, l.clone()));
                 }
                 crate::interact::record_point(Rect::new(x, y, cw.max(1), ch.max(1)), r, c, || {
                     let title = match (self.row_labels.get(r), self.col_labels.get(c)) {

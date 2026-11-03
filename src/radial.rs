@@ -10,9 +10,9 @@
     clippy::cast_possible_wrap
 )]
 
+use crate::PALETTE;
 use crate::braille::Braille;
 use crate::theme::{self, Theme};
-use crate::PALETTE;
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -479,10 +479,11 @@ mod tests {
         let b = draw(RadialBar::new(rings()), 50, 14);
         let t = text(&b);
         assert!(t.contains("Move") && t.contains("Exercise") && t.contains("70%"));
-        assert!(b
-            .content()
-            .iter()
-            .any(|c| c.fg == Color::Red && c.symbol() != " "));
+        assert!(
+            b.content()
+                .iter()
+                .any(|c| c.fg == Color::Red && c.symbol() != " ")
+        );
     }
 
     #[test]
@@ -555,9 +556,10 @@ mod tests {
             20,
             10,
         );
-        assert!(b
-            .content()
-            .iter()
-            .any(|c| c.fg == Color::Magenta && c.symbol() != " "));
+        assert!(
+            b.content()
+                .iter()
+                .any(|c| c.fg == Color::Magenta && c.symbol() != " ")
+        );
     }
 }

@@ -134,8 +134,8 @@ is enforced.
    Add unit tests next to the widget: every toggle/option changes output, explicit
    colors apply, degenerate data/areas don't panic.
 5. Document it: a `# Example` doctest on the struct (docs.rs), a row in the README
-   table, a `examples/vhs/<name>.tape` and (after `just vhs-<name>`) its GIF + README
-   gallery entry, `[[example]]` in `Cargo.toml`, `example-<name>`/`vhs-<name>` recipes.
+   table, a `examples/vhs/<name>.tape` and (after `just vhs <name>`) its GIF + README
+   gallery entry, `[[example]]` in `Cargo.toml` (`just example <name>` and `just vhs <name>` pick it up).
 6. Run `cargo fmt`, `cargo clippy --all-targets --all-features -- -D warnings`,
    `cargo test --all-features`, `RUSTDOCFLAGS='-D warnings' cargo doc --no-deps`.
 
@@ -186,7 +186,7 @@ the network):
 ```bash
 just test-nu                                  # or: nu scripts/tests/run_all.nu
 nu scripts/tests/run_all.nu --filter bump     # only matching files
-just test-all                                 # cargo test + Nu tests
+just check-all                                # the full CI gate: fmt, clippy, tests, docs, Nu tests
 ```
 
 When you change a script, keep logic in `export def` helpers so tests can
@@ -199,7 +199,7 @@ never block.
 ```bash
 just audit        # cargo audit   (RUSTSEC advisories; config: .cargo/audit.toml)
 just deny         # cargo deny    (advisories, licenses, bans, sources; config: deny.toml)
-just fuzz-build   # build all fuzz targets (nightly + cargo-fuzz)
+just fuzz-list    # list the fuzz targets (nightly + cargo-fuzz)
 just fuzz render_line 60   # fuzz one target for 60 s
 just fuzz-all 30           # every target, 30 s each
 ```
@@ -221,10 +221,10 @@ changes (crash artifacts are uploaded). Both exist for GitHub and Gitea
 
 ```bash
 # Run specific example
-cargo run --example horizontal
+cargo run --example line
 
 # Or use just
-just example-horizontal
+just example line
 ```
 
 ### Using Just

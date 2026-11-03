@@ -1,9 +1,9 @@
 //! Funnel: stages narrowing from the largest value, with conversion percentages.
 
+use crate::PALETTE;
 use crate::text::put_str;
 use crate::theme::{self, Theme};
 use crate::util::{darken, format_compact};
-use crate::PALETTE;
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -412,10 +412,11 @@ mod tests {
             40,
             4,
         );
-        assert!(b
-            .content()
-            .iter()
-            .any(|c| c.fg == Color::Red || c.bg == Color::Red));
+        assert!(
+            b.content()
+                .iter()
+                .any(|c| c.fg == Color::Red || c.bg == Color::Red)
+        );
     }
 
     #[test]

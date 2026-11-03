@@ -1,5 +1,6 @@
+//! Integration tests: line test.
 use ratatui::{buffer::Buffer, layout::Rect, style::Color, widgets::Widget};
-use tui_chart::{draw_annotations, nearest_point, Annotation, Axis, Crosshair, LineChart, Series};
+use tui_chart::{Annotation, Axis, Crosshair, LineChart, Series, draw_annotations, nearest_point};
 
 fn text(buf: &Buffer, a: Rect) -> String {
     (0..a.height)
@@ -10,7 +11,7 @@ fn text(buf: &Buffer, a: Rect) -> String {
 
 fn base() -> LineChart {
     LineChart::new(vec![
-        Series::new("a").data((0..30).map(|i| (i as f64, (i * i) as f64 + 1.0)))
+        Series::new("a").data((0..30).map(|i| (i as f64, (i * i) as f64 + 1.0))),
     ])
 }
 

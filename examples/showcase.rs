@@ -4,7 +4,7 @@
 #[path = "common/mod.rs"]
 mod common;
 
-use common::{help, run, Rng};
+use common::{Rng, help, run};
 use crossterm::event::KeyCode;
 use ratatui::{
     layout::{Constraint, Layout},
@@ -13,8 +13,8 @@ use ratatui::{
 };
 use std::time::Duration;
 use tui_chart::{
-    sma, Axis, BarChart, BarGroup, BarMode, Candle, CandlestickChart, Gradient, Heatmap, Histogram,
-    LineChart, LineMode, Overlay, Series, Theme,
+    Axis, BarChart, BarGroup, BarMode, Candle, CandlestickChart, Gradient, Heatmap, Histogram,
+    LineChart, LineMode, Overlay, Series, Theme, sma,
 };
 
 struct State {
@@ -128,7 +128,11 @@ fn main() -> anyhow::Result<()> {
                 return;
             }
             s.t += 1.0;
-            let o = s.candles.last().unwrap().close;
+            let o = s
+                .candles
+                .last()
+                .expect("seeded with one value, never empty")
+                .close;
             let c = o + s.rng.gauss();
             let candle = Candle::new(o, o.max(c) + s.rng.f64(), o.min(c) - s.rng.f64(), c)
                 .volume(1000.0 + s.rng.f64() * 1000.0);

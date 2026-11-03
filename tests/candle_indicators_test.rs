@@ -1,7 +1,8 @@
+//! Integration tests: candle indicators test.
 use ratatui::{buffer::Buffer, layout::Rect, style::Color, widgets::Widget};
 use tui_chart::{
-    atr, bollinger, macd, rsi, stochastic, vwap, BandOverlay, Candle, CandlestickChart, HLine,
-    IndicatorPane, TradeMarker, TradeSide,
+    BandOverlay, Candle, CandlestickChart, HLine, IndicatorPane, TradeMarker, TradeSide, atr,
+    bollinger, macd, rsi, stochastic, vwap,
 };
 
 fn data(n: usize) -> Vec<Candle> {
@@ -29,10 +30,12 @@ fn indicators_aligned() {
     assert_eq!(atr(&d, 14).len(), 50);
     assert_eq!(vwap(&d).len(), 50);
     assert_eq!(stochastic(&d, 14, 3).1.len(), 50);
-    assert!(rsi(&d, 14)
-        .iter()
-        .flatten()
-        .all(|v| (0.0..=100.0).contains(v)));
+    assert!(
+        rsi(&d, 14)
+            .iter()
+            .flatten()
+            .all(|v| (0.0..=100.0).contains(v))
+    );
 }
 
 #[test]

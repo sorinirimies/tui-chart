@@ -300,10 +300,10 @@ impl<'a> Sparkline<'a> {
                             c.set_char('█').set_fg(col);
                         }
                     }
-                    if area.height % 2 == 1 {
-                        if let Some(c) = buf.cell_mut((x, area.y + mid)) {
-                            c.set_char('─').set_fg(darken(col, 0.5));
-                        }
+                    if area.height % 2 == 1
+                        && let Some(c) = buf.cell_mut((x, area.y + mid))
+                    {
+                        c.set_char('─').set_fg(darken(col, 0.5));
                     }
                 }
             }

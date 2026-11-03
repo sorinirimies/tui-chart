@@ -3,14 +3,14 @@
 #[path = "common/mod.rs"]
 mod common;
 
-use common::{help, run, Rng};
+use common::{Rng, help, run};
 use crossterm::event::KeyCode;
 use ratatui::{
     layout::{Constraint, Layout},
     widgets::Block,
 };
 use std::time::Duration;
-use tui_chart::{days_from_civil, CalendarHeatmap, Gradient, Theme};
+use tui_chart::{CalendarHeatmap, Gradient, Theme, days_from_civil};
 
 struct State {
     theme: Theme,

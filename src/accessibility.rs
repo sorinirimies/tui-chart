@@ -115,13 +115,13 @@ mod tests {
         let area = Rect::new(0, 0, 40, 12);
         let mut plain = Buffer::empty(area);
         LineChart::new(vec![
-            Series::new("a").data((0..20).map(|i| (i as f64, i as f64)))
+            Series::new("a").data((0..20).map(|i| (i as f64, i as f64))),
         ])
         .render(area, &mut plain);
         assert!(has_color(&plain));
         let mut mono = Buffer::empty(area);
         Monochrome::new(LineChart::new(vec![
-            Series::new("a").data((0..20).map(|i| (i as f64, i as f64)))
+            Series::new("a").data((0..20).map(|i| (i as f64, i as f64))),
         ]))
         .render(area, &mut mono);
         assert!(!has_color(&mono));

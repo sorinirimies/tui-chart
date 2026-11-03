@@ -1,3 +1,4 @@
+//! Integration tests: serde test.
 #![cfg(feature = "serde")]
 
 use ratatui::style::Color;
@@ -9,7 +10,7 @@ fn rt<T>(v: &T) -> T
 where
     T: serde::Serialize + serde::de::DeserializeOwned,
 {
-    serde_json::from_str(&serde_json::to_string(v).unwrap()).unwrap()
+    serde_json::from_str(&serde_json::to_string(v).expect("serialize")).expect("deserialize")
 }
 
 #[test]

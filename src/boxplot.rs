@@ -292,10 +292,12 @@ impl BoxPlot {
     block_setter!(block, 'static);
 
     fn value_range(&self) -> (f64, f64) {
-        if let Some((a, b)) = self.range {
-            if a.is_finite() && b.is_finite() && b > a {
-                return (a, b);
-            }
+        if let Some((a, b)) = self.range
+            && a.is_finite()
+            && b.is_finite()
+            && b > a
+        {
+            return (a, b);
         }
         let mut lo = f64::INFINITY;
         let mut hi = f64::NEG_INFINITY;
@@ -423,10 +425,10 @@ impl BoxPlot {
                 put_str(buf, x, inner.bottom() - 1, inner.right(), &label, dim);
             }
             for c in 0..cross_len as i32 {
-                if let Some((x, y)) = cell(a, c) {
-                    if buf[(x, y)].symbol() == " " {
-                        buf[(x, y)].set_char('·').set_style(dim);
-                    }
+                if let Some((x, y)) = cell(a, c)
+                    && buf[(x, y)].symbol() == " "
+                {
+                    buf[(x, y)].set_char('·').set_style(dim);
                 }
             }
         }
@@ -561,13 +563,13 @@ impl BoxPlot {
                     put(buf, to_a(v), c, '•', ps);
                 }
             }
-            if self.show_mean {
-                if let Some(m) = st.mean.filter(|m| m.is_finite()) {
-                    let ms = Style::default()
-                        .fg(self.theme.as_ref().map_or(Color::White, |t| t.foreground))
-                        .bg(color);
-                    put(buf, to_a(m), mid, '◆', ms);
-                }
+            if self.show_mean
+                && let Some(m) = st.mean.filter(|m| m.is_finite())
+            {
+                let ms = Style::default()
+                    .fg(self.theme.as_ref().map_or(Color::White, |t| t.foreground))
+                    .bg(color);
+                put(buf, to_a(m), mid, '◆', ms);
             }
             if self.show_outliers {
                 for &o in &st.outliers {
@@ -697,20 +699,23 @@ mod tests {
         let t = Theme::nord();
         let p = BoxPlot::new().stats("a", BoxStats::new(0.0, 2.0, 5.0, 8.0, 10.0));
         let b = render(&p.clone().theme(&t), 30, 15);
-        assert!(b
-            .content()
-            .iter()
-            .any(|c| c.symbol() == "█" && c.fg == t.color(0)));
+        assert!(
+            b.content()
+                .iter()
+                .any(|c| c.symbol() == "█" && c.fg == t.color(0))
+        );
         assert_eq!(b[(0, 0)].bg, t.background.unwrap());
         let b = render(&p.theme(&t).colors(vec![Color::Red]), 30, 15);
-        assert!(b
-            .content()
-            .iter()
-            .any(|c| c.symbol() == "█" && c.fg == Color::Red));
-        assert!(!b
-            .content()
-            .iter()
-            .any(|c| c.symbol() == "█" && c.fg == t.color(0)));
+        assert!(
+            b.content()
+                .iter()
+                .any(|c| c.symbol() == "█" && c.fg == Color::Red)
+        );
+        assert!(
+            !b.content()
+                .iter()
+                .any(|c| c.symbol() == "█" && c.fg == t.color(0))
+        );
     }
 
     #[test]

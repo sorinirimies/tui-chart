@@ -328,15 +328,19 @@ mod tests {
     #[test]
     fn explicit_color_and_palette_mode() {
         let c = SlopeChart::new([SlopeItem::new("a", 1.0, 2.0).color(Color::Magenta)]);
-        assert!(render(&c, 50, 8)
-            .content()
-            .iter()
-            .any(|c| c.fg == Color::Magenta));
+        assert!(
+            render(&c, 50, 8)
+                .content()
+                .iter()
+                .any(|c| c.fg == Color::Magenta)
+        );
         let c = SlopeChart::new(items()).trend_colors(false);
-        assert!(!render(&c, 50, 12)
-            .content()
-            .iter()
-            .any(|c| c.fg == Color::Green));
+        assert!(
+            !render(&c, 50, 12)
+                .content()
+                .iter()
+                .any(|c| c.fg == Color::Green)
+        );
     }
 
     #[test]

@@ -138,10 +138,12 @@ impl Gantt {
     block_setter!(block, 'static);
 
     fn time_range(&self) -> (f64, f64) {
-        if let Some((a, b)) = self.range {
-            if a.is_finite() && b.is_finite() && b > a {
-                return (a, b);
-            }
+        if let Some((a, b)) = self.range
+            && a.is_finite()
+            && b.is_finite()
+            && b > a
+        {
+            return (a, b);
         }
         let mut lo = f64::INFINITY;
         let mut hi = f64::NEG_INFINITY;
@@ -332,10 +334,11 @@ mod tests {
         assert!(fg(t.color(0)));
         assert!(fg(Color::Red));
         assert!(!fg(t.color(1)));
-        assert!(b
-            .content()
-            .iter()
-            .any(|x| x.symbol() == "┃" && x.fg == t.bear));
+        assert!(
+            b.content()
+                .iter()
+                .any(|x| x.symbol() == "┃" && x.fg == t.bear)
+        );
         assert_eq!(b[(39, 0)].bg, t.background.unwrap());
     }
 

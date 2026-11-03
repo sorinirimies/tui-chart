@@ -130,10 +130,10 @@ pub(crate) fn draw(
         return;
     }
     let mut put = |c: i32, r: i32, glyph: &str| {
-        if let Some(cell) = buf.cell_mut((plot.x + c as u16, plot.y + r as u16)) {
-            if matches!(cell.symbol(), " " | "·" | "╌" | "╎") {
-                cell.set_symbol(glyph).set_style(ch.style);
-            }
+        if let Some(cell) = buf.cell_mut((plot.x + c as u16, plot.y + r as u16))
+            && matches!(cell.symbol(), " " | "·" | "╌" | "╎")
+        {
+            cell.set_symbol(glyph).set_style(ch.style);
         }
     };
     for c in 0..w {
@@ -142,10 +142,10 @@ pub(crate) fn draw(
     for r in 0..h {
         put(col, r, "┆");
     }
-    if let Some(cell) = buf.cell_mut((plot.x + col as u16, plot.y + row as u16)) {
-        if matches!(cell.symbol(), " " | "·" | "┄" | "┆") {
-            cell.set_symbol("┼").set_style(ch.style);
-        }
+    if let Some(cell) = buf.cell_mut((plot.x + col as u16, plot.y + row as u16))
+        && matches!(cell.symbol(), " " | "·" | "┄" | "┆")
+    {
+        cell.set_symbol("┼").set_style(ch.style);
     }
     if !ch.tooltip || lines.is_empty() {
         return;

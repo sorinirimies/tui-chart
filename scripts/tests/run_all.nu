@@ -5,10 +5,7 @@
 #   nu scripts/tests/run_all.nu          # run every test_*.nu file
 #   nu scripts/tests/run_all.nu --filter version   # only files matching "version"
 
-def main [
-    --filter: string = "",  # only run files whose name matches
-    --verbose (-v),         # show per-test output for passing files too
-] {
+def main [--filter: string = ""] {
     let green  = (ansi green)
     let red    = (ansi red)
     let bold   = (ansi --escape {attr: b})
@@ -52,25 +49,24 @@ def main [
 
     for f in $files {
         let name = ($f | path basename)
-        # empty piped stdin: tests must never wait on the terminal
-        let res = ("" | do { nu $f } | complete)
+        print $"($bold)▶ ($name)($reset)"
+        let res = (do { nu $f } | complete)
+
+        # Forward the test file's stdout so the user sees per-test results.
+        if ($res.stdout | str trim) != "" {
+            print $res.stdout
+        }
 
         if $res.exit_code == 0 {
             $passed = $passed + 1
-            if $verbose and ($res.stdout | str trim) != "" {
-                print $res.stdout
-            }
         } else {
-            if ($res.stdout | str trim) != "" {
-                print $res.stdout
-            }
             $failed = $failed + 1
             $failures = ($failures | append $name)
             if ($res.stderr | str trim) != "" {
                 print $res.stderr
             }
         }
-        print $"  (if $res.exit_code == 0 { $green + "✓" } else { $red + "✗" })($reset) ($name)"
+        print ""
     }
 
     print $"($bold)── Summary ──($reset)"

@@ -96,14 +96,16 @@ fn hidden_series_drop_out_and_legend_toggles() {
     );
     let mut buf = Buffer::empty(area);
     let h2 = HitMap::capture(layers().hidden(ui.hidden()), area, &mut buf);
-    assert!(h2
-        .hits()
-        .iter()
-        .all(|x| x.kind == HitKind::Legend || x.series == 0));
-    assert!(h2
-        .hits()
-        .iter()
-        .any(|x| x.kind == HitKind::Legend && x.series == 1));
+    assert!(
+        h2.hits()
+            .iter()
+            .all(|x| x.kind == HitKind::Legend || x.series == 0)
+    );
+    assert!(
+        h2.hits()
+            .iter()
+            .any(|x| x.kind == HitKind::Legend && x.series == 1)
+    );
 
     let radar = || {
         RadarChart::new(["a", "b", "c"])
@@ -112,11 +114,12 @@ fn hidden_series_drop_out_and_legend_toggles() {
     };
     let mut buf = Buffer::empty(area);
     let h = HitMap::capture(radar().hidden([0]), area, &mut buf);
-    assert!(h
-        .hits()
-        .iter()
-        .filter(|x| x.kind == HitKind::Point)
-        .all(|x| x.series == 1));
+    assert!(
+        h.hits()
+            .iter()
+            .filter(|x| x.kind == HitKind::Point)
+            .all(|x| x.series == 1)
+    );
 }
 
 #[test]
@@ -153,10 +156,11 @@ fn funnel_and_radial_toggle_via_legend() {
     );
     let mut buf = Buffer::empty(area);
     let h = HitMap::capture(funnel().hidden([1]), area, &mut buf);
-    assert!(h
-        .hits()
-        .iter()
-        .all(|x| x.series != 1 || x.kind == HitKind::Legend));
+    assert!(
+        h.hits()
+            .iter()
+            .all(|x| x.series != 1 || x.kind == HitKind::Legend)
+    );
     assert_eq!(
         h.hits().iter().filter(|x| x.kind == HitKind::Point).count(),
         2
@@ -170,14 +174,16 @@ fn funnel_and_radial_toggle_via_legend() {
     };
     let mut buf = Buffer::empty(area);
     let h = HitMap::capture(rings().hidden([0]), area, &mut buf);
-    assert!(h
-        .hits()
-        .iter()
-        .any(|x| x.kind == HitKind::Legend && x.series == 0));
-    assert!(h
-        .hits()
-        .iter()
-        .all(|x| x.series != 0 || x.kind == HitKind::Legend));
+    assert!(
+        h.hits()
+            .iter()
+            .any(|x| x.kind == HitKind::Legend && x.series == 0)
+    );
+    assert!(
+        h.hits()
+            .iter()
+            .all(|x| x.series != 0 || x.kind == HitKind::Legend)
+    );
 }
 
 #[test]

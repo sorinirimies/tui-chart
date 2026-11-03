@@ -3,11 +3,11 @@
 
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use ratatui::{
+    Frame,
     layout::Rect,
     style::{Color, Style},
     text::Line,
     widgets::Paragraph,
-    Frame,
 };
 use std::time::{Duration, Instant};
 
@@ -61,12 +61,12 @@ pub fn run<S>(
         loop {
             terminal.draw(|f| draw(f, &state))?;
             let timeout = tick.saturating_sub(last.elapsed());
-            if event::poll(timeout)? {
-                if let Event::Key(k) = event::read()? {
-                    if k.kind == KeyEventKind::Press && on_key(&mut state, k.code) {
-                        return Ok(());
-                    }
-                }
+            if event::poll(timeout)?
+                && let Event::Key(k) = event::read()?
+                && k.kind == KeyEventKind::Press
+                && on_key(&mut state, k.code)
+            {
+                return Ok(());
             }
             if last.elapsed() >= tick {
                 on_tick(&mut state);

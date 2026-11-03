@@ -139,8 +139,8 @@ mod waterfall;
 
 pub mod util;
 
-pub use accessibility::{no_color_requested, strip_color, Monochrome};
-pub use annotation::{draw_annotations, Annotation, AnnotationKind};
+pub use accessibility::{Monochrome, no_color_requested, strip_color};
+pub use annotation::{Annotation, AnnotationKind, draw_annotations};
 pub use axis::{Axis, GridStyle};
 pub use bar::{BarChart, BarGroup, BarMode, BarOrientation, LabelPosition};
 pub use boxplot::{BoxOrientation, BoxPlot, BoxStats};
@@ -148,13 +148,13 @@ pub use bubble::{BubbleChart, BubbleSeries};
 pub use bullet::{Bullet, BulletItem};
 pub use calendar::CalendarHeatmap;
 pub use candle::{
-    ema, heikin_ashi, sma, BandOverlay, Candle, CandleStyle, CandlestickChart, HLine,
-    IndicatorPane, Overlay, TradeMarker, TradeSide,
+    BandOverlay, Candle, CandleStyle, CandlestickChart, HLine, IndicatorPane, Overlay, TradeMarker,
+    TradeSide, ema, heikin_ashi, sma,
 };
 pub use canvas::{Canvas, Marker, OverlapPolicy};
-pub use crosshair::{nearest_point, Crosshair, NearestPoint};
+pub use crosshair::{Crosshair, NearestPoint, nearest_point};
 pub use depth::DepthChart;
-pub use effects::{bracket_block, chamfer_block, glow, scanlines, Fx, FxExt};
+pub use effects::{Fx, FxExt, bracket_block, chamfer_block, glow, scanlines};
 pub use funnel::{Funnel, FunnelStage};
 pub use gantt::{Gantt, Task};
 pub use gauge::{Gauge, GaugeOrientation, GaugeStyle};
@@ -162,8 +162,8 @@ pub use heatmap::{Gradient, Heatmap};
 pub use histogram::{Bin, Histogram};
 pub use indicator::{atr, bollinger, macd, rsi, stochastic, vwap};
 pub use instruments::{
-    blip_alpha, ecg_beat, hex_center, hex_extent, jitter, Blip, DotMatrix, HexMap, Oscilloscope,
-    RadarScope, Spectrum,
+    Blip, DotMatrix, HexMap, Oscilloscope, RadarScope, Spectrum, blip_alpha, ecg_beat, hex_center,
+    hex_extent, jitter,
 };
 pub use interact::{Click, Hit, HitKind, HitMap, Interaction, View};
 pub use line::{LegendPosition, LineChart, LineMode, Series};
@@ -171,12 +171,12 @@ pub use lollipop::{LollipopChart, LollipopItem};
 pub use paired_bars::{PairedBars, PairedBarsItem, PairedBarsLayout};
 pub use radar::{RadarChart, RadarSeries};
 pub use radial::{RadialBar, RadialRing, RadialSweep, RingStack};
-pub use renko::{renko_bricks, RenkoBrick, RenkoChart, RenkoStyle};
+pub use renko::{RenkoBrick, RenkoChart, RenkoStyle, renko_bricks};
 pub use rose::{RoseChart, RoseItem};
 pub use sankey::{Sankey, SankeyLink};
 pub use slope::{SlopeChart, SlopeItem};
 pub use sparkline::{Sparkline, SparklineStyle};
-pub use stack::{shared_gutter, ChartStack, StackDirection};
+pub use stack::{ChartStack, StackDirection, shared_gutter};
 pub use stacked_area::{AreaLayer, StackedAreaChart};
 pub use stream::{RingBuffer, Stream};
 #[cfg(feature = "theme")]

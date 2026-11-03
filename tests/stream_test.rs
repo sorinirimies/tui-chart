@@ -1,3 +1,4 @@
+//! Integration tests: stream test.
 use ratatui::{buffer::Buffer, layout::Rect, style::Color, widgets::Widget};
 use tui_chart::*;
 
@@ -36,9 +37,10 @@ fn stack_panes_render_without_panic() {
 fn time_ticks_cover_range() {
     let t = time_ticks(1_700_000_000.0, 1_700_086_400.0, 6);
     assert!(t.len() >= 3);
-    assert!(t
-        .iter()
-        .all(|&x| (1_700_000_000.0..=1_700_086_400.0).contains(&x)));
+    assert!(
+        t.iter()
+            .all(|&x| (1_700_000_000.0..=1_700_086_400.0).contains(&x))
+    );
     assert_eq!(date_ymd(1_700_000_000.0), "2023-11-14");
 }
 

@@ -16,11 +16,11 @@ use crossterm::{
     execute,
 };
 use ratatui::{
+    Frame,
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
     style::{Color, Style},
     widgets::{Block, Paragraph},
-    Frame,
 };
 use std::cell::{Cell, RefCell};
 use tui_chart::*;
@@ -248,10 +248,10 @@ fn ui(f: &mut Frame, app: &App) {
     app.plot.set(main);
     let hits = draw_page(app, main, f.buffer_mut());
     app.ui.render_tooltip(&hits, f.buffer_mut(), main);
-    if let Some((x, y)) = app.ui.position() {
-        if let Some(c) = f.buffer_mut().cell_mut((x, y)) {
-            c.set_style(Style::default().add_modifier(ratatui::style::Modifier::REVERSED));
-        }
+    if let Some((x, y)) = app.ui.position()
+        && let Some(c) = f.buffer_mut().cell_mut((x, y))
+    {
+        c.set_style(Style::default().add_modifier(ratatui::style::Modifier::REVERSED));
     }
     *app.hits.borrow_mut() = hits;
     f.render_widget(

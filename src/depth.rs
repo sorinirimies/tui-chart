@@ -293,17 +293,17 @@ impl DepthChart {
             }
             cv.render(buf, Rect::new(inner.x, top, inner.width, plot_h));
         }
-        if self.show_spread {
-            if let (Some(s), Some(m)) = (self.spread(), self.mid()) {
-                let pct = if m != 0.0 { s / m * 100.0 } else { 0.0 };
-                let txt = format!(
-                    "spread {} ({:.2}%)",
-                    format_tick(s, (s.abs() / 10.0).max(1e-9)),
-                    pct
-                );
-                let x = inner.x + (inner.width.saturating_sub(txt.chars().count() as u16)) / 2;
-                put_str(buf, inner, x, inner.y, &txt, Style::default().fg(txt_c));
-            }
+        if self.show_spread
+            && let (Some(s), Some(m)) = (self.spread(), self.mid())
+        {
+            let pct = if m != 0.0 { s / m * 100.0 } else { 0.0 };
+            let txt = format!(
+                "spread {} ({:.2}%)",
+                format_tick(s, (s.abs() / 10.0).max(1e-9)),
+                pct
+            );
+            let x = inner.x + (inner.width.saturating_sub(txt.chars().count() as u16)) / 2;
+            put_str(buf, inner, x, inner.y, &txt, Style::default().fg(txt_c));
         }
         let label_y = inner.bottom() - 1;
         let step = ((hi - lo) / 4.0).max(1e-9);

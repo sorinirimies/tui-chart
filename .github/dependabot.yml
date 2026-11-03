@@ -1,7 +1,7 @@
 # Dependabot — keep GitHub Actions up to date
-# Cargo dependency upgrades are handled by the Nightly Dependency Update workflow
-# (`.github/workflows/deps-update.yml`), so only the github-actions ecosystem is
-# configured here.
+# Cargo dependency upgrades are handled by the Nightly Dependency Upgrade
+# workflow (`.gitea/workflows/nightly-deps.yml`), so only the github-actions
+# ecosystem is configured here.
 
 version: 2
 updates:
@@ -18,7 +18,3 @@ updates:
     commit-message:
       prefix: "ci(deps):"
     open-pull-requests-limit: 5
-    ignore:
-      # `dtolnay/rust-toolchain@<version>` pins a Rust toolchain (the MSRV job),
-      # not an action version; bumping it would silently change the MSRV.
-      - dependency-name: "dtolnay/rust-toolchain"

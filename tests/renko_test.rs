@@ -6,7 +6,7 @@ use ratatui::{
     style::Color,
     widgets::{Block, Widget},
 };
-use tui_chart::{renko_bricks, RenkoChart, RenkoStyle};
+use tui_chart::{RenkoChart, RenkoStyle, renko_bricks};
 
 fn closes() -> Vec<f64> {
     (0..80)

@@ -46,11 +46,7 @@ fn main() -> anyhow::Result<()> {
                 Layout::vertical([Constraint::Min(5), Constraint::Length(2)]).areas(f.area());
             let items = DATA.iter().map(|(n, now, before)| {
                 let it = LollipopItem::new(*n, *now);
-                if s.dumbbell {
-                    it.from(*before)
-                } else {
-                    it
-                }
+                if s.dumbbell { it.from(*before) } else { it }
             });
             let chart = LollipopChart::new(items)
                 .sorted(s.sorted)
