@@ -4,6 +4,12 @@ All notable changes to this project are documented here. It is generated from
 [Conventional Commits](https://www.conventionalcommits.org) by
 [git-cliff](https://git-cliff.org) — do not edit it by hand.
 
+## [0.6.8](https://github.com/sorinirimies/tui-chart/compare/v0.6.7...v0.6.8) — 2026-11-23
+
+### 🐛 Bug fixes
+
+- **treemap:** Hide labels on tiles too narrow to show them ([`792f006`](https://github.com/sorinirimies/tui-chart/commit/792f0063db88bdf162cc2d6dd87bd79765fbcf53))
+
 ## [0.6.7](https://github.com/sorinirimies/tui-chart/compare/v0.6.6...v0.6.7) — 2026-11-23
 
 ### 🐛 Bug fixes
