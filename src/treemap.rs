@@ -449,12 +449,43 @@ fn text_color(bg: Color) -> Color {
 }
 
 fn put_text(buf: &mut Buffer, area: Rect, row: u16, s: &str, style: Style) {
-    if row >= area.height {
+    use unicode_width::UnicodeWidthChar;
+    if row >= area.height || area.width == 0 {
         return;
     }
-    for (i, ch) in s.chars().take(area.width as usize).enumerate() {
-        buf[(area.x + i as u16, area.y + row)]
-            .set_symbol(&ch.to_string())
+    let max = area.width as usize;
+    let s = s.trim();
+    // Clip by display width (wide glyphs take two cells), `…` when cut.
+    let total: usize = s.chars().map(|c| c.width().unwrap_or(0)).sum();
+    let limit = if total > max {
+        max.saturating_sub(1)
+    } else {
+        max
+    };
+    let y = area.y + row;
+    let mut col = 0usize;
+    for ch in s.chars() {
+        let w = ch.width().unwrap_or(0);
+        if w == 0 {
+            continue;
+        }
+        if col + w > limit {
+            break;
+        }
+        buf[(area.x + col as u16, y)]
+            .set_symbol(ch.encode_utf8(&mut [0; 4]))
+            .set_style(style);
+        // blank the continuation cell of a wide glyph
+        for k in 1..w {
+            buf[(area.x + (col + k) as u16, y)]
+                .set_symbol("")
+                .set_style(style);
+        }
+        col += w;
+    }
+    if total > max && max > 0 {
+        buf[(area.x + col as u16, y)]
+            .set_symbol("…")
             .set_style(style);
     }
 }
@@ -518,6 +549,19 @@ mod tests {
         let g = TreemapItem::new("g", 0.0)
             .children([TreemapItem::new("a", 2.0), TreemapItem::new("b", 3.0)]);
         assert_eq!(g.weight(), 5.0);
+    }
+
+    #[test]
+    fn long_and_wide_labels_stay_inside_tile() {
+        let area = Rect::new(0, 0, 8, 3);
+        let mut b = Buffer::empty(Rect::new(0, 0, 12, 3));
+        put_text(&mut b, area, 0, "Developer Tools", Style::default());
+        assert_eq!(b[(7, 0)].symbol(), "…");
+        assert_eq!(b[(8, 0)].symbol(), " ");
+        let mut b = Buffer::empty(Rect::new(0, 0, 12, 3));
+        put_text(&mut b, area, 0, "游戏游戏游戏游戏", Style::default());
+        assert_eq!(b[(8, 0)].symbol(), " ");
+        assert_eq!(b[(9, 0)].symbol(), " ");
     }
 
     #[test]
