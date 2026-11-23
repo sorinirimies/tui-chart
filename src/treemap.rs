@@ -335,13 +335,17 @@ impl Treemap {
             } else {
                 it.label.clone()
             };
-            put_text(
-                buf,
-                text,
-                0,
-                &label,
-                bg.add_modifier(ratatui::style::Modifier::BOLD),
-            );
+            // A sliver too narrow for its label shows nothing: "We…" is noise.
+            let fits = unicode_width::UnicodeWidthStr::width(label.trim()) <= text.width as usize;
+            if fits || text.width >= 5 {
+                put_text(
+                    buf,
+                    text,
+                    0,
+                    &label,
+                    bg.add_modifier(ratatui::style::Modifier::BOLD),
+                );
+            }
             if it.children.is_empty() {
                 if self.show_values && text.height >= 2 {
                     put_text(buf, text, 1, &format_compact(weights[idx]), bg);
