@@ -4,6 +4,17 @@ All notable changes to this project are documented here. It is generated from
 [Conventional Commits](https://www.conventionalcommits.org) by
 [git-cliff](https://git-cliff.org) — do not edit it by hand.
 
+## [0.6.9](https://github.com/sorinirimies/tui-chart/compare/v0.6.8...v0.6.9) — 2026-11-24
+
+### 🐛 Bug fixes
+
+- **vhs:** Prebuild gauge example so gif doesn't show compile output ([`d7cba7d`](https://github.com/sorinirimies/tui-chart/commit/d7cba7d4f55ea911cb4668cc02af58632ef0f64e))
+
+### 📦 Dependencies
+
+- Cargo update ([`fe540a3`](https://github.com/sorinirimies/tui-chart/commit/fe540a3461d68b54a39e3375f0b63daa49407db9))
+- Nightly cargo update 2026-11-23 ([`b74e974`](https://github.com/sorinirimies/tui-chart/commit/b74e9740b585c237ed14abe8d841101d9f5d41c0))
+
 ## [0.6.8](https://github.com/sorinirimies/tui-chart/compare/v0.6.7...v0.6.8) — 2026-11-23
 
 ### 🐛 Bug fixes
@@ -53,23 +64,15 @@ All notable changes to this project are documented here. It is generated from
 - Download archives to a file so curl retries a dropped transfer, instead of piping into tar ([`c4dab61`](https://github.com/sorinirimies/tui-chart/commit/c4dab61b2cef5554ef35cbb003f78eab9fc1c939))
 - The Dependabot sweep asks for a rebase on conflicts and keeps going after a failed merge ([`824016c`](https://github.com/sorinirimies/tui-chart/commit/824016c7b3490330aab6cb6beba901681e1bf3f9))
 
-## [0.6.4](https://github.com/sorinirimies/tui-chart/compare/v0.6.1...v0.6.4) — 2026-11-05
+## [0.6.4](https://github.com/sorinirimies/tui-chart/compare/v0.6.3...v0.6.4) — 2026-11-05
 
 ### 🐛 Bug fixes
 
 - **ci:** The version bump does not stage the ignored fuzz/Cargo.lock ([`5b5a672`](https://github.com/sorinirimies/tui-chart/commit/5b5a67206075abf0697030576bbc556951a484cf))
-- **ci:** Pin rs-clippy-check to v6.1.1 (no floating v6 tag) ([`900e94e`](https://github.com/sorinirimies/tui-chart/commit/900e94e97eac3e023ebce10ec0e4cb26dc3eb0af))
-- **ci:** Drop git-cliff remote lookup that 404s on Gitea ([`b3dacab`](https://github.com/sorinirimies/tui-chart/commit/b3dacab00afcf31148ef52bf0b78a352e3f573ee))
 
 ### ♻️ Refactor
 
 - Remove dead_code allows the build doesn't need; gate on unused dependencies ([`1332be7`](https://github.com/sorinirimies/tui-chart/commit/1332be70fed8419cfff002d3e368b604cae79db6))
-
-### 📚 Documentation
-
-- Drop the per-repo agent rules skill; the shared skills cover it ([`5de9440`](https://github.com/sorinirimies/tui-chart/commit/5de944031267fd3927d37dc20d6398c891fc1925))
-- This repo's agent rules as a project skill in .agents/skills ([`c05faf8`](https://github.com/sorinirimies/tui-chart/commit/c05faf84f9d1074e342a1f304525dec860e047b1))
-- Move agent rules from .zed/rules.md to AGENTS.md ([`1115e96`](https://github.com/sorinirimies/tui-chart/commit/1115e963914c2edbd4864e2221f19c51d7653577))
 
 ### 📦 Dependencies
 
@@ -85,6 +88,22 @@ All notable changes to this project are documented here. It is generated from
 - Merge green Dependabot PRs, majors included, with a nightly sweep; nightly commits skip ignored lockfiles ([`3ab82dc`](https://github.com/sorinirimies/tui-chart/commit/3ab82dc324d7c9933da70b0a5cd30be89adf98e8))
 - Bump dependabot/fetch-metadata from 2 to 3 (#8) ([`4202c33`](https://github.com/sorinirimies/tui-chart/commit/4202c339de3ac612564ef07cb417ce154b9596eb))
 - Scan the git history for secrets with gitleaks ([`c640c78`](https://github.com/sorinirimies/tui-chart/commit/c640c78470eea6439434b830805f884eb41ab75d))
+
+## [0.6.3](https://github.com/sorinirimies/tui-chart/compare/v0.6.1...v0.6.3) — 2026-11-02
+
+### 🐛 Bug fixes
+
+- **ci:** Pin rs-clippy-check to v6.1.1 (no floating v6 tag) ([`900e94e`](https://github.com/sorinirimies/tui-chart/commit/900e94e97eac3e023ebce10ec0e4cb26dc3eb0af))
+- **ci:** Drop git-cliff remote lookup that 404s on Gitea ([`b3dacab`](https://github.com/sorinirimies/tui-chart/commit/b3dacab00afcf31148ef52bf0b78a352e3f573ee))
+
+### 📚 Documentation
+
+- Drop the per-repo agent rules skill; the shared skills cover it ([`5de9440`](https://github.com/sorinirimies/tui-chart/commit/5de944031267fd3927d37dc20d6398c891fc1925))
+- This repo's agent rules as a project skill in .agents/skills ([`c05faf8`](https://github.com/sorinirimies/tui-chart/commit/c05faf84f9d1074e342a1f304525dec860e047b1))
+- Move agent rules from .zed/rules.md to AGENTS.md ([`1115e96`](https://github.com/sorinirimies/tui-chart/commit/1115e963914c2edbd4864e2221f19c51d7653577))
+
+### 🔄 CI and release
+
 - Bump workflow actions ([`729fa76`](https://github.com/sorinirimies/tui-chart/commit/729fa76a30b2b16de084f2f07240dcfdf20128a9))
 
 ### 🔧 Chores
