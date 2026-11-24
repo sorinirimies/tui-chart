@@ -10,9 +10,12 @@ Set Padding 20
 Set PlaybackSpeed 1
 
 Hide
-Type "clear && cargo run --release --features theme --example gauge"
+Type "cargo build --release --features theme --example gauge 2>&1 | tail -1"
 Enter
-Sleep 5s
+Wait+Screen@300s /Finished|error/
+Type "clear && ./target/release/examples/gauge"
+Enter
+Sleep 1s
 Show
 
 Sleep 1.5s
