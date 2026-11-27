@@ -20,6 +20,37 @@ use ratatui::{
 
 const NONE: usize = usize::MAX;
 
+/// Shape the treemap fills.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum VoronoiOutline {
+    /// The whole area (default).
+    #[default]
+    Rect,
+    /// A circle: a Voronoi pie. Cells have exact areas, no fixed centre.
+    Circle,
+    /// A hexagon, pointy side up.
+    Hexagon,
+}
+
+impl VoronoiOutline {
+    /// Is dot `(x, y)` (centre at +0.5) inside the shape on a `w`×`h` dot grid?
+    fn contains(self, x: usize, y: usize, w: usize, h: usize) -> bool {
+        let (cx, cy) = (w as f64 / 2.0, h as f64 / 2.0);
+        let r = cx.min(cy);
+        let (dx, dy) = (x as f64 + 0.5 - cx, y as f64 + 0.5 - cy);
+        match self {
+            VoronoiOutline::Rect => true,
+            VoronoiOutline::Circle => dx * dx + dy * dy <= r * r,
+            VoronoiOutline::Hexagon => {
+                // pointy top: |dy| <= r and the slanted sides
+                let (ax, ay) = (dx.abs(), dy.abs());
+                let half_w = r * 0.866_025_403_784_438_6;
+                ax <= half_w && ay + ax * 0.577_350_269_189_625_7 <= r
+            }
+        }
+    }
+}
+
 /// Voronoi treemap widget. Reuses [`TreemapItem`] for its data.
 ///
 /// # Example
@@ -43,6 +74,7 @@ const NONE: usize = usize::MAX;
 pub struct VoronoiTreemap {
     items: Vec<TreemapItem>,
     seed: u64,
+    outline: VoronoiOutline,
     labels: bool,
     borders: bool,
     iterations: usize,
@@ -65,6 +97,7 @@ impl VoronoiTreemap {
         Self {
             items: items.into_iter().collect(),
             seed: 7,
+            outline: VoronoiOutline::Rect,
             labels: true,
             borders: true,
             iterations: 40,
@@ -77,6 +110,12 @@ impl VoronoiTreemap {
     setter!(
         /// Seed of the initial site placement (default 7); same seed, same picture.
         seed: u64
+    );
+
+    setter!(
+        /// Fill a circle or hexagon instead of the whole area (default `Rect`).
+        /// `Circle` is a Voronoi pie: exact areas, sites free to move.
+        outline: VoronoiOutline
     );
 
     setter!(
@@ -128,7 +167,12 @@ impl VoronoiTreemap {
         let mut top_of = vec![NONE; w * h];
 
         // Top level.
-        let all: Vec<usize> = (0..w * h).collect();
+        let all: Vec<usize> = (0..w * h)
+            .filter(|p| self.outline.contains(p % w, p / w, w, h))
+            .collect();
+        if all.is_empty() {
+            return;
+        }
         let top_w: Vec<f64> = tops.iter().map(|t| t.weight()).collect();
         let top_assign = partition(&all, w, &top_w, self.seed, self.iterations);
         let mut regions: Vec<Vec<usize>> = vec![Vec::new(); tops.len()];
@@ -191,7 +235,10 @@ impl VoronoiTreemap {
                 .into_iter()
                 .flatten()
                 {
-                    if leaf_of[q] != NONE && leaf_of[q] > leaf_of[p] {
+                    if leaf_of[q] == NONE {
+                        top_edge = true;
+                        leaf_edge = true;
+                    } else if leaf_of[q] > leaf_of[p] {
                         leaf_edge = true;
                         top_edge |= top_of[q] != top_of[p];
                     }
@@ -511,6 +558,45 @@ mod tests {
     }
 
     #[test]
+    fn circle_outline_is_a_pie_with_exact_areas() {
+        let t = VoronoiTreemap::new(items())
+            .outline(VoronoiOutline::Circle)
+            .borders(false)
+            .labels(false);
+        let b = render(&t, 80, 40);
+        // corners are outside the disc, centre inside
+        assert_eq!(b[(0, 0)].bg, Color::Reset);
+        assert_eq!(b[(79, 39)].bg, Color::Reset);
+        assert_ne!(b[(40, 20)].bg, Color::Reset);
+        // disc area ~ pi r^2 of the 80x80-dot square
+        let filled = b.content().iter().filter(|x| x.bg != Color::Reset).count() as f64;
+        assert!((filled / (80.0 * 40.0) - std::f64::consts::FRAC_PI_4).abs() < 0.06);
+        let (a, m, s) = (
+            share(&b, Color::Rgb(200, 0, 0)),
+            share(&b, Color::Rgb(0, 200, 0)),
+            share(&b, Color::Rgb(0, 0, 200)),
+        );
+        assert!((a - 0.6).abs() < 0.12 && (m - 0.3).abs() < 0.12 && (s - 0.1).abs() < 0.08);
+    }
+
+    #[test]
+    fn hexagon_outline_leaves_corners_empty() {
+        let t = VoronoiTreemap::new(items())
+            .outline(VoronoiOutline::Hexagon)
+            .labels(false);
+        let b = render(&t, 80, 40);
+        assert_eq!(b[(0, 0)].bg, Color::Reset);
+        assert_ne!(b[(40, 20)].bg, Color::Reset);
+    }
+
+    #[test]
+    fn pie_sites_are_not_on_a_fixed_ring() {
+        // Two seeds give different cell arrangements of the same disc.
+        let t = VoronoiTreemap::new(items()).outline(VoronoiOutline::Circle);
+        assert_ne!(render(&t, 60, 30), render(&t.clone().seed(3), 60, 30));
+    }
+
+    #[test]
     fn fills_the_whole_area() {
         let b = render(&VoronoiTreemap::new(items()), 60, 20);
         assert!(b.content().iter().all(|x| x.bg != Color::Reset));
@@ -564,6 +650,12 @@ mod tests {
         ]);
         let single = VoronoiTreemap::new([TreemapItem::new("a", 3.0)]);
         for t in [&nasty, &single, &VoronoiTreemap::new([])] {
+            for o in [VoronoiOutline::Circle, VoronoiOutline::Hexagon] {
+                let t = t.clone().outline(o);
+                render(&t, 40, 12);
+                render(&t, 1, 1);
+                render(&t, 3, 2);
+            }
             render(t, 40, 12);
             render(t, 1, 1);
             render(t, 3, 2);

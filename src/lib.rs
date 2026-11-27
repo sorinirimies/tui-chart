@@ -190,7 +190,7 @@ pub use treemap::{Treemap, TreemapItem};
 pub use tui_nuances::{Status, ThemeProvider, ThemeSwitcher, Themed};
 pub use violin::{ViolinChart, ViolinGroup};
 pub use voronoi::{VoronoiChart, VoronoiMetric, VoronoiSite, voronoi_stipple};
-pub use voronoi_treemap::VoronoiTreemap;
+pub use voronoi_treemap::{VoronoiOutline, VoronoiTreemap};
 pub use waterfall::Waterfall;
 
 use ratatui::style::Color;

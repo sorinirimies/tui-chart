@@ -111,6 +111,9 @@ let chart = VoronoiTreemap::new([
   Areas land within a few percent of the values (verified in the tests).
 * Deterministic: same items + `.seed(n)` → same picture. Change the seed for a
   different arrangement.
+* `.outline(VoronoiOutline::Circle)` (or `Hexagon`) fills a shape instead of the whole area: a **Voronoi pie**. Unlike
+  wedges on a ring, the sites are not fixed anywhere: they drift to their cells' centroids while the weights are tuned,
+  so every cell gets exactly its share of the disc. Use `tui-piechart` when you want classic wedges.
 * Group borders are bright, leaf borders dark. Leaves of a group share its hue
   (`TreemapItem::color` or the theme palette) in graded shades.
 * Labels sit at the cell centroid and are cut to fit the cell.

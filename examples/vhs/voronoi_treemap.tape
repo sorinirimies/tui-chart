@@ -15,7 +15,15 @@ Enter
 Sleep 5s
 Show
 
+Sleep 1.2s
+Type "o"
+Sleep 1.2s
+Type "o"
+Sleep 1.2s
+Type "o"
 Sleep 1s
+Type "o"
+Sleep 1.2s
 Type "r"
 Sleep 0.8s
 Type "s"

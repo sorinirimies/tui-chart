@@ -19,7 +19,7 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 |---|---|
 | `LineChart` | line, step, area, scatter, multi-series, legend, secondary y axis |
 | `VoronoiChart` | Voronoi diagram family: nearest-site cells with value heatmap, categories / territories, k-NN regions, 4 metrics, farthest-site, weighted, Lloyd-relaxed, Delaunay overlay, distance shading, animation, probe site, axes, disc clip, stipple mosaics ([guide](docs/voronoi.md)) |
-| `VoronoiTreemap` | treemap with organic Voronoi cells: area ∝ value, nested groups ([guide](docs/voronoi.md)) |
+| `VoronoiTreemap` | treemap with organic Voronoi cells: area ∝ value, nested groups, circle / hexagon outline = Voronoi pie ([guide](docs/voronoi.md)) |
 | `CandlestickChart` | candles, Heikin-Ashi, OHLC, volume, overlays, indicator panes, trade markers |
 | `BarChart` | vertical/horizontal, grouped/stacked |
 | `Histogram` | auto-binned distribution, KDE overlay, mean/median markers (`.stats`) |
