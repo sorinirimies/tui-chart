@@ -17,6 +17,8 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 
 | Widget | Description |
 |---|---|
+| `VoronoiChart` | Voronoi diagram family: nearest-site cells with value heatmap, categories / territories, k-NN regions, 4 metrics, farthest-site, weighted, Lloyd-relaxed, Delaunay overlay, distance shading, animation, probe site, axes, disc / pie, stipple mosaics ([guide](docs/voronoi.md)) |
+| `VoronoiTreemap` | treemap with organic Voronoi cells: area ∝ value, nested groups ([guide](docs/voronoi.md)) |
 | `LineChart` | line, step, area, scatter, multi-series, legend, secondary y axis |
 | `CandlestickChart` | candles, Heikin-Ashi, OHLC, volume, overlays, indicator panes, trade markers |
 | `BarChart` | vertical/horizontal, grouped/stacked |
@@ -42,8 +44,6 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 | `LollipopChart` | lollipop stems and dumbbells (`LollipopItem::from`), sortable |
 | `SlopeChart` | two-state paired_bars with trend colors and non-overlapping labels |
 | `CalendarHeatmap` | GitHub-style daily calendar with levels, month/weekday labels, legend, missing/zero handling |
-| `VoronoiChart` | Voronoi diagram family: nearest-site cells with value heatmap, categories / territories, k-NN regions, 4 metrics, farthest-site, weighted, Lloyd-relaxed, Delaunay overlay, distance shading, animation, probe site, axes, disc / pie, stipple mosaics ([guide](docs/voronoi.md)) |
-| `VoronoiTreemap` | treemap with organic Voronoi cells: area ∝ value, nested groups ([guide](docs/voronoi.md)) |
 | `ViolinChart` | mirrored KDE per group with quartile box and median |
 | `RoseChart` | polar-area / Nightingale chart, area or linear scale, optional hole |
 | `StackedAreaChart` | stacked or 100 % normalised areas with legend |
@@ -59,6 +59,18 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 ### CandlestickChart
 
 ![CandlestickChart](examples/vhs/output/candlestick.gif)
+
+### VoronoiChart
+
+![VoronoiChart](examples/vhs/output/voronoi.gif)
+
+Scenes (heatmap, territories, k-NN, mosaic, pie):
+
+![VoronoiChart scenes](examples/vhs/output/voronoi_scenes.gif)
+
+### VoronoiTreemap
+
+![VoronoiTreemap](examples/vhs/output/voronoi_treemap.gif)
 
 ### BarChart
 
@@ -123,18 +135,6 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 ### Treemap
 
 ![Treemap](examples/vhs/output/treemap.gif)
-
-### VoronoiChart
-
-![VoronoiChart](examples/vhs/output/voronoi.gif)
-
-Scenes (heatmap, territories, k-NN, mosaic, pie):
-
-![VoronoiChart scenes](examples/vhs/output/voronoi_scenes.gif)
-
-### VoronoiTreemap
-
-![VoronoiTreemap](examples/vhs/output/voronoi_treemap.gif)
 
 ### ChartStack
 
