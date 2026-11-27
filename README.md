@@ -18,8 +18,6 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 | Widget | Description |
 |---|---|
 | `LineChart` | line, step, area, scatter, multi-series, legend, secondary y axis |
-| `VoronoiChart` | Voronoi diagram family: nearest-site cells with value heatmap, categories / territories, k-NN regions, 4 metrics, farthest-site, weighted, Lloyd-relaxed, Delaunay overlay, distance shading, animation, probe site, axes, disc clip, stipple mosaics ([guide](docs/voronoi.md)) |
-| `VoronoiTreemap` | treemap with organic Voronoi cells: area ∝ value, nested groups, circle / hexagon outline = Voronoi pie ([guide](docs/voronoi.md)) |
 | `CandlestickChart` | candles, Heikin-Ashi, OHLC, volume, overlays, indicator panes, trade markers |
 | `BarChart` | vertical/horizontal, grouped/stacked |
 | `Histogram` | auto-binned distribution, KDE overlay, mean/median markers (`.stats`) |
@@ -33,6 +31,8 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 | `DepthChart` | order book bids/asks |
 | `RenkoChart` | fixed-size price bricks |
 | `Treemap` | nested weighted rectangles with group headers and tile gutters |
+| `VoronoiChart` | Voronoi diagram family: nearest-site cells with value heatmap, categories / territories, k-NN regions, 4 metrics, farthest-site, weighted, Lloyd-relaxed, Delaunay overlay, distance shading, animation, probe site, axes, disc clip, stipple mosaics ([guide](docs/voronoi.md)) |
+| `VoronoiTreemap` | treemap with organic Voronoi cells: area ∝ value, nested groups, circle / hexagon outline = Voronoi pie ([guide](docs/voronoi.md)) |
 | `RadialBar` / `RingStack` | concentric progress rings (270° or full), legend with percentages |
 | `Oscilloscope` / `Spectrum` / `DotMatrix` / `RadarScope` / `HexMap` | instrument panels: ECG/wave trace, equalizer with peak caps, LED dot matrix, sweeping radar scope, honeycomb heat map (animate with `.phase(t)`) |
 | `HitMap` / `Interaction` | mouse interactivity for every chart: hover tooltips, click to pin, click a legend entry to hide a series |
@@ -54,18 +54,6 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 ### LineChart
 
 ![LineChart](examples/vhs/output/line.gif)
-
-### VoronoiChart
-
-![VoronoiChart](examples/vhs/output/voronoi.gif)
-
-Scenes (heatmap, territories, k-NN, mosaic):
-
-![VoronoiChart scenes](examples/vhs/output/voronoi_scenes.gif)
-
-### VoronoiTreemap
-
-![VoronoiTreemap](examples/vhs/output/voronoi_treemap.gif)
 
 ### CandlestickChart
 
@@ -130,6 +118,18 @@ Scenes (heatmap, territories, k-NN, mosaic):
 ### Treemap
 
 ![Treemap](examples/vhs/output/treemap.gif)
+
+### VoronoiChart
+
+![VoronoiChart](examples/vhs/output/voronoi.gif)
+
+Scenes (heatmap, territories, k-NN, mosaic):
+
+![VoronoiChart scenes](examples/vhs/output/voronoi_scenes.gif)
+
+### VoronoiTreemap
+
+![VoronoiTreemap](examples/vhs/output/voronoi_treemap.gif)
 
 ### ChartStack
 
