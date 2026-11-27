@@ -14,7 +14,7 @@
 //!   [`VoronoiChart::select`]
 //! * **scatter overlay** – [`VoronoiChart::axes`], [`VoronoiChart::bounds`],
 //!   [`VoronoiChart::square`]
-//! * **shapes & mosaics** – [`VoronoiChart::ring`], [`VoronoiChart::clip_circle`],
+//! * **shapes & mosaics** – [`VoronoiChart::clip_circle`],
 //!   [`voronoi_stipple`]
 //!
 //! For a Voronoi *treemap* (cell area ∝ value) see
@@ -256,27 +256,6 @@ impl VoronoiChart {
             sites: sites.into_iter().collect(),
             ..Self::default()
         }
-    }
-
-    /// Sites on a circle, one per `(label, value)`, clipped to a disc:
-    /// a Voronoi "pie" whose wedges are only approximately proportional.
-    pub fn ring(items: impl IntoIterator<Item = (String, f64)>) -> Self {
-        let items: Vec<(String, f64)> = items
-            .into_iter()
-            .filter(|(_, v)| v.is_finite() && *v > 0.0)
-            .collect();
-        let total: f64 = items.iter().map(|(_, v)| v).sum();
-        let mut acc = 0.0;
-        let sites = items.into_iter().map(|(l, v)| {
-            let a = (acc + v / 2.0) / total * std::f64::consts::TAU - std::f64::consts::FRAC_PI_2;
-            acc += v;
-            VoronoiSite::new(l, 0.62 * a.cos(), -0.62 * a.sin()).value(v)
-        });
-        Self::new(sites)
-            .bounds(-1.0, 1.0, -1.0, 1.0)
-            .square(true)
-            .clip_circle(true)
-            .show_labels(true)
     }
 
     setter!(
@@ -1308,26 +1287,6 @@ mod tests {
         let b = render(&c, 40, 20);
         assert_eq!(b[(0, 0)].bg, Color::Reset);
         assert_ne!(b[(20, 10)].bg, Color::Reset);
-    }
-
-    #[test]
-    fn ring_makes_a_disc_with_one_wedge_per_item() {
-        let c = VoronoiChart::ring([
-            ("a".to_string(), 1.0),
-            ("b".to_string(), 2.0),
-            ("c".to_string(), 1.0),
-        ])
-        .show_labels(false);
-        let b = render(&c, 50, 25);
-        assert_eq!(b[(0, 0)].bg, Color::Reset);
-        assert_ne!(b[(25, 12)].bg, Color::Reset);
-        let colors: std::collections::BTreeSet<String> = b
-            .content()
-            .iter()
-            .filter(|x| x.bg != Color::Reset)
-            .map(|x| format!("{:?}", x.bg))
-            .collect();
-        assert!(colors.len() >= 3);
     }
 
     #[test]

@@ -87,7 +87,6 @@ pub struct Treemap {
     gradient: Option<(Color, Color)>,
     border: bool,
     gap: bool,
-    chamfer: bool,
     border_color: Option<Color>,
     theme: Option<Theme>,
     base: Option<Style>,
@@ -96,20 +95,12 @@ pub struct Treemap {
 }
 
 impl Treemap {
-    /// Cyberpunk look: cut the top-left and bottom-right corner of every leaf.
-    #[must_use]
-    pub fn chamfered(mut self, on: bool) -> Self {
-        self.chamfer = on;
-        self
-    }
-
     /// Create from items.
     pub fn new(items: impl IntoIterator<Item = TreemapItem>) -> Self {
         Self {
             items: items.into_iter().collect(),
             gradient: None,
             border: false,
-            chamfer: false,
             gap: true,
             border_color: None,
             theme: None,
@@ -300,16 +291,6 @@ impl Treemap {
             if bordered {
                 self.draw_border(buf, r, color);
             }
-            if self.chamfer && !is_group && r.width >= 4 && r.height >= 2 {
-                // cyberpunk cut corners: top-left and bottom-right
-                let (cx, cy) = (
-                    r.right() - 1 - u16::from(gutter),
-                    r.bottom() - 1 - u16::from(gutter),
-                );
-                let cut = Style::default().fg(color).bg(base);
-                buf[(r.x, r.y)].set_symbol("▟").set_style(cut);
-                buf[(cx, cy)].set_symbol("▛").set_style(cut);
-            }
             let inset = if bordered { 1 } else { 0 };
             let text = Rect::new(
                 r.x + inset,
@@ -317,16 +298,6 @@ impl Treemap {
                 r.width.saturating_sub(2 * inset + u16::from(gutter)),
                 r.height.saturating_sub(2 * inset + u16::from(gutter)),
             );
-            let text = if self.chamfer && !is_group && r.width >= 4 && r.height >= 2 {
-                Rect::new(
-                    text.x + 1,
-                    text.y,
-                    text.width.saturating_sub(1),
-                    text.height,
-                )
-            } else {
-                text
-            };
             if text.width == 0 || text.height == 0 {
                 continue;
             }

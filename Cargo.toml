@@ -36,8 +36,6 @@ tui-nuances = { version = "0.1.12", optional = true }
 # Pie charts live in their own crate (https://github.com/sorinirimies/tui-piechart)
 # and are re-exported from here so one dependency gives you everything.
 tui-piechart = { version = "1.4.5", optional = true }
-# Animated shader-like transitions (https://github.com/ratatui/tachyonfx).
-tachyonfx = { version = "0.25", default-features = false, features = ["std"], optional = true }
 
 [features]
 default = ["piechart", "theme"]
@@ -45,8 +43,6 @@ default = ["piechart", "theme"]
 piechart = ["dep:tui-piechart"]
 # Theming via tui-nuances (on by default; disable with `default-features = false`): `Theme`, `.theme(..)` builders on every widget, `Themed` impls.
 theme = ["dep:tui-nuances", "tui-piechart?/theme"]
-# Animated transitions via TachyonFX: `tui_chart::anim` (`Transition`, presets) and the re-exported `tachyonfx` crate.
-tachyonfx = ["dep:tachyonfx"]
 # Derive Serialize/Deserialize on data types (and on Theme when `theme` is on).
 serde = ["dep:serde", "ratatui/serde", "tui-nuances?/serde"]
 
@@ -223,11 +219,6 @@ path = "examples/instruments.rs"
 required-features = ["theme"]
 
 [[example]]
-name = "cyber"
-path = "examples/cyber.rs"
-required-features = ["theme"]
-
-[[example]]
 name = "interactive"
 path = "examples/interactive.rs"
 required-features = ["theme"]
@@ -256,8 +247,3 @@ required-features = ["theme"]
 name = "sankey"
 path = "examples/sankey.rs"
 required-features = ["theme"]
-
-[[example]]
-name = "transitions"
-path = "examples/transitions.rs"
-required-features = ["theme", "tachyonfx"]

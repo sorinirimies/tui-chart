@@ -21,17 +21,15 @@ enum Scene {
     Territories,
     Knn,
     Mosaic,
-    Ring,
 }
 
 impl Scene {
-    const ALL: [Scene; 6] = [
+    const ALL: [Scene; 5] = [
         Scene::Classic,
         Scene::Heatmap,
         Scene::Territories,
         Scene::Knn,
         Scene::Mosaic,
-        Scene::Ring,
     ];
     fn title(self) -> &'static str {
         match self {
@@ -40,7 +38,6 @@ impl Scene {
             Scene::Territories => "Territories (categories, merged borders)",
             Scene::Knn => "k-NN classifier (k = 3)",
             Scene::Mosaic => "Stipple mosaic (density → sites)",
-            Scene::Ring => "Voronoi pie",
         }
     }
 }
@@ -112,12 +109,6 @@ fn main() -> anyhow::Result<()> {
             let scene = Scene::ALL[s.scene];
             let cats = ["north-west", "north-east", "south-west", "south-east"];
             let mut chart = match scene {
-                Scene::Ring => VoronoiChart::ring(
-                    s.sites
-                        .iter()
-                        .take(6)
-                        .map(|(n, _, _, w, _)| (n.clone(), *w)),
-                ),
                 Scene::Mosaic => VoronoiChart::new(s.mosaic.clone())
                     .gradient(Gradient::Heat)
                     .show_sites(false)
@@ -143,7 +134,7 @@ fn main() -> anyhow::Result<()> {
             if scene == Scene::Knn {
                 chart = chart.knn(3).show_labels(false);
             }
-            if scene != Scene::Ring && scene != Scene::Mosaic {
+            if scene != Scene::Mosaic {
                 chart = chart
                     .metric(s.metric)
                     .weighted(s.weighted)

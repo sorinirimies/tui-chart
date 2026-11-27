@@ -17,7 +17,7 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 
 | Widget | Description |
 |---|---|
-| `VoronoiChart` | Voronoi diagram family: nearest-site cells with value heatmap, categories / territories, k-NN regions, 4 metrics, farthest-site, weighted, Lloyd-relaxed, Delaunay overlay, distance shading, animation, probe site, axes, disc / pie, stipple mosaics ([guide](docs/voronoi.md)) |
+| `VoronoiChart` | Voronoi diagram family: nearest-site cells with value heatmap, categories / territories, k-NN regions, 4 metrics, farthest-site, weighted, Lloyd-relaxed, Delaunay overlay, distance shading, animation, probe site, axes, disc clip, stipple mosaics ([guide](docs/voronoi.md)) |
 | `VoronoiTreemap` | treemap with organic Voronoi cells: area ∝ value, nested groups ([guide](docs/voronoi.md)) |
 | `LineChart` | line, step, area, scatter, multi-series, legend, secondary y axis |
 | `CandlestickChart` | candles, Heikin-Ashi, OHLC, volume, overlays, indicator panes, trade markers |
@@ -35,8 +35,6 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 | `Treemap` | nested weighted rectangles with group headers and tile gutters |
 | `RadialBar` / `RingStack` | concentric progress rings (270° or full), legend with percentages |
 | `Oscilloscope` / `Spectrum` / `DotMatrix` / `RadarScope` / `HexMap` | instrument panels: ECG/wave trace, equalizer with peak caps, LED dot matrix, sweeping radar scope, honeycomb heat map (animate with `.phase(t)`) |
-| `Fx` / `glow` / `scanlines` / `chamfer_block` / `bracket_block` | cyberpunk post effects for any widget: glow, scanlines, cut-corner frames |
-| `anim::Transition` | animated TachyonFX transitions for any chart (feature `tachyonfx`): boot, dissolve, fade, sweep |
 | `HitMap` / `Interaction` | mouse interactivity for every chart: hover tooltips, click to pin, click a legend entry to hide a series |
 | `Funnel` | tapered stages, side labels, conversion % and drop-off (`.taper`, `.show_dropoff`) |
 | `Bullet` | value vs target over qualitative ranges |
@@ -65,7 +63,7 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 
 ![VoronoiChart](examples/vhs/output/voronoi.gif)
 
-Scenes (heatmap, territories, k-NN, mosaic, pie):
+Scenes (heatmap, territories, k-NN, mosaic):
 
 ![VoronoiChart scenes](examples/vhs/output/voronoi_scenes.gif)
 
@@ -100,16 +98,6 @@ Scenes (heatmap, territories, k-NN, mosaic, pie):
 ### Instruments
 
 ![Instruments](examples/vhs/output/instruments.gif)
-
-### Cyber
-
-![Cyber](examples/vhs/output/cyber.gif)
-
-### Transitions (TachyonFX)
-
-![Transitions](examples/vhs/output/transitions.gif)
-
-Enable the `tachyonfx` feature: render a chart, then `Transition::boot(600).apply(dt, buf, area)` each frame. Wrap any TachyonFX `Effect` with `Transition::new`.
 
 ### Interactive
 
@@ -335,7 +323,6 @@ cargo run --features theme --example candlestick
 cargo run --features theme --example bubble
 cargo run --features theme --example voronoi
 cargo run --features theme --example voronoi_treemap
-cargo run --features theme,tachyonfx --example transitions
 cargo run --features theme --example lollipop
 cargo run --features theme --example slope
 cargo run --features theme --example calendar
@@ -348,7 +335,6 @@ cargo run --features theme --example bullet
 cargo run --features theme --example paired_bars
 cargo run --features theme --example funnel
 cargo run --features theme --example interactive
-cargo run --features theme --example cyber
 cargo run --features theme --example instruments
 cargo run --features theme --example radial
 cargo run --features theme --example chartstack
@@ -417,21 +403,6 @@ ui.on_click(mouse.column, mouse.row, &hits);  // click  -> pin, or toggle a lege
 - `HitMap::at`, `nearest`, `pick` and `legend_at` give raw hit-testing for custom behaviour.
 
 See the [interactivity guide](docs/interactivity.md) for a full mouse loop.
-
-## Cyberpunk effects
-
-`glow`, `scanlines`, `chamfer_block` and `bracket_block` work on the rendered buffer, so no GPU is needed.
-`FxExt` adds `.glow(..)` / `.scanlines(..)` to any widget; `Gauge::zones()` gives green / amber / red
-bands and `Treemap::chamfered(true)` cuts the cell corners.
-
-```rust
-use tui_chart::FxExt;
-Spectrum::new(bars).block(chamfer_block(" EQ ")).glow(1, 0.25).scanlines(0.3)
-```
-
-`glow` blends against explicit backgrounds only; give the area a background (e.g. the theme surface) first.
-
-`cargo run --release --features theme --example cyber`
 
 ## License
 

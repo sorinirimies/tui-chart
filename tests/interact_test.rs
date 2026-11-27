@@ -198,34 +198,12 @@ fn view_zoom_applies_to_data() {
 }
 
 #[test]
-fn cyber_builders() {
+fn gauge_zones() {
     use ratatui::style::Color;
     let area = Rect::new(0, 0, 40, 10);
-    let render = |w: Treemap| {
-        let mut b = Buffer::empty(area);
-        w.render(area, &mut b);
-        b.content()
-            .iter()
-            .map(|c| c.symbol().to_string())
-            .collect::<String>()
-    };
-    let items = || [TreemapItem::new("a", 5.0), TreemapItem::new("b", 3.0)];
-    assert!(!render(Treemap::new(items())).contains('▟'));
-    let cut = render(Treemap::new(items()).chamfered(true));
-    assert!(cut.contains('▟') && cut.contains('▛'));
-
     // zones: 0.7 of the range is amber
     let g = Gauge::new(70.0).range(0.0, 100.0).zones();
     let mut b = Buffer::empty(area);
     g.render(area, &mut b);
     assert!(b.content().iter().any(|c| c.fg == Color::Yellow));
-
-    // builder-style effects behave like Fx
-    let mut a = Buffer::empty(area);
-    let mut c = Buffer::empty(area);
-    Spectrum::new([0.5, 0.9]).glow(1, 0.3).render(area, &mut a);
-    Fx::new(Spectrum::new([0.5, 0.9]))
-        .glow(1, 0.3)
-        .render(area, &mut c);
-    assert_eq!(a, c);
 }

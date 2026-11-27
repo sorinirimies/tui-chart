@@ -46,7 +46,6 @@ let chart = VoronoiChart::new([
 | Cursor as a site | `.probe((x, y))` – a temporary extra site, drawn as `◆` |
 | Highlight a cell and its neighbours | `.select(site_index)` |
 | Scatter overlay look | `.axes(true)`, `.bounds(x0, x1, y0, y1)`, `.square(true)` |
-| **Voronoi pie** | `VoronoiChart::ring([(label, value), ..])` (wedges are approximately proportional) |
 | Disc clip for any diagram | `.clip_circle(true)` |
 | **Stipple / mosaic** | `voronoi_stipple(&density, n, relax, seed)` → sites carrying the density as `value` |
 
