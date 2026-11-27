@@ -25,7 +25,6 @@ Type "v"
 Sleep 1.6s
 Type "v"
 Sleep 1.6s
-Type "v"
 Type "d"
 Type "n"
 Sleep 0.8s
