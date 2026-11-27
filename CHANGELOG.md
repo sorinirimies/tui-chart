@@ -4,6 +4,16 @@ All notable changes to this project are documented here. It is generated from
 [Conventional Commits](https://www.conventionalcommits.org) by
 [git-cliff](https://git-cliff.org) — do not edit it by hand.
 
+## [0.7.1](https://github.com/sorinirimies/tui-chart/compare/v0.7.0...v0.7.1) — 2026-11-27
+
+### ✨ Features
+
+- **voronoi-treemap:** Circle and hexagon outlines (Voronoi pie) ([`552e5d2`](https://github.com/sorinirimies/tui-chart/commit/552e5d23791ddda463406a8307d0b4c182a96428))
+
+### 📚 Documentation
+
+- **vhs:** Scenes tape cycles the 5 scenes once, then delaunay and select ([`d30272a`](https://github.com/sorinirimies/tui-chart/commit/d30272a9cb35577a9e0c691c79dfa55309f78b65))
+
 ## [0.7.0](https://github.com/sorinirimies/tui-chart/compare/v0.6.11...v0.7.0) — 2026-11-27
 
 ### ✨ Features
