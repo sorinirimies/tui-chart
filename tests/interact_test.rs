@@ -52,6 +52,8 @@ reports_hits! {
     lollipop: LollipopChart::new([LollipopItem::new("a", 3.0), LollipopItem::new("b", 5.0).from(1.0)]),
     waterfall: Waterfall::new().delta("Sales", 50.0).delta("Costs", -20.0).total("Net"),
     funnel: Funnel::new([FunnelStage::new("Visits", 1000.0), FunnelStage::new("Signups", 240.0)]),
+    voronoi: VoronoiChart::new([VoronoiSite::new("a", 1.0, 1.0), VoronoiSite::new("b", 4.0, 3.0)]),
+    voronoi_treemap: VoronoiTreemap::new([TreemapItem::new("a", 5.0), TreemapItem::new("b", 3.0)]),
     treemap: Treemap::new([TreemapItem::new("a", 5.0), TreemapItem::new("b", 3.0)]),
     pie: Pie::new(PieChart::new(vec![PieSlice::new("a", 3.0, ratatui::style::Color::Red), PieSlice::new("b", 5.0, ratatui::style::Color::Blue)])),
     oscilloscope: Oscilloscope::ecg(2, 120),

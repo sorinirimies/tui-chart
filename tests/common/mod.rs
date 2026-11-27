@@ -337,6 +337,41 @@ pub fn all_widgets(d: Data, theme: Option<Th>) -> Vec<(&'static str, Draw)> {
     ));
     let c = t();
     v.push((
+        "VoronoiChart",
+        mk(move || {
+            let sites: Vec<VoronoiSite> = vals(d)
+                .into_iter()
+                .enumerate()
+                .map(|(i, x)| {
+                    VoronoiSite::new(format!("s{i}"), (i * 7 % 11) as f64, x)
+                        .value(x)
+                        .weight(x)
+                })
+                .collect();
+            th!(
+                VoronoiChart::new(sites)
+                    .gradient(Gradient::Viridis)
+                    .weighted(true)
+                    .show_labels(true)
+                    .delaunay(true),
+                c.clone()
+            )
+        }),
+    ));
+    let c = t();
+    v.push((
+        "VoronoiTreemap",
+        mk(move || {
+            let items: Vec<TreemapItem> = vals(d)
+                .into_iter()
+                .enumerate()
+                .map(|(i, x)| TreemapItem::new(format!("i{i}"), x))
+                .collect();
+            th!(VoronoiTreemap::new(items), c.clone())
+        }),
+    ));
+    let c = t();
+    v.push((
         "BoxPlot",
         mk(move || {
             let mut b = BoxPlot::new();

@@ -148,6 +148,16 @@ path = "examples/paired_bars.rs"
 required-features = ["theme"]
 
 [[example]]
+name = "voronoi"
+path = "examples/voronoi.rs"
+required-features = ["theme"]
+
+[[example]]
+name = "voronoi_treemap"
+path = "examples/voronoi_treemap.rs"
+required-features = ["theme"]
+
+[[example]]
 name = "bubble"
 path = "examples/bubble.rs"
 required-features = ["theme"]

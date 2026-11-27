@@ -9,7 +9,7 @@
 //! - [`BarChart`] – vertical/horizontal, grouped/stacked
 //! - [`Histogram`], [`Heatmap`], [`Sparkline`], [`Gauge`], [`RadarChart`]
 //! - [`BoxPlot`], [`Waterfall`], [`Gantt`], [`DepthChart`], [`RenkoChart`], [`Treemap`]
-//! - [`Funnel`], [`Bullet`], [`PairedBars`], [`BubbleChart`], [`LollipopChart`], [`SlopeChart`], [`CalendarHeatmap`], [`ViolinChart`], [`RoseChart`], [`StackedAreaChart`], [`Sankey`]
+//! - [`Funnel`], [`Bullet`], [`PairedBars`], [`BubbleChart`], [`LollipopChart`], [`SlopeChart`], [`CalendarHeatmap`], [`ViolinChart`], [`VoronoiChart`], [`VoronoiTreemap`], [`RoseChart`], [`StackedAreaChart`], [`Sankey`]
 //! - [`RadialBar`], [`RingStack`] – concentric progress rings
 //! - [`Oscilloscope`], [`Spectrum`], [`DotMatrix`], [`RadarScope`], [`HexMap`] – instrument panels
 //! - [`ChartStack`] – stack charts with a shared gutter
@@ -135,6 +135,8 @@ mod theme;
 mod timeaxis;
 mod treemap;
 mod violin;
+mod voronoi;
+mod voronoi_treemap;
 mod waterfall;
 
 pub mod util;
@@ -189,6 +191,8 @@ pub use treemap::{Treemap, TreemapItem};
 #[cfg(feature = "theme")]
 pub use tui_nuances::{Status, ThemeProvider, ThemeSwitcher, Themed};
 pub use violin::{ViolinChart, ViolinGroup};
+pub use voronoi::{VoronoiChart, VoronoiMetric, VoronoiSite, voronoi_stipple};
+pub use voronoi_treemap::VoronoiTreemap;
 pub use waterfall::Waterfall;
 
 use ratatui::style::Color;
