@@ -91,6 +91,8 @@ pub use tui_piechart as piechart;
 pub use tui_piechart::{PieChart, PieSlice};
 
 mod accessibility;
+#[cfg(feature = "tachyonfx")]
+pub mod anim;
 mod annotation;
 mod axis;
 mod bar;
@@ -181,6 +183,9 @@ pub use sparkline::{Sparkline, SparklineStyle};
 pub use stack::{ChartStack, StackDirection, shared_gutter};
 pub use stacked_area::{AreaLayer, StackedAreaChart};
 pub use stream::{RingBuffer, Stream};
+/// Re-export of the [TachyonFX](https://docs.rs/tachyonfx) crate (feature `tachyonfx`).
+#[cfg(feature = "tachyonfx")]
+pub use tachyonfx;
 #[cfg(feature = "theme")]
 pub use theme::{ChartThemeExt, Theme};
 pub use timeaxis::{

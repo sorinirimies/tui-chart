@@ -36,6 +36,7 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 | `RadialBar` / `RingStack` | concentric progress rings (270° or full), legend with percentages |
 | `Oscilloscope` / `Spectrum` / `DotMatrix` / `RadarScope` / `HexMap` | instrument panels: ECG/wave trace, equalizer with peak caps, LED dot matrix, sweeping radar scope, honeycomb heat map (animate with `.phase(t)`) |
 | `Fx` / `glow` / `scanlines` / `chamfer_block` / `bracket_block` | cyberpunk post effects for any widget: glow, scanlines, cut-corner frames |
+| `anim::Transition` | animated TachyonFX transitions for any chart (feature `tachyonfx`): boot, dissolve, fade, sweep |
 | `HitMap` / `Interaction` | mouse interactivity for every chart: hover tooltips, click to pin, click a legend entry to hide a series |
 | `Funnel` | tapered stages, side labels, conversion % and drop-off (`.taper`, `.show_dropoff`) |
 | `Bullet` | value vs target over qualitative ranges |
@@ -103,6 +104,12 @@ Scenes (heatmap, territories, k-NN, mosaic, pie):
 ### Cyber
 
 ![Cyber](examples/vhs/output/cyber.gif)
+
+### Transitions (TachyonFX)
+
+![Transitions](examples/vhs/output/transitions.gif)
+
+Enable the `tachyonfx` feature: render a chart, then `Transition::boot(600).apply(dt, buf, area)` each frame. Wrap any TachyonFX `Effect` with `Transition::new`.
 
 ### Interactive
 
@@ -328,6 +335,7 @@ cargo run --features theme --example candlestick
 cargo run --features theme --example bubble
 cargo run --features theme --example voronoi
 cargo run --features theme --example voronoi_treemap
+cargo run --features theme,tachyonfx --example transitions
 cargo run --features theme --example lollipop
 cargo run --features theme --example slope
 cargo run --features theme --example calendar
