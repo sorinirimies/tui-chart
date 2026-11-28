@@ -20,7 +20,7 @@ Terminal chart widgets for [ratatui](https://ratatui.rs). Pie charts live in
 | `LineChart` | line, step, area, scatter, multi-series, legend, secondary y axis |
 | `CandlestickChart` | candles, Heikin-Ashi, OHLC, volume, overlays, indicator panes, trade markers |
 | `BarChart` | vertical/horizontal, grouped/stacked |
-| `Histogram` | auto-binned distribution, KDE overlay, mean/median markers (`.stats`) |
+| `Histogram` | auto-binned distribution, optional KDE density line (`.kde(true)`, off by default), mean/median markers (`.stats`) |
 | `Heatmap` | multiple color gradients, `.stretch(true)` to fill the area |
 | `Sparkline` | bars, area, line, win/loss, moving-average `.smooth(n)` |
 | `Gauge` | 16 styles: linear, bullet, segmented, arc, dial, meter, reticle, ring, chevron, smooth, dots, LED, battery, level, thermometer, signal; bands, target, scale |
