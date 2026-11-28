@@ -824,8 +824,8 @@ impl VoronoiChart {
         // ---- axes ----
         if self.axes {
             for (v, l) in yt.iter().zip(&ylabels) {
-                let f = ((v - y0) / ys).clamp(0.0, 1.0);
-                let y = plot.bottom() - 1 - (f * (plot.height - 1) as f64).round() as u16;
+                let (_, py) = to_px(x0, *v);
+                let y = plot.y + ((py / 2.0).max(0.0) as u16).min(plot.height - 1);
                 let lw = l.chars().count() as u16;
                 put_str(
                     buf,
@@ -839,8 +839,8 @@ impl VoronoiChart {
             let xt = nice_ticks(x0, x1, (plot.width as usize / 10).max(2));
             let xstep = if xt.len() >= 2 { xt[1] - xt[0] } else { 1.0 };
             for v in xt {
-                let f = ((v - x0) / xs).clamp(0.0, 1.0);
-                let x = plot.x + (f * (plot.width - 1) as f64).round() as u16;
+                let (px, _) = to_px(v, y0);
+                let x = plot.x + (px.max(0.0) as u16).min(plot.width - 1);
                 let l = format_tick(v, xstep);
                 let lx = x.saturating_sub(l.chars().count() as u16 / 2).max(plot.x);
                 put_str(buf, lx, inner.bottom() - 1, inner.right(), &l, text_style);
@@ -1268,6 +1268,20 @@ mod tests {
         let b = render(&c, 50, 12);
         let last: String = (0..50).map(|x| b[(x, 11)].symbol().to_string()).collect();
         assert!(last.contains('5') || last.contains('0'), "{last}");
+    }
+
+    #[test]
+    fn square_axes_ticks_follow_the_centred_plot() {
+        // wide plot, square scale: data fills only the middle, so the x
+        // tick for the left bound must sit right of the plot's left edge
+        let c = VoronoiChart::new(two(1.0, 1.0))
+            .bounds(0.0, 10.0, 0.0, 10.0)
+            .square(true)
+            .axes(true);
+        let b = render(&c, 80, 12);
+        let row: String = (0..80).map(|x| b[(x, 11)].symbol().to_string()).collect();
+        let first = row.find('0').unwrap();
+        assert!(first > 20, "{row:?}");
     }
 
     #[test]
