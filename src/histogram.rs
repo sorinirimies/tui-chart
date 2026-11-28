@@ -352,7 +352,25 @@ impl Histogram {
             }
             prev = Some(p);
         }
-        canvas.render(buf, Rect::new(plot.x, plot.y, span, plot.height));
+        // Render to a scratch buffer and merge onto blank cells only: the
+        // curve must not punch braille holes into bars or eat value labels.
+        let target = Rect::new(plot.x, plot.y, span, plot.height);
+        let mut scratch = Buffer::empty(target);
+        canvas.render(&mut scratch, target);
+        for y in target.y..target.bottom() {
+            for x in target.x..target.right() {
+                let src = scratch[(x, y)].clone();
+                if src.symbol() == " " {
+                    continue;
+                }
+                if let Some(dst) = buf.cell_mut((x, y)) {
+                    if matches!(dst.symbol(), " " | "·" | "╌" | "─") && dst.bg == Color::Reset
+                    {
+                        *dst = src;
+                    }
+                }
+            }
+        }
     }
 
     fn draw_stats(&self, chart: &BarChart, area: Rect, buf: &mut Buffer) {
@@ -558,5 +576,32 @@ mod tests {
                 .iter()
                 .all(|p| p.1.is_finite())
         );
+    }
+
+    #[test]
+    fn kde_never_overwrites_bars_or_labels() {
+        let area = Rect::new(0, 0, 100, 24);
+        let data: Vec<f64> = (0..2000)
+            .map(|i| 50.0 + ((i * 37 % 101) as f64 - 50.0) * ((i % 7) as f64 / 7.0))
+            .collect();
+        let mk = |kde| {
+            let mut buf = Buffer::empty(area);
+            Histogram::new(data.clone())
+                .bins(13)
+                .kde(kde)
+                .stats(false)
+                .show_values(true)
+                .render(area, &mut buf);
+            buf
+        };
+        let (with, without) = (mk(true), mk(false));
+        for y in 0..area.height {
+            for x in 0..area.width {
+                let (a, b) = (&with[(x, y)], &without[(x, y)]);
+                if a.symbol() != b.symbol() && b.symbol() != "·" {
+                    assert_eq!(b.symbol(), " ", "({x},{y}) overwrote {:?}", b.symbol());
+                }
+            }
+        }
     }
 }
