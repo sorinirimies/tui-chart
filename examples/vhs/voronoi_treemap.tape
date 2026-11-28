@@ -10,9 +10,12 @@ Set Padding 20
 Set PlaybackSpeed 1
 
 Hide
+Type "cargo build --release --features theme --example voronoi_treemap 2>&1 | tail -1"
+Enter
+Wait+Screen /Finished|error/
 Type "clear && cargo run --release --features theme --example voronoi_treemap"
 Enter
-Sleep 5s
+Sleep 3s
 Show
 
 Sleep 1.2s

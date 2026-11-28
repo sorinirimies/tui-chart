@@ -10,9 +10,12 @@ Set Padding 20
 Set PlaybackSpeed 1
 
 Hide
+Type "cargo build --release --features theme --example stacked_area 2>&1 | tail -1"
+Enter
+Wait+Screen /Finished|error/
 Type "clear && cargo run --release --features theme --example stacked_area"
 Enter
-Sleep 5s
+Sleep 3s
 Show
 
 Sleep 1s
