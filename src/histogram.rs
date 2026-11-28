@@ -367,6 +367,11 @@ impl Histogram {
                     if matches!(dst.symbol(), " " | "·" | "╌" | "─") && dst.bg == Color::Reset
                     {
                         *dst = src;
+                    } else if dst.symbol() == "█" {
+                        // Curve inside a bar: dots on the bar's own color, no hole.
+                        let bar = dst.fg;
+                        *dst = src;
+                        dst.bg = bar;
                     }
                 }
             }
@@ -598,7 +603,7 @@ mod tests {
         for y in 0..area.height {
             for x in 0..area.width {
                 let (a, b) = (&with[(x, y)], &without[(x, y)]);
-                if a.symbol() != b.symbol() && b.symbol() != "·" {
+                if a.symbol() != b.symbol() && !matches!(b.symbol(), "·" | "█") {
                     assert_eq!(b.symbol(), " ", "({x},{y}) overwrote {:?}", b.symbol());
                 }
             }
