@@ -185,8 +185,14 @@ impl RadialBar {
         let r = w.min(h) / 2.0 - 0.5;
         let n = self.rings.len() as f64;
         let pitch = (r * 0.85) / n;
-        if pitch >= 1.5 {
-            let thick = (pitch - 1.2).max(1.5).min(pitch);
+        // Crowded rings lose their gap but still draw; below half a dot
+        // per ring there is nothing left to show.
+        if pitch >= 0.5 {
+            let thick = if pitch >= 1.5 {
+                (pitch - 1.2).max(1.5).min(pitch)
+            } else {
+                pitch
+            };
             let sw = match self.sweep {
                 RadialSweep::Arc => (0.625, 0.75),
                 RadialSweep::Full => (0.0, 1.0),
@@ -561,5 +567,24 @@ mod tests {
                 .iter()
                 .any(|c| c.fg == Color::Magenta && c.symbol() != " ")
         );
+    }
+
+    #[test]
+    fn many_rings_still_draw_arcs() {
+        let many: Vec<RadialRing> = (0..24)
+            .map(|i| RadialRing::new(format!("r{i}"), 5.0 + i as f64, 30.0))
+            .collect();
+        let b = draw(RadialBar::new(many).legend(false), 60, 16);
+        let braille = b
+            .content()
+            .iter()
+            .filter(|c| {
+                c.symbol()
+                    .chars()
+                    .next()
+                    .is_some_and(|ch| ('\u{2801}'..='\u{28ff}').contains(&ch))
+            })
+            .count();
+        assert!(braille > 50, "only {braille} braille cells");
     }
 }
