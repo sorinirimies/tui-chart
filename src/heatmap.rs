@@ -503,4 +503,32 @@ mod tests {
                 .render(area, &mut buf);
         }
     }
+
+    #[test]
+    fn every_preset_interpolates_and_names_itself() {
+        let mut g = Gradient::Viridis;
+        let mut seen = Vec::new();
+        for _ in 0..5 {
+            let (a, b) = (g.color_at(0.0), g.color_at(1.0));
+            assert_ne!(a, b, "{}", g.name());
+            seen.push(g.name());
+            g = g.next();
+        }
+        assert_eq!(seen, ["viridis", "heat", "cool", "red-blue", "grayscale"]);
+        assert_eq!(g, Gradient::Viridis);
+        assert_eq!(Gradient::Custom(vec![]).name(), "custom");
+        assert_eq!(Gradient::Custom(vec![]).next(), Gradient::Viridis);
+    }
+
+    #[test]
+    fn custom_gradient_with_too_few_stops_falls_back_to_black_white() {
+        let g = Gradient::Custom(vec![(9, 9, 9)]);
+        assert_eq!(g.color_at(0.0), Color::Rgb(0, 0, 0));
+        assert_eq!(g.color_at(1.0), Color::Rgb(255, 255, 255));
+    }
+
+    #[test]
+    fn diverging_gradient_is_white_in_the_middle() {
+        assert_eq!(Gradient::RedBlue.color_at(0.5), Color::Rgb(255, 255, 255));
+    }
 }

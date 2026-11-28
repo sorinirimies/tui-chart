@@ -465,4 +465,60 @@ mod tests {
         assert_eq!(sym(&buf, 1, 0), "█");
         assert_eq!(sym(&buf, 0, 0), "▁");
     }
+
+    #[test]
+    fn theme_gradient_colors_by_value_and_explicit_gradient_wins() {
+        let area = Rect::new(0, 0, 3, 1);
+        let theme = Theme::nord();
+        let mut buf = Buffer::empty(area);
+        Sparkline::new([0.0, 4.0, 8.0])
+            .theme(&theme)
+            .theme_gradient(true)
+            .render(area, &mut buf);
+        assert_ne!(buf[(0, 0)].fg, buf[(2, 0)].fg);
+
+        let mut buf = Buffer::empty(area);
+        Sparkline::new([0.0, 4.0, 8.0])
+            .theme(&theme)
+            .theme_gradient(true)
+            .gradient([Color::Red, Color::Blue])
+            .render(area, &mut buf);
+        assert_eq!(buf[(0, 0)].fg, Color::Red);
+        assert_eq!(buf[(2, 0)].fg, Color::Blue);
+    }
+
+    #[test]
+    fn win_loss_odd_height_keeps_axis_dash_and_one_row_uses_halves() {
+        let (win, loss) = (Color::Green, Color::Red);
+        let area = Rect::new(0, 0, 2, 5);
+        let mut buf = Buffer::empty(area);
+        Sparkline::new([1.0, -1.0])
+            .style(SparklineStyle::WinLoss)
+            .win_loss_colors(win, loss)
+            .render(area, &mut buf);
+        assert_eq!(sym(&buf, 0, 0), "█");
+        assert_eq!(buf[(0, 0)].fg, win);
+        assert_eq!(sym(&buf, 0, 2), "─");
+        assert_eq!(sym(&buf, 1, 4), "█");
+        assert_eq!(buf[(1, 4)].fg, loss);
+
+        let one = Rect::new(0, 0, 2, 1);
+        let mut buf = Buffer::empty(one);
+        Sparkline::new([1.0, -1.0])
+            .style(SparklineStyle::WinLoss)
+            .render(one, &mut buf);
+        assert_eq!(sym(&buf, 0, 0), "▀");
+        assert_eq!(sym(&buf, 1, 0), "▄");
+    }
+
+    #[test]
+    fn area_style_fills_columns_from_the_bottom() {
+        let area = Rect::new(0, 0, 3, 3);
+        let mut buf = Buffer::empty(area);
+        Sparkline::new([0.0, 4.0, 8.0])
+            .style(SparklineStyle::Area)
+            .render(area, &mut buf);
+        assert_ne!(buf[(2, 0)].bg, Color::Reset, "tallest column fills to top");
+        assert_eq!(buf[(0, 0)].bg, Color::Reset);
+    }
 }

@@ -435,6 +435,30 @@ pub fn all_widgets(d: Data, theme: Option<Th>) -> Vec<(&'static str, Draw)> {
     ));
     let c = t();
     v.push((
+        "RadialBar",
+        mk(move || {
+            let rings = vals(d)
+                .into_iter()
+                .take(6)
+                .enumerate()
+                .map(|(i, x)| RadialRing::new(format!("r{i}"), x, 10.0));
+            th!(RadialBar::new(rings), c.clone())
+        }),
+    ));
+    let c = t();
+    v.push((
+        "RingStack",
+        mk(move || {
+            let items = vals(d)
+                .into_iter()
+                .take(6)
+                .enumerate()
+                .map(|(i, x)| (format!("r{i}"), x));
+            th!(RingStack::new(items), c.clone())
+        }),
+    ));
+    let c = t();
+    v.push((
         "Sparkline",
         mk(move || th!(Sparkline::new(vals(d)), c.clone())),
     ));

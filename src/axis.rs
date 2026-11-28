@@ -294,4 +294,29 @@ mod tests {
     fn degenerate_bounds_no_marks() {
         assert!(Axis::new().tick_marks((1.0, 1.0)).is_empty());
     }
+
+    #[test]
+    fn grid_glyphs_cover_every_style() {
+        assert_eq!(GridStyle::Dotted.glyph(true), '·');
+        assert_eq!(GridStyle::Dotted.glyph(false), '·');
+        assert_eq!(GridStyle::Dashed.glyph(true), '╌');
+        assert_eq!(GridStyle::Dashed.glyph(false), '╎');
+        assert_eq!(GridStyle::Solid.glyph(true), '─');
+        assert_eq!(GridStyle::Solid.glyph(false), '│');
+    }
+
+    #[test]
+    fn style_setters_mark_explicit_and_debug_hides_closure() {
+        let a = Axis::new()
+            .label_style(Style::default().fg(ratatui::style::Color::Red))
+            .grid_style(Style::default().fg(ratatui::style::Color::Blue))
+            .grid(true)
+            .formatter_fn(Arc::new(|v| format!("<{v}>")));
+        assert_eq!(a.explicit & EXPL_LABEL, EXPL_LABEL);
+        assert_eq!(a.explicit & EXPL_GRID, EXPL_GRID);
+        assert_eq!(a.explicit & EXPL_STYLE, 0);
+        assert_eq!(a.tick_marks((0.0, 1.0)).first().unwrap().1, "<0>");
+        let dbg = format!("{a:?}");
+        assert!(dbg.contains("<fn>") && dbg.contains("Axis"), "{dbg}");
+    }
 }

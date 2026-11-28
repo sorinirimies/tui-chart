@@ -1002,10 +1002,6 @@ impl CandlestickChart {
                         }
                     }
                 }
-                // doji: make sure body is visible
-                if b0 == b1 && bw > 1 {
-                    // body already drawn with half block above
-                }
             }
             // volume
             if vol_h > 0 && max_vol > 0.0 && c.volume.is_finite() && c.volume > 0.0 {
@@ -1385,5 +1381,79 @@ mod tests {
                 .show_volume(true)
                 .render(area, &mut buf);
         }
+    }
+
+    fn render_chart(c: &CandlestickChart, w: u16, h: u16) -> (Buffer, Rect) {
+        let area = Rect::new(0, 0, w, h);
+        let mut buf = Buffer::empty(area);
+        c.render(area, &mut buf);
+        (buf, area)
+    }
+
+    #[test]
+    fn custom_pane_draws_its_name_and_line() {
+        let vals: Vec<Option<f64>> = (0..30).map(|i| (i % 7 != 3).then_some(i as f64)).collect();
+        let c = CandlestickChart::new(data(30)).pane(IndicatorPane::Custom {
+            name: "MYIND".into(),
+            values: vals,
+            color: Color::Magenta,
+        });
+        let (buf, area) = render_chart(&c, 70, 24);
+        assert!(dump(&buf, area).contains("MYIND"));
+        assert!(
+            buf.content().iter().any(|x| x.fg == Color::Magenta),
+            "pane line uses its color"
+        );
+        // flat / empty custom series must not panic
+        for v in [
+            vec![Some(1.0); 30],
+            vec![None; 30],
+            vec![Some(f64::NAN); 30],
+        ] {
+            let c = CandlestickChart::new(data(30)).pane(IndicatorPane::Custom {
+                name: "x".into(),
+                values: v,
+                color: Color::Red,
+            });
+            render_chart(&c, 70, 24);
+        }
+    }
+
+    #[test]
+    fn hollow_bullish_bodies_use_outline_glyphs() {
+        let candles = vec![Candle::new(100.0, 130.0, 90.0, 125.0); 4];
+        let c = CandlestickChart::new(candles.clone()).hollow(true);
+        let (hollow, area) = render_chart(&c, 40, 16);
+        let (solid, _) = render_chart(&CandlestickChart::new(candles), 40, 16);
+        assert_ne!(dump(&hollow, area), dump(&solid, area));
+    }
+
+    #[test]
+    fn markers_and_overlays_are_drawn_inside_the_range() {
+        let n = 20;
+        let sma20: Vec<Option<f64>> = sma(&data(n), 3);
+        let c = CandlestickChart::new(data(n))
+            .overlay(Overlay::new("sma", sma20, Color::Yellow))
+            .marker(TradeMarker::new(5, 105.0, TradeSide::Buy).label("in"))
+            .marker(TradeMarker::new(9, 105.0, TradeSide::Sell))
+            // out of range / out of window: ignored, no panic
+            .marker(TradeMarker::new(999, 105.0, TradeSide::Buy))
+            .marker(TradeMarker::new(3, f64::NAN, TradeSide::Sell))
+            .marker(TradeMarker::new(3, 1e9, TradeSide::Sell));
+        let (buf, area) = render_chart(&c, 60, 20);
+        let d = dump(&buf, area);
+        assert!(d.contains('▲') && d.contains('▼') && d.contains('●'));
+        assert_eq!(d.matches('▲').count(), 1);
+        assert_eq!(d.matches('▼').count(), 1);
+    }
+
+    #[test]
+    fn support_and_resistance_lines_are_labelled() {
+        let c = CandlestickChart::new(data(20))
+            .support(95.0)
+            .resistance(112.0);
+        let (buf, area) = render_chart(&c, 60, 20);
+        let d = dump(&buf, area);
+        assert!(d.contains("S 95.00") && d.contains("R 112.00"), "{d}");
     }
 }

@@ -213,4 +213,33 @@ mod tests {
         Theme::dracula().fill(Rect::new(0, 0, 3, 2), &mut b);
         assert_eq!(b[(1, 1)].bg, Theme::dracula().background.unwrap());
     }
+
+    #[test]
+    fn to_rgb_maps_every_named_color() {
+        use ratatui::style::Color as C;
+        let named = [
+            C::Black,
+            C::Red,
+            C::Green,
+            C::Yellow,
+            C::Blue,
+            C::Magenta,
+            C::Cyan,
+            C::Gray,
+            C::DarkGray,
+            C::LightRed,
+            C::LightGreen,
+            C::LightYellow,
+            C::LightBlue,
+            C::LightMagenta,
+            C::LightCyan,
+            C::White,
+        ];
+        let mut set: Vec<_> = named.iter().map(|c| to_rgb(*c)).collect();
+        set.sort();
+        set.dedup();
+        assert_eq!(set.len(), named.len(), "each named color has its own rgb");
+        assert_eq!(to_rgb(C::Rgb(1, 2, 3)), (1, 2, 3));
+        assert_eq!(to_rgb(C::Indexed(5)), (128, 128, 128));
+    }
 }
